@@ -2,7 +2,7 @@
 
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
+const API_URL =  "http://localhost:8888/user-service/api";
 
 export interface RegisterData {
   name: string;
@@ -12,6 +12,7 @@ export interface RegisterData {
   company?: string;
   role?: string;
 }
+
 
 export interface LoginData {
   email: string;

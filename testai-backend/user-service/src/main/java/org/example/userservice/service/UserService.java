@@ -1,5 +1,6 @@
 package org.example.userservice.service;
 
+import org.example.userservice.FeignClient.ProjectServiceClient;
 import org.example.userservice.dto.*;
 import org.example.userservice.entity.User;
 import org.example.userservice.entity.User.UserRole;
@@ -24,6 +25,8 @@ public class UserService {
     private final TransactionTemplate transactionTemplate;
     private final EmailService emailService;
     private final TwilioVerifyService twilioVerifyService;
+    private final ProjectServiceClient projectServiceClient;
+
 
     // ⭐️ CONFIGURATION : Activer/Désactiver la vérification téléphone
     private static final boolean PHONE_VERIFICATION_ENABLED = true; // ← Mettre à true pour activer
@@ -59,9 +62,12 @@ public class UserService {
             }
 
             // Vérifier si le téléphone est déjà utilisé
+            /*
             if (userRepository.findByPhoneNumber(formattedPhone).isPresent()) {
                 throw new RuntimeException("Ce numéro de téléphone est déjà utilisé par un autre compte");
             }
+
+             */
         }
 
         // 3. Déterminer le rôle
@@ -338,6 +344,17 @@ public class UserService {
         user.setTempPassword(null);
         userRepository.save(user);
 
+        // ⭐️ Lier les invitations en attente si le rôle est DEVELOPER
+        if (user.getRole() == UserRole.DEVELOPER) {
+            try {
+                projectServiceClient.linkSharedAccess(user.getEmail(), user.getId());
+                log.info("✅ Invitations liées pour le développeur {}", user.getEmail());
+            } catch (Exception e) {
+                log.warn("⚠️ Impossible de lier les invitations pour {} : {}", user.getEmail(), e.getMessage());
+                // Ne pas bloquer l'activation du compte
+            }
+        }
+
         String message;
         if (PHONE_VERIFICATION_ENABLED) {
             message = "🎉 Votre compte est maintenant entièrement activé ! Email ET téléphone vérifiés. Vous pouvez vous connecter.";
@@ -354,6 +371,151 @@ public class UserService {
                 "phoneVerified", user.getPhoneVerified(),
                 "accountActive", true
         );
+    }
+    /**
+     * ⭐️ INSCRIPTION VIA INVITATION (DEVELOPER uniquement)
+     *
+     * Différences avec register() :
+     * - Rôle forcé à DEVELOPER
+     * - Liaison automatique des SharedAccess
+     * - Même flux de vérification email/téléphone
+     *
+     * Flux :
+     * 1. Vérifier email et téléphone non utilisés
+     * 2. Créer utilisateur avec rôle DEVELOPER (inactif)
+     * 3. Envoyer email de vérification
+     * 4. SI PHONE_VERIFICATION_ENABLED : Envoyer SMS
+     * 5. Lier les SharedAccess en attente
+     * 6. Retourner message approprié
+     */
+    @Transactional
+    public Map<String, Object> registerWithInvitation(RegisterWithInvitationRequest request) {
+        log.info("📨 Inscription via invitation pour l'email: {} et téléphone: {}",
+                request.getEmail(), request.getPhoneNumber());
+
+        // 1. Vérifier si l'email existe déjà
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Cet email est déjà utilisé");
+        }
+
+        String formattedPhone = null;
+
+        // 2. Valider le téléphone seulement si fourni
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isEmpty()) {
+            formattedPhone = twilioVerifyService.formatFrenchPhoneNumber(request.getPhoneNumber());
+
+            if (!twilioVerifyService.isValidPhoneNumber(formattedPhone)) {
+                throw new RuntimeException("Format de numéro de téléphone invalide. Utilisez le format international (+33612345678) ou français (0612345678)");
+            }
+
+            // Vérification téléphone unique désactivée (commentée dans register aussi)
+        /*
+        if (userRepository.findByPhoneNumber(formattedPhone).isPresent()) {
+            throw new RuntimeException("Ce numéro de téléphone est déjà utilisé par un autre compte");
+        }
+        */
+        }
+
+        // 3. ⭐ Rôle FORCÉ à DEVELOPER pour les invitations
+        String role = "DEVELOPER";
+        log.info("🔐 Création compte DEVELOPER via invitation pour {}", request.getEmail());
+
+        // 4. Générer les tokens de vérification
+        String emailVerificationToken = UUID.randomUUID().toString();
+        Instant emailTokenExpiresAt = Instant.now().plusSeconds(86400); // 24 heures
+
+        // 5. Créer l'utilisateur dans PostgreSQL (INACTIF, pas encore dans Keycloak)
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setRole(UserRole.DEVELOPER);  // ⭐ DEVELOPER pour invitation
+        user.setKeycloakId(null); // Sera créé après vérification
+        user.setCompany(request.getCompany());
+        user.setIsActive(false); // Inactif jusqu'à vérification
+
+        // Vérification email
+        user.setEmailVerified(false);
+        user.setEmailVerificationToken(emailVerificationToken);
+        user.setVerificationTokenExpiresAt(emailTokenExpiresAt);
+        user.setTempPassword(request.getPassword());
+
+        // Vérification téléphone
+        user.setPhoneNumber(formattedPhone);
+        // ⭐️ SI VÉRIFICATION TÉLÉPHONE DÉSACTIVÉE : Marquer comme déjà vérifié
+        user.setPhoneVerified(!PHONE_VERIFICATION_ENABLED); // true si désactivé, false si activé
+        user.setPhoneVerificationAttempts(0);
+        user.setPhoneVerificationSentAt(PHONE_VERIFICATION_ENABLED ? Instant.now() : null);
+
+        user = userRepository.save(user);
+        log.info("✅ Développeur pré-enregistré dans PostgreSQL avec l'ID: {}", user.getId());
+
+        // 6. ⭐ Lier les SharedAccess en attente (AVANT l'envoi des emails)
+        // Cela permet de vérifier que l'invitation existe bien
+        try {
+            projectServiceClient.linkSharedAccess(user.getEmail(), user.getId());
+            log.info("✅ SharedAccess liés pour le développeur {}", user.getEmail());
+        } catch (Exception e) {
+            log.warn("⚠️ Impossible de lier les invitations pour {} : {}", user.getEmail(), e.getMessage());
+            // Ne pas bloquer l'inscription, mais logger l'erreur
+            // Les SharedAccess seront liés lors de l'activation du compte
+        }
+
+        // 7. Envoyer l'email de vérification
+        try {
+            emailService.sendVerificationEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    emailVerificationToken
+            );
+            log.info("📧 Email de vérification envoyé à {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("⚠️ Impossible d'envoyer l'email: {}", e.getMessage());
+            // Supprimer l'utilisateur si l'email échoue
+            userRepository.delete(user);
+            throw new RuntimeException("Impossible d'envoyer l'email de vérification. Veuillez réessayer.");
+        }
+
+        // 8. Envoyer le SMS de vérification (SI ACTIVÉ)
+        if (PHONE_VERIFICATION_ENABLED && formattedPhone != null) {
+            try {
+                twilioVerifyService.sendVerificationCode(formattedPhone);
+                log.info("📱 SMS de vérification envoyé au {}", formattedPhone);
+            } catch (Exception e) {
+                log.error("⚠️ Impossible d'envoyer le SMS: {}", e.getMessage());
+                // Supprimer l'utilisateur si le SMS échoue
+                userRepository.delete(user);
+                throw new RuntimeException("Impossible d'envoyer le SMS de vérification. Vérifiez le numéro de téléphone.");
+            }
+        }
+
+        // 9. Retourner la réponse appropriée
+        if (PHONE_VERIFICATION_ENABLED && formattedPhone != null) {
+            return Map.of(
+                    "success", true,
+                    "message", "🎉 Compte DEVELOPER créé ! 📧 Un email de vérification a été envoyé à " + user.getEmail() +
+                            " et 📱 un SMS a été envoyé au " + formattedPhone +
+                            ". Veuillez vérifier les deux pour activer votre compte.",
+                    "email", user.getEmail(),
+                    "phoneNumber", formattedPhone,
+                    "role", "DEVELOPER",
+                    "invitationToken", request.getInvitationToken(),
+                    "requiresEmailVerification", true,
+                    "requiresPhoneVerification", true
+            );
+        } else {
+            // Vérification téléphone désactivée
+            return Map.of(
+                    "success", true,
+                    "message", "🎉 Compte DEVELOPER créé ! 📧 Un email de vérification a été envoyé à " + user.getEmail() +
+                            ". Veuillez vérifier votre email pour activer votre compte.",
+                    "email", user.getEmail(),
+                    "role", "DEVELOPER",
+                    "invitationToken", request.getInvitationToken(),
+                    "requiresEmailVerification", true,
+                    "requiresPhoneVerification", false,
+                    "note", "⚠️ Vérification par téléphone temporairement désactivée"
+            );
+        }
     }
 
     /**

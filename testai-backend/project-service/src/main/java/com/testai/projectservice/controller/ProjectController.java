@@ -1,17 +1,18 @@
 package com.testai.projectservice.controller;
 
-import com.testai.projectservice.dto.EndpointDTO;
-import com.testai.projectservice.dto.ProjectDTO;
-import com.testai.projectservice.dto.ScanSwaggerResponse;
+import com.testai.projectservice.dto.*;
 import com.testai.projectservice.entity.Project;
 import com.testai.projectservice.exception.UserNotFoundException;
 import com.testai.projectservice.feignclient.UserServiceClient;
 import com.testai.projectservice.service.ProjectService;
-import lombok.RequiredArgsConstructor;
+import com.testai.projectservice.service.SharedAccessService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,14 +22,21 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects")
-@RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class ProjectController {
+
     @Autowired
     private ProjectService projectService;
+
     @Autowired
     private UserServiceClient userServiceClient;
+
+    @Autowired
+    private SharedAccessService sharedAccessService;   // ⭐ Ajout pour le partage
+
+    // ========================================
+    // ANCIENNES MÉTHODES (inchangées)
+    // ========================================
 
     private boolean isInvalidLink(String url) {
         try {
@@ -36,21 +44,20 @@ public class ProjectController {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             return !response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
-            return true; // failed → invalid
+            return true;
         }
     }
-
 
     @PostMapping(path = "/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> addProject(@ModelAttribute ProjectDTO request) {
         try {
-            if(userServiceClient.getUserById(request.getUserId()) == null){
+            if (userServiceClient.getUserById(request.getUserId()) == null) {
                 return ResponseEntity.badRequest().body("User does not exist");
             }
-            if (isInvalidLink(request.getProjectUrl())){
+            if (isInvalidLink(request.getProjectUrl())) {
                 return ResponseEntity.badRequest().body("Invalid Service URL !!");
             }
-            if(request.getDocSubmitMode().equals("url") && isInvalidLink(request.getDocUrl())){
+            if (request.getDocSubmitMode().equals("url") && isInvalidLink(request.getDocUrl())) {
                 return ResponseEntity.badRequest().body("Invalid Documentation URL !!");
             }
             Project newProject = projectService.createProject(request);
@@ -97,15 +104,12 @@ public class ProjectController {
         }
     }
 
-
     @PostMapping("/{projectId}/scan-endpoints")
     public ResponseEntity<?> scanProjectEndpoints(@PathVariable UUID projectId) {
         log.info("🔍 Demande de scan des endpoints pour le projet {}", projectId);
-
         try {
             ScanSwaggerResponse response = projectService.scanEndpoints(projectId);
             return ResponseEntity.ok(response);
-
         } catch (Exception e) {
             log.error("❌ Erreur lors du scan : {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
@@ -115,18 +119,12 @@ public class ProjectController {
         }
     }
 
-    /**
-     * ⭐️ NOUVEAU : Récupérer les endpoints d'un projet
-     * GET /api/projects/{projectId}/endpoints
-     */
     @GetMapping("/{projectId}/endpoints")
     public ResponseEntity<?> getProjectEndpoints(@PathVariable UUID projectId) {
         log.info("📋 Récupération des endpoints du projet {}", projectId);
-
         try {
             List<EndpointDTO> endpoints = projectService.getProjectEndpoints(projectId);
             return ResponseEntity.ok(endpoints);
-
         } catch (Exception e) {
             log.error("❌ Erreur : {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
@@ -136,18 +134,12 @@ public class ProjectController {
         }
     }
 
-    /**
-     * ⭐️ NOUVEAU : Compter les endpoints d'un projet
-     * GET /api/projects/{projectId}/endpoints/count
-     */
     @GetMapping("/{projectId}/endpoints/count")
     public ResponseEntity<?> countProjectEndpoints(@PathVariable UUID projectId) {
         log.info("🔢 Comptage des endpoints du projet {}", projectId);
-
         try {
             Map<String, Object> count = projectService.countProjectEndpoints(projectId);
             return ResponseEntity.ok(count);
-
         } catch (Exception e) {
             log.error("❌ Erreur : {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
@@ -157,4 +149,95 @@ public class ProjectController {
         }
     }
 
+    // ========================================
+    // NOUVELLES MÉTHODES - PARTAGE ⭐
+    // ========================================
+
+    /**
+     * Partager un projet avec un développeur
+     * Accessible uniquement par le MANAGER propriétaire
+     */
+    @PostMapping("/{projectId}/share")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<SharedAccessDTO> shareProject(
+            @PathVariable UUID projectId,
+            @RequestBody ShareProjectRequest request
+    ) {
+        SharedAccessDTO shared = sharedAccessService.shareProject(projectId, request);
+        return ResponseEntity.ok(shared);
+    }
+
+    /**
+     * Lister tous les partages d'un projet
+     * Accessible par le MANAGER propriétaire
+     */
+    @GetMapping("/{projectId}/shares")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<List<SharedAccessDTO>> getProjectShares(
+            @PathVariable UUID projectId,
+            Authentication authentication
+    ) {
+        // Vérifier que c'est le propriétaire
+        UUID userId = getUserIdFromAuth(authentication);
+        Project project = projectService.getProjectById(projectId);
+        if (!project.getUserId().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
+        List<SharedAccessDTO> shares = sharedAccessService.getProjectShares(projectId);
+        return ResponseEntity.ok(shares);
+    }
+
+    /**
+     * Révoquer un partage
+     * Accessible par le MANAGER qui a partagé
+     */
+    @DeleteMapping("/shares/{sharedAccessId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Void> revokeAccess(@PathVariable UUID sharedAccessId) {
+        sharedAccessService.revokeAccess(sharedAccessId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Lister tous les projets partagés AVEC le développeur actuel
+     * Accessible par DEVELOPER
+     */
+    @GetMapping("/shared-with-me")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<List<SharedProjectDTO>> getSharedProjects(Authentication authentication) {
+        UUID userId = getUserIdFromAuth(authentication);
+        List<SharedProjectDTO> shared = sharedAccessService.getSharedProjects(userId);
+        return ResponseEntity.ok(shared);
+    }
+    @PutMapping("/shared-access/link")
+    public ResponseEntity<Void> linkSharedAccessToUser(
+            @RequestParam String email,
+            @RequestParam UUID userId
+    ) {
+        sharedAccessService.linkPendingShares(email, userId);
+        return ResponseEntity.ok().build();
+    }
+    @PutMapping("/shares/{sharedAccessId}/access-level")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<SharedAccessDTO> updateAccessLevel(
+            @PathVariable UUID sharedAccessId,
+            @RequestBody Map<String, String> request
+    ) {
+        String newAccessLevel = request.get("accessLevel");
+        SharedAccessDTO updated = sharedAccessService.updateAccessLevel(sharedAccessId, newAccessLevel);
+        return ResponseEntity.ok(updated);
+    }
+
+
+    // ========================================
+    // HELPERS
+    // ========================================
+
+    private UUID getUserIdFromAuth(Authentication authentication) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String email = jwt.getClaimAsString("email");
+        String token = "Bearer " + jwt.getTokenValue();
+        UserDTO user = userServiceClient.getUserByEmail(email, token);
+        return user.getId();
+    }
 }

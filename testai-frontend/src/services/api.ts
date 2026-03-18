@@ -1,0 +1,398 @@
+// ==========================================
+// src/services/api.ts
+// Configuration Axios avec TypeScript (Import Type)
+// ==========================================
+
+import axios from "axios";
+import type { AxiosResponse } from "axios";
+
+// URL de base de la gateway
+const API_BASE_URL = "http://localhost:8888";
+
+// Instance Axios avec configuration CORS
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
+
+// ==========================================
+// TYPES
+// ==========================================
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  company: string;
+}
+
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+  user: User;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  company: string;
+  role: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  projectUrl: string;
+  docMode: string;
+  docSubmitMode: string;
+  docUrl?: string;
+  authType: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Endpoint {
+  id: string;
+  projectId: string;
+  method: string;
+  path: string;
+  description?: string;
+  parameters?: string;
+  requestBody?: string;
+  responseBody?: string;
+  statusCodes?: string;
+  requiresAuth: boolean;
+  discoveryType: string;
+}
+
+interface ScanSwaggerRequest {
+  projectId: string;
+  swaggerUrl: string;
+}
+
+interface ScanSwaggerResponse {
+  success: boolean;
+  message: string;
+  totalEndpoints: number;
+  newEndpoints: number;
+  updatedEndpoints: number;
+  skippedEndpoints: number;
+  endpoints: Endpoint[];
+}
+interface SharedAccess {
+  id: string;
+  projectId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  status: "PENDING" | "ACTIVE" | "REVOKED";
+  accessLevel: "READ_ONLY" | "READ_WRITE";
+  sharedBy: string;
+  sharedByName: string;
+  invitedAt: string;
+  activatedAt?: string;
+  createdAt: string;
+}
+
+interface SharedProject {
+  projectId: string;
+  projectName: string;
+  projectDescription: string;
+  projectUrl: string;
+  managerName: string;
+  accessLevel: string;
+  sharedAt: string;
+}
+
+interface InvitationInfo {
+  projectName: string;
+  projectDescription: string;
+  managerName: string;
+  developerEmail: string;
+  developerName: string;
+  accessLevel: string;
+  status: string;
+  invitedAt: string;
+}
+
+// ==========================================
+// INTERCEPTEUR REQUEST (Ajouter JWT Token)
+// ==========================================
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("accessToken");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+// ==========================================
+// INTERCEPTEUR RESPONSE (Gérer les erreurs)
+// ==========================================
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          console.error("Authentification expirée");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          window.location.href = "/login";
+          break;
+
+        case 403:
+          console.error("Accès refusé");
+          break;
+
+        case 404:
+          console.error("Ressource non trouvée");
+          break;
+
+        case 500:
+          console.error("Erreur serveur interne");
+          break;
+
+        default:
+          console.error("Erreur:", error.response.status);
+      }
+    } else if (error.request) {
+      console.error("Pas de réponse du serveur");
+    } else {
+      console.error("Erreur:", error.message);
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+// ==========================================
+// SERVICES API
+// ==========================================
+
+// Auth Service
+export const authService = {
+  login: (
+    email: string,
+    password: string,
+  ): Promise<AxiosResponse<LoginResponse>> =>
+    api.post("/user-service/api/auth/login", { email, password }),
+
+  register: (userData: RegisterRequest): Promise<AxiosResponse<User>> =>
+    api.post("/user-service/api/auth/register", userData),
+
+  registerWithInvitation: (data: RegisterWithInvitationRequest) =>
+    api.post("/user-service/api/auth/register-invitation", data),
+
+  logout: (): void => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/login";
+  },
+
+  verifyEmail: (token: string): Promise<AxiosResponse<any>> =>
+    api.get(`/user-service/api/auth/verify-email?token=${token}`),
+
+  verifyPhone: (code: string): Promise<AxiosResponse<any>> =>
+    api.post("/user-service/api/auth/verify-phone", { code }),
+};
+
+// User Service
+export const userService = {
+  getAllUsers: (): Promise<AxiosResponse<User[]>> =>
+    api.get("/user-service/api/users/all"),
+
+  getUserById: (userId: string): Promise<AxiosResponse<User>> =>
+    api.get(`/user-service/api/users/${userId}`),
+
+  getCurrentUser: (): Promise<AxiosResponse<User>> =>
+    api.get("/user-service/api/users/me"),
+
+  updateProfile: (profileData: Partial<User>): Promise<AxiosResponse<User>> =>
+    api.put("/user-service/api/users/me", profileData),
+};
+
+// Project Service
+export const projectService = {
+  getAllProjects: (): Promise<AxiosResponse<Project[]>> =>
+    api.get("/project-service/api/projects/all"),
+
+  getProjectById: (projectId: string): Promise<AxiosResponse<Project>> =>
+    api.get(`/project-service/api/projects/${projectId}`),
+
+  createProject: (projectData: any): Promise<AxiosResponse<Project>> => {
+    const formData = new FormData();
+    Object.keys(projectData).forEach((key) => {
+      if (projectData[key] !== null && projectData[key] !== undefined) {
+        formData.append(key, projectData[key]);
+      }
+    });
+    return api.post("/project-service/api/projects/add", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  updateProject: (
+    projectId: string,
+    projectData: Partial<Project>,
+  ): Promise<AxiosResponse<Project>> =>
+    api.put(`/project-service/api/projects/${projectId}`, projectData),
+
+  deleteProject: (projectId: string): Promise<AxiosResponse<void>> =>
+    api.delete(`/project-service/api/projects/${projectId}`),
+
+  getProjectEndpoints: (
+    projectId: string,
+  ): Promise<AxiosResponse<Endpoint[]>> =>
+    api.get(`/project-service/api/projects/${projectId}/endpoints`),
+
+  scanProjectEndpoints: (
+    projectId: string,
+  ): Promise<AxiosResponse<ScanSwaggerResponse>> =>
+    api.post(`/project-service/api/projects/${projectId}/scan-endpoints`),
+
+  countProjectEndpoints: (
+    projectId: string,
+  ): Promise<AxiosResponse<{ count: number }>> =>
+    api.get(`/project-service/api/projects/${projectId}/endpoints/count`),
+};
+
+// Endpoint Service
+export const endpointService = {
+  getAllEndpoints: (): Promise<AxiosResponse<Endpoint[]>> =>
+    api.get("/endpoint-service/api/endpoints"),
+
+  getEndpointById: (endpointId: string): Promise<AxiosResponse<Endpoint>> =>
+    api.get(`/endpoint-service/api/endpoints/${endpointId}`),
+
+  getEndpointsByProjectId: (
+    projectId: string,
+  ): Promise<AxiosResponse<Endpoint[]>> =>
+    api.get(`/endpoint-service/api/endpoints/project/${projectId}`),
+
+  createEndpoint: (
+    endpointData: Partial<Endpoint>,
+  ): Promise<AxiosResponse<Endpoint>> =>
+    api.post("/endpoint-service/api/endpoints", endpointData),
+
+  updateEndpoint: (
+    endpointId: string,
+    endpointData: Partial<Endpoint>,
+  ): Promise<AxiosResponse<Endpoint>> =>
+    api.put(`/endpoint-service/api/endpoints/${endpointId}`, endpointData),
+
+  deleteEndpoint: (endpointId: string): Promise<AxiosResponse<void>> =>
+    api.delete(`/endpoint-service/api/endpoints/${endpointId}`),
+
+  scanSwagger: (
+    projectId: string,
+    swaggerUrl: string,
+  ): Promise<AxiosResponse<ScanSwaggerResponse>> =>
+    api.post("/endpoint-service/api/endpoints/scan", { projectId, swaggerUrl }),
+};
+// ==========================================
+// SHARED ACCESS SERVICE ⭐
+// ==========================================
+
+export const sharedAccessService = {
+  // Partager un projet (MANAGER)
+  shareProject: (
+    projectId: string,
+    data: {
+      developerEmail: string;
+      accessLevel: string;
+    },
+  ): Promise<AxiosResponse<SharedAccess>> =>
+    api.post(`/project-service/api/projects/${projectId}/share`, data),
+
+  // Lister les partages d'un projet (MANAGER)
+  getProjectShares: (
+    projectId: string,
+  ): Promise<AxiosResponse<SharedAccess[]>> =>
+    api.get(`/project-service/api/projects/${projectId}/shares`),
+
+  // Révoquer un partage (MANAGER)
+  revokeAccess: (sharedAccessId: string): Promise<AxiosResponse<void>> =>
+    api.delete(`/project-service/api/projects/shares/${sharedAccessId}`),
+
+  // Lister les projets partagés avec moi (DEVELOPER)
+  getSharedProjects: (): Promise<AxiosResponse<SharedProject[]>> =>
+    api.get("/project-service/api/projects/shared-with-me"),
+
+  updateAccessLevel: (
+    sharedAccessId: string,
+    accessLevel: string,
+  ): Promise<AxiosResponse<SharedAccess>> =>
+    api.put(
+      `/project-service/api/projects/shares/${sharedAccessId}/access-level`,
+      { accessLevel },
+    ),
+  // Récupérer les infos d'une invitation (PUBLIC)
+  getInvitationInfo: (token: string): Promise<AxiosResponse<InvitationInfo>> =>
+    api.get(`/project-service/api/invitations/${token}`),
+
+  // Activer une invitation (PUBLIC)
+  activateInvitation: (token: string): Promise<AxiosResponse<SharedAccess>> =>
+    api.post(`/project-service/api/invitations/${token}/activate`),
+};
+
+// ==========================================
+// TYPES ⭐
+// ==========================================
+
+// Export types
+export type {
+  LoginRequest,
+  RegisterRequest,
+  LoginResponse,
+  User,
+  Project,
+  Endpoint,
+  ScanSwaggerRequest,
+  ScanSwaggerResponse,
+  SharedAccess,
+  SharedProject,
+  InvitationInfo,
+};
+export interface RegisterWithInvitationRequest {
+  email: string;
+  name: string;
+  password: string;
+  phoneNumber?: string;
+  invitationToken: string;
+}
+
+export interface ActivateInvitationResponse {
+  hasAccount: boolean;
+  email: string;
+  invitationToken: string;
+  projectName: string;
+}
+export default api;

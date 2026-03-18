@@ -1,10 +1,10 @@
 package com.testai.projectservice.feignclient;
 
 import com.testai.projectservice.config.FeignClientConfig;
+import com.testai.projectservice.dto.SendShareInvitationRequest;
 import com.testai.projectservice.dto.UserDTO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -15,7 +15,7 @@ import java.util.UUID;
  * - name: nom du service dans Eureka (USER-SERVICE)
  * - path: préfixe des endpoints (/api/users)
  */
-@FeignClient(name = "user-service", path = "/api/users", configuration = FeignClientConfig.class)
+@FeignClient(name = "user-service", configuration = FeignClientConfig.class)
 public interface UserServiceClient {
 
     /**
@@ -26,6 +26,25 @@ public interface UserServiceClient {
      * @param userId UUID de l'utilisateur
      * @return UserDTO ou exception si non trouvé
      */
-    @GetMapping("/{id}")
+    @GetMapping("/api/users/{id}")
     UserDTO getUserById(@PathVariable("id") UUID userId);
+
+
+    @GetMapping("/api/users/{userId}")
+    UserDTO getUserById(
+            @PathVariable("userId") UUID userId,
+            @RequestHeader("Authorization") String token
+    );
+
+    @GetMapping("/api/users/email/{email}")
+    UserDTO getUserByEmail(
+            @PathVariable("email") String email,
+            @RequestHeader("Authorization") String token
+    );
+
+    @PostMapping("/api/email/share-invitation")
+    void sendShareInvitation(
+            @RequestBody SendShareInvitationRequest request,
+            @RequestHeader("Authorization") String token
+    );
 }

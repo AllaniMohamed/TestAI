@@ -124,4 +124,43 @@ public class EmailService {
             throw new RuntimeException("Impossible d'envoyer l'email d'invitation", e);
         }
     }
+
+    /**
+     * Envoyer un email d'invitation de partage de service
+     */
+    public void sendShareInvitationEmail(
+            String toEmail,
+            String developerName,
+            String managerName,
+            String projectName,
+            String projectDescription,
+            String invitationToken
+    ) {
+        try {
+            String invitationUrl = frontendUrl + "/invite/" + invitationToken;
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("TestAI - Invitation à rejoindre un service");
+            message.setText(
+                    "Bonjour " + developerName + ",\n\n" +
+                            managerName + " vous a invité à rejoindre le service \"" + projectName + "\" sur TestAI.\n\n" +
+                            "Description : " + projectDescription + "\n\n" +
+                            "Pour accepter cette invitation et accéder au service, cliquez sur le lien ci-dessous :\n\n" +
+                            invitationUrl + "\n\n" +
+                            "Vous pourrez consulter les tests et rapports de ce service.\n\n" +
+                            "Si vous n'avez pas de compte TestAI, vous pourrez en créer un directement en cliquant sur le lien.\n\n" +
+                            "Cordialement,\n" +
+                            "L'équipe TestAI"
+            );
+
+            mailSender.send(message);
+            log.info("✅ Email d'invitation de partage envoyé à {}", toEmail);
+
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de l'envoi de l'email d'invitation de partage à {}: {}", toEmail, e.getMessage());
+            throw new RuntimeException("Impossible d'envoyer l'email d'invitation de partage", e);
+        }
+    }
 }

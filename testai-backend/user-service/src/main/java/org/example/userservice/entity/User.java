@@ -79,7 +79,7 @@ public class User {
     // CHAMPS POUR VÉRIFICATION TÉLÉPHONE (Twilio Verify)
     // ========================================
 
-    @Column(name = "phone_number", unique = true)
+    @Column(name = "phone_number", nullable = true)
     private String phoneNumber; // Format international : +33612345678
 
     @Builder.Default
