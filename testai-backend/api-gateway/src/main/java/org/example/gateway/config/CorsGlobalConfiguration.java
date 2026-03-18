@@ -38,7 +38,7 @@ public class CorsGlobalConfiguration {
         // ========================================
 
         // En développement : autoriser toutes les origines
-        corsConfig.addAllowedOriginPattern("*");
+        //corsConfig.addAllowedOriginPattern("*");
 
         // En production : spécifier les domaines autorisés
         corsConfig.addAllowedOrigin("http://localhost:5173");

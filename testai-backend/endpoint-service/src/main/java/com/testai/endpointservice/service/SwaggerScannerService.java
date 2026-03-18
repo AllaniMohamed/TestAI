@@ -2,6 +2,8 @@ package com.testai.endpointservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.testai.endpointservice.dto.EndpointDTO;
 import com.testai.endpointservice.dto.ScanSwaggerResponse;
 import com.testai.endpointservice.entity.Endpoint;
@@ -17,9 +19,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Service pour scanner les endpoints depuis Swagger/OpenAPI
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,29 +28,20 @@ public class SwaggerScannerService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Scanner une URL Swagger/OpenAPI et extraire les endpoints
-     */
     @Transactional
     public ScanSwaggerResponse scanSwagger(UUID projectId, String swaggerUrl) {
         log.info("🔍 Début du scan Swagger pour le projet {} depuis {}", projectId, swaggerUrl);
 
         try {
-            // 1. Télécharger le fichier Swagger JSON
             String swaggerJson = restTemplate.getForObject(swaggerUrl, String.class);
-
             if (swaggerJson == null || swaggerJson.isEmpty()) {
                 return createErrorResponse("Le fichier Swagger est vide");
             }
 
-            // 2. Parser le JSON
             JsonNode rootNode = objectMapper.readTree(swaggerJson);
-
-            // 3. Détecter la version OpenAPI
             String version = detectOpenApiVersion(rootNode);
             log.info("📋 Version OpenAPI détectée : {}", version);
 
-            // 4. Extraire les endpoints
             List<Endpoint> endpoints;
             if (version.startsWith("3.")) {
                 endpoints = extractEndpointsFromOpenApi3(projectId, rootNode);
@@ -61,9 +51,7 @@ public class SwaggerScannerService {
                 return createErrorResponse("Version OpenAPI non supportée : " + version);
             }
 
-            // 5. Sauvegarder les endpoints
             ScanSwaggerResponse response = saveEndpoints(projectId, endpoints);
-
             log.info("✅ Scan terminé : {} endpoints traités", response.getTotalEndpoints());
             return response;
 
@@ -73,52 +61,33 @@ public class SwaggerScannerService {
         }
     }
 
-    /**
-     * Détecter la version d'OpenAPI
-     */
     private String detectOpenApiVersion(JsonNode rootNode) {
-        // OpenAPI 3.x
         if (rootNode.has("openapi")) {
             return rootNode.get("openapi").asText();
         }
-        // Swagger 2.x
         if (rootNode.has("swagger")) {
             return rootNode.get("swagger").asText();
         }
         return "unknown";
     }
 
-    /**
-     * Extraire les endpoints depuis OpenAPI 3.x
-     */
+    // ========================= OpenAPI 3 =========================
     private List<Endpoint> extractEndpointsFromOpenApi3(UUID projectId, JsonNode rootNode) {
         List<Endpoint> endpoints = new ArrayList<>();
-
         JsonNode pathsNode = rootNode.get("paths");
-        if (pathsNode == null) {
-            log.warn("⚠️ Aucun path trouvé dans le fichier OpenAPI");
-            return endpoints;
-        }
+        if (pathsNode == null) return endpoints;
 
-        // Parcourir tous les paths
         Iterator<String> pathIterator = pathsNode.fieldNames();
         while (pathIterator.hasNext()) {
             String path = pathIterator.next();
             JsonNode pathItem = pathsNode.get(path);
-
-            // Parcourir toutes les méthodes HTTP (get, post, put, delete, etc.)
             Iterator<String> methodIterator = pathItem.fieldNames();
             while (methodIterator.hasNext()) {
                 String methodStr = methodIterator.next();
-
-                // Ignorer les champs non-méthodes (parameters, servers, etc.)
-                if (!isHttpMethod(methodStr)) {
-                    continue;
-                }
+                if (!isHttpMethod(methodStr)) continue;
 
                 JsonNode operation = pathItem.get(methodStr);
 
-                // Créer l'endpoint
                 Endpoint endpoint = Endpoint.builder()
                         .projectId(projectId)
                         .method(parseHttpMethod(methodStr))
@@ -126,32 +95,100 @@ public class SwaggerScannerService {
                         .description(extractText(operation, "summary", "description"))
                         .discoveryType(Endpoint.DiscoveryType.SWAGGER)
                         .tags(extractTags(operation))
-                        .parameters(extractParameters(operation))
-                        .requestBody(extractRequestBody(operation))
-                        .responseBody(extractResponses(operation))
+                        .parameters(extractParameters(operation.get("parameters"), rootNode))
+                        .requestBody(extractRequestBody(operation, rootNode))
+                        .responseBody(extractResponses(operation, rootNode))
                         .statusCodes(extractStatusCodes(operation))
                         .requiresAuth(checkIfRequiresAuth(operation))
                         .build();
 
                 endpoints.add(endpoint);
-                log.debug("📍 Endpoint trouvé : {} {}", methodStr.toUpperCase(), path);
+                log.debug("📍 Endpoint OpenAPI3 trouvé : {} {}", methodStr.toUpperCase(), path);
             }
         }
+        return endpoints;
+    }
 
+    // ========================= Swagger 2 =========================
+    private List<Endpoint> extractEndpointsFromSwagger2(UUID projectId, JsonNode rootNode) {
+        List<Endpoint> endpoints = new ArrayList<>();
+        JsonNode pathsNode = rootNode.get("paths");
+        if (pathsNode == null) return endpoints;
+
+        Iterator<String> pathIterator = pathsNode.fieldNames();
+        while (pathIterator.hasNext()) {
+            String path = pathIterator.next();
+            JsonNode pathItem = pathsNode.get(path);
+            Iterator<String> methodIterator = pathItem.fieldNames();
+            while (methodIterator.hasNext()) {
+                String methodStr = methodIterator.next();
+                if (!isHttpMethod(methodStr)) continue;
+
+                JsonNode operation = pathItem.get(methodStr);
+
+                // Traitement spécifique Swagger 2 : extraire le paramètre body et le convertir en requestBody
+                String requestBodyJson = null;
+                ArrayNode filteredParams = objectMapper.createArrayNode();
+                JsonNode parametersNode = operation.get("parameters");
+                if (parametersNode != null && parametersNode.isArray()) {
+                    for (JsonNode param : parametersNode) {
+                        if (param.has("in") && "body".equals(param.get("in").asText())) {
+                            // Construire le requestBody à partir de ce paramètre
+                            requestBodyJson = buildRequestBodyFromBodyParam(param, rootNode);
+                        } else {
+                            filteredParams.add(param);
+                        }
+                    }
+                }
+
+                String parametersJson = extractParameters(filteredParams, rootNode);
+
+                Endpoint endpoint = Endpoint.builder()
+                        .projectId(projectId)
+                        .method(parseHttpMethod(methodStr))
+                        .path(path)
+                        .description(extractText(operation, "summary", "description"))
+                        .discoveryType(Endpoint.DiscoveryType.SWAGGER)
+                        .tags(extractTags(operation))
+                        .parameters(parametersJson)
+                        .requestBody(requestBodyJson)
+                        .responseBody(extractResponses(operation, rootNode))
+                        .statusCodes(extractStatusCodes(operation))
+                        .requiresAuth(checkIfRequiresAuth(operation))
+                        .build();
+
+                endpoints.add(endpoint);
+                log.debug("📍 Endpoint Swagger2 trouvé : {} {}", methodStr.toUpperCase(), path);
+            }
+        }
         return endpoints;
     }
 
     /**
-     * Extraire les endpoints depuis Swagger 2.x
+     * Construit un objet requestBody standardisé (comme en OpenAPI 3) à partir d'un paramètre body Swagger 2.
      */
-    private List<Endpoint> extractEndpointsFromSwagger2(UUID projectId, JsonNode rootNode) {
-        // Swagger 2 a une structure similaire à OpenAPI 3
-        return extractEndpointsFromOpenApi3(projectId, rootNode);
+    private String buildRequestBodyFromBodyParam(JsonNode bodyParam, JsonNode rootNode) {
+        JsonNode schema = bodyParam.get("schema");
+        if (schema != null) {
+            JsonNode resolvedSchema = resolveRefs(schema, rootNode);
+            ObjectNode requestBodyNode = objectMapper.createObjectNode();
+            ObjectNode contentNode = objectMapper.createObjectNode();
+            ObjectNode mediaTypeNode = objectMapper.createObjectNode();
+            mediaTypeNode.set("schema", resolvedSchema);
+            contentNode.set("application/json", mediaTypeNode);
+            requestBodyNode.set("content", contentNode);
+            boolean required = bodyParam.has("required") && bodyParam.get("required").asBoolean();
+            requestBodyNode.put("required", required);
+            try {
+                return objectMapper.writeValueAsString(requestBodyNode);
+            } catch (Exception e) {
+                log.warn("Erreur lors de la sérialisation du requestBody : {}", e.getMessage());
+            }
+        }
+        return null;
     }
 
-    /**
-     * Sauvegarder les endpoints et gérer les doublons
-     */
+    // ========================= Sauvegarde =========================
     private ScanSwaggerResponse saveEndpoints(UUID projectId, List<Endpoint> endpoints) {
         int newCount = 0;
         int updatedCount = 0;
@@ -185,16 +222,106 @@ public class SwaggerScannerService {
         );
     }
 
-    /**
-     * Utilitaires d'extraction
-     */
+    // ========================= Résolution des références =========================
+    private JsonNode resolveRefs(JsonNode node, JsonNode rootNode) {
+        if (node == null || node.isNull()) return null;
+
+        if (node.isObject() && node.has("$ref")) {
+            String ref = node.get("$ref").asText();
+            if (ref.startsWith("#/")) {
+                String[] parts = ref.substring(2).split("/");
+                JsonNode target = rootNode;
+                for (String part : parts) {
+                    target = target.get(part);
+                    if (target == null) {
+                        log.warn("Référence introuvable : {}", ref);
+                        return node;
+                    }
+                }
+                return resolveRefs(target, rootNode);
+            }
+            return node;
+        }
+
+        if (node.isObject()) {
+            ObjectNode newNode = objectMapper.createObjectNode();
+            node.fields().forEachRemaining(entry ->
+                    newNode.set(entry.getKey(), resolveRefs(entry.getValue(), rootNode))
+            );
+            return newNode;
+        }
+
+        if (node.isArray()) {
+            ArrayNode newArray = objectMapper.createArrayNode();
+            node.forEach(item -> newArray.add(resolveRefs(item, rootNode)));
+            return newArray;
+        }
+
+        return node;
+    }
+
+    // ========================= Méthodes d'extraction =========================
+    private String extractParameters(JsonNode parametersNode, JsonNode rootNode) {
+        if (parametersNode != null && !parametersNode.isNull()) {
+            JsonNode resolved = resolveRefs(parametersNode, rootNode);
+            try {
+                return objectMapper.writeValueAsString(resolved);
+            } catch (Exception e) {
+                log.warn("Erreur lors de l'extraction des paramètres : {}", e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    private String extractRequestBody(JsonNode operation, JsonNode rootNode) {
+        if (operation.has("requestBody")) {
+            JsonNode requestBody = operation.get("requestBody");
+            JsonNode resolved = resolveRefs(requestBody, rootNode);
+            try {
+                return objectMapper.writeValueAsString(resolved);
+            } catch (Exception e) {
+                log.warn("Erreur lors de l'extraction du requestBody : {}", e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    private String extractResponses(JsonNode operation, JsonNode rootNode) {
+        if (operation.has("responses")) {
+            JsonNode responses = operation.get("responses");
+            JsonNode successResponse = responses.has("200") ? responses.get("200") :
+                    responses.has("201") ? responses.get("201") : null;
+            if (successResponse != null) {
+                JsonNode resolved = resolveRefs(successResponse, rootNode);
+                try {
+                    return objectMapper.writeValueAsString(resolved);
+                } catch (Exception e) {
+                    log.warn("Erreur lors de l'extraction des réponses : {}", e.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+    private String extractStatusCodes(JsonNode operation) {
+        if (operation.has("responses")) {
+            StringBuilder codes = new StringBuilder();
+            Iterator<String> codeIterator = operation.get("responses").fieldNames();
+            while (codeIterator.hasNext()) {
+                String code = codeIterator.next();
+                if (codes.length() > 0) codes.append(",");
+                codes.append(code);
+            }
+            return codes.toString();
+        }
+        return "200";
+    }
+
+    // ========================= Utilitaires =========================
     private boolean isHttpMethod(String method) {
-        return method.equalsIgnoreCase("get") ||
-                method.equalsIgnoreCase("post") ||
-                method.equalsIgnoreCase("put") ||
-                method.equalsIgnoreCase("delete") ||
-                method.equalsIgnoreCase("patch") ||
-                method.equalsIgnoreCase("options") ||
+        return method.equalsIgnoreCase("get") || method.equalsIgnoreCase("post") ||
+                method.equalsIgnoreCase("put") || method.equalsIgnoreCase("delete") ||
+                method.equalsIgnoreCase("patch") || method.equalsIgnoreCase("options") ||
                 method.equalsIgnoreCase("head");
     }
 
@@ -223,66 +350,8 @@ public class SwaggerScannerService {
         return null;
     }
 
-    private String extractParameters(JsonNode operation) {
-        if (operation.has("parameters")) {
-            try {
-                return objectMapper.writeValueAsString(operation.get("parameters"));
-            } catch (Exception e) {
-                log.warn("Erreur lors de l'extraction des paramètres : {}", e.getMessage());
-            }
-        }
-        return null;
-    }
-
-    private String extractRequestBody(JsonNode operation) {
-        if (operation.has("requestBody")) {
-            try {
-                return objectMapper.writeValueAsString(operation.get("requestBody"));
-            } catch (Exception e) {
-                log.warn("Erreur lors de l'extraction du requestBody : {}", e.getMessage());
-            }
-        }
-        return null;
-    }
-
-    private String extractResponses(JsonNode operation) {
-        if (operation.has("responses")) {
-            try {
-                // Extraire seulement les réponses 2xx et 200
-                JsonNode responses = operation.get("responses");
-                JsonNode successResponse = responses.has("200") ? responses.get("200") :
-                        responses.has("201") ? responses.get("201") :
-                                null;
-                if (successResponse != null) {
-                    return objectMapper.writeValueAsString(successResponse);
-                }
-            } catch (Exception e) {
-                log.warn("Erreur lors de l'extraction des réponses : {}", e.getMessage());
-            }
-        }
-        return null;
-    }
-
-    private String extractStatusCodes(JsonNode operation) {
-        if (operation.has("responses")) {
-            StringBuilder codes = new StringBuilder();
-            Iterator<String> codeIterator = operation.get("responses").fieldNames();
-            while (codeIterator.hasNext()) {
-                String code = codeIterator.next();
-                if (codes.length() > 0) codes.append(",");
-                codes.append(code);
-            }
-            return codes.toString();
-        }
-        return "200";
-    }
-
     private Boolean checkIfRequiresAuth(JsonNode operation) {
-        // Vérifier si l'endpoint nécessite une authentification
-        if (operation.has("security") && operation.get("security").size() > 0) {
-            return true;
-        }
-        return false;
+        return operation.has("security") && operation.get("security").size() > 0;
     }
 
     private EndpointDTO convertToDTO(Endpoint endpoint) {

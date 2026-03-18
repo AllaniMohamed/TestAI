@@ -7,16 +7,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
 
 /**
  * Configuration de sécurité pour endpoint-service
  *
- * VERSION PRODUCTION : Authentification JWT via OAuth2 Resource Server
+ * VERSION TEST : Tous les endpoints publics (sans JWT)
+ *
+ * ⚠️ IMPORTANT : PAS DE CORS ICI !
+ * CORS est géré uniquement dans la Gateway (CorsGlobalConfiguration)
  */
 @Configuration
 @EnableWebSecurity
@@ -25,11 +23,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Désactiver CSRF (API stateless)
+                // Désactiver CSRF
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Configuration CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // ⚠️ PAS DE CORS ICI - géré par la Gateway
 
                 // Session stateless
                 .sessionManagement(session ->
@@ -37,62 +34,56 @@ public class SecurityConfig {
                 )
 
                 // ========================================
-                // AUTORISATIONS
+                // TOUS LES ENDPOINTS PUBLICS (POUR TEST)
                 // ========================================
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints publics
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/health/**",
-                                "/actuator/info",
-                                "/error",
-                                "/error/**"
-                        ).permitAll()
-
-                        // Tous les autres endpoints nécessitent authentification
-                        .anyRequest().authenticated()
-                )
-
-                // ========================================
-                // OAUTH2 RESOURCE SERVER (JWT)
-                // ========================================
-                .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(jwt -> {})
+                        .anyRequest().permitAll()
                 );
 
         return http.build();
     }
 
-    /**
-     * Configuration CORS
-     */
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-
-        // Origines autorisées
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "http://localhost:5173"
-        ));
-
-        // Méthodes HTTP
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
-        ));
-
-        // Headers
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Credentials
-        configuration.setAllowCredentials(true);
-
-        // Max age
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    // ⚠️ PAS DE corsConfigurationSource() ICI
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

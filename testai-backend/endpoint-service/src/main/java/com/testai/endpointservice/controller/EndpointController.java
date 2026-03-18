@@ -23,7 +23,6 @@ import java.util.UUID;
 @RequestMapping("/api/endpoints")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class EndpointController {
 
     private final EndpointService endpointService;

@@ -62,7 +62,12 @@ logging:
     org.springframework.security: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
 ---
 # ==========================================
 # application-docker.yml

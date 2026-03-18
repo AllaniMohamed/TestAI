@@ -17,7 +17,6 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class AuthController {
 
     private final UserService userService;
@@ -45,6 +44,19 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/register-invitation")
+    public ResponseEntity<?> registerWithInvitation(@RequestBody RegisterWithInvitationRequest request) {
+        try {
+            Map<String, Object> response = userService.registerWithInvitation(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de l'inscription via invitation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
     /**
      * Connexion
      */

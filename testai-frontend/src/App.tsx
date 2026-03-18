@@ -17,10 +17,14 @@ import TestExecutionPage from "./pages/TestExecutionPage";
 import ReportsPage from "./pages/ReportsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
-
+import InvitationPage from './pages/InvitationPage';
+import SharedProjectsPage from './pages/SharedProjectsPage';
+import ManageSharesPage from './pages/ManageSharesPage';
+import ProjectSharesPage from './pages/SharedProjectsPage';
 // Services
 import authService from "./services/authService";
 import VerificationPendingPage from "./pages/VerificationPendingPage";
+import RegisterInvitationPage from "./pages/RegisterInvitationPage";
 
 // Composant de protection des routes
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -41,6 +45,8 @@ const App: React.FC = () => {
         <Route path="/verify-phone" element={<VerifyPhonePage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/register-invitation" element={<RegisterInvitationPage />} />
+        <Route path="/invite/:token" element={<InvitationPage />} />
 
         {/* Protected Routes */}
         <Route
@@ -75,6 +81,7 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
+        <Route path="/service/:id/shares" element={<ProjectSharesPage />} />
         <Route
           path="/reports"
           element={
@@ -83,6 +90,9 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
+        <Route path="/invite/:token" element={<InvitationPage />} />
+        <Route path="/shared-projects" element={<SharedProjectsPage />} />
+        <Route path="/service/:projectId/shares" element={<ManageSharesPage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
