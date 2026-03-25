@@ -5,10 +5,12 @@ import com.testai.projectservice.dto.UserDTO;
 import com.testai.projectservice.dto.EndpointDTO;
 import com.testai.projectservice.dto.ScanSwaggerRequest;
 import com.testai.projectservice.dto.ScanSwaggerResponse;
+import com.testai.projectservice.entity.ApiCredentials;
 import com.testai.projectservice.entity.Project;
 import com.testai.projectservice.exception.UserNotFoundException;
 import com.testai.projectservice.feignclient.EndpointServiceClient;
 import com.testai.projectservice.feignclient.UserServiceClient;
+import com.testai.projectservice.repository.ApiCredentialsRepository;
 import com.testai.projectservice.repository.ProjectRepository;
 import feign.FeignException;
 import jakarta.transaction.Transactional;
@@ -26,15 +28,14 @@ public class ProjectService {
 
     @Autowired
     private ProjectRepository projectRepository;
-
     @Autowired
     private FileStorageService fileStorageService;
-
     @Autowired
     private UserServiceClient userClient;
-
     @Autowired
     private EndpointServiceClient endpointServiceClient;  // ⭐️ Feign Client pour endpoint-service
+    @Autowired
+    private ApiCredentialsRepository credentialsRepository;
 
     @Transactional
     public Project createProject(ProjectDTO request) {
@@ -78,6 +79,31 @@ public class ProjectService {
 
         Project savedProject = projectRepository.save(project);
         log.info("✅ Projet créé avec succès : {} (ID: {})", savedProject.getName(), savedProject.getId());
+// 2.2. Créer les credentials si nécessaire
+        if (request.getAuthType() != Project.AuthType.NONE) {
+            ApiCredentials credentials = ApiCredentials.builder()
+                    .project(project)
+                    .build();
+
+            switch (request.getAuthType()) {
+                case BASIC:
+                    credentials.setBasicUsername(request.getAuthUsername());
+                    credentials.setBasicPassword(request.getAuthPassword());
+                    break;
+                case APIKEY:
+                    credentials.setApiKey(request.getApiKey());
+                    credentials.setApiKeyHeader(request.getApiKeyHeader());
+                    credentials.setApiKeyLocation(request.getApiKeyLocation());
+                    break;
+                case BEARER:
+                    credentials.setBearerToken(request.getBearerToken());
+                    break;
+            }
+
+            credentialsRepository.save(credentials);
+            project.setCredentials(credentials);
+        }
+        log.info("✅ Credentials de projet cree avec succes", savedProject.getName(), savedProject.getId());
 
         // ⭐️ ÉTAPE 4 : Si DocMode = SWAGGER, scanner automatiquement les endpoints
         if (request.getDocMode() == Project.DocsMode.SWAGGER && request.getDocSubmitMode().equals("url")) {
@@ -87,7 +113,6 @@ public class ProjectService {
 
         return savedProject;
     }
-
     /**
      * ⭐️ Scanner automatiquement les endpoints d'un projet via endpoint-service
      */

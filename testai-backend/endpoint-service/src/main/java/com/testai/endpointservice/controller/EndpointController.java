@@ -225,4 +225,18 @@ public class EndpointController {
                 "count", count
         ));
     }
+    
+    @GetMapping("/project/{projectId}/tags")
+    public ResponseEntity<List<String>> getTagsByProjectId(@PathVariable UUID projectId) {
+        List<String> tags = endpointService.getDistinctTagsByProjectId(projectId);
+        return ResponseEntity.ok(tags);
+    }
+
+    @GetMapping("/project/{projectId}/tag/{tag}")
+    public ResponseEntity<List<EndpointDTO>> getEndpointsByProjectIdAndTag(
+            @PathVariable UUID projectId,
+            @PathVariable String tag) {
+        List<EndpointDTO> endpoints = endpointService.getEndpointsByProjectIdAndTag(projectId, tag);
+        return ResponseEntity.ok(endpoints);
+    }
 }

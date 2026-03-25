@@ -2,6 +2,8 @@ package com.testai.endpointservice.repository;
 
 import com.testai.endpointservice.entity.Endpoint;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -47,4 +49,9 @@ public interface EndpointRepository extends JpaRepository<Endpoint, UUID> {
      * Compter les endpoints d'un projet
      */
     long countByProjectId(UUID projectId);
+
+    @Query("SELECT DISTINCT e.tags FROM Endpoint e WHERE e.projectId = :projectId AND e.tags IS NOT NULL")
+    List<String> findDistinctTagsByProjectId(@Param("projectId") UUID projectId);
+
+    List<Endpoint> findByProjectIdAndTagsContaining(UUID projectId, String tag);
 }

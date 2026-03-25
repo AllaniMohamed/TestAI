@@ -202,4 +202,12 @@ public class EndpointService {
                 .updatedAt(endpoint.getUpdatedAt())
                 .build();
     }
+    public List<String> getDistinctTagsByProjectId(UUID projectId) {
+        return endpointRepository.findDistinctTagsByProjectId(projectId);
+    }
+
+    public List<EndpointDTO> getEndpointsByProjectIdAndTag(UUID projectId, String tag) {
+        List<Endpoint> endpoints = endpointRepository.findByProjectIdAndTagsContaining(projectId, tag);
+        return endpoints.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
 }

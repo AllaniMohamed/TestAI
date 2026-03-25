@@ -39,6 +39,12 @@ public class Project {
     @Enumerated(EnumType.STRING)
     private AuthType authType;
 
+
+    // ========== RELATION AVEC CREDENTIALS ==========
+    @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private ApiCredentials credentials;
+    // ================================================
+
     public enum DocsMode {
         SWAGGER, MANUAL
     }

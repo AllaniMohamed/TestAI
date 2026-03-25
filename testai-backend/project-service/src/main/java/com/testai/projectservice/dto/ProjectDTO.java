@@ -1,5 +1,6 @@
 package com.testai.projectservice.dto;
 
+import com.testai.projectservice.entity.ApiCredentials;
 import com.testai.projectservice.entity.Project;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +16,62 @@ public class ProjectDTO {
     private MultipartFile docFile;
     private UUID userId;
     private Project.AuthType authType;
+    private String authUsername;      // Pour BASIC
+    private String authPassword;      // Pour BASIC
+    private String apiKey;            // Pour APIKEY
+    private String apiKeyHeader;      // Pour APIKEY (ex: "X-API-Key")
+    private ApiCredentials.ApiKeyLocation apiKeyLocation; // Pour APIKEY
+    private String bearerToken;       // Pour BEARER
+
+    public String getAuthUsername() {
+        return authUsername;
+    }
+
+    public void setAuthUsername(String authUsername) {
+        this.authUsername = authUsername;
+    }
+
+    public String getAuthPassword() {
+        return authPassword;
+    }
+
+    public void setAuthPassword(String authPassword) {
+        this.authPassword = authPassword;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+
+    public String getApiKeyHeader() {
+        return apiKeyHeader;
+    }
+
+    public void setApiKeyHeader(String apiKeyHeader) {
+        this.apiKeyHeader = apiKeyHeader;
+    }
+
+    public ApiCredentials.ApiKeyLocation getApiKeyLocation() {
+        return apiKeyLocation;
+    }
+
+    public void setApiKeyLocation(ApiCredentials.ApiKeyLocation apiKeyLocation) {
+        this.apiKeyLocation = apiKeyLocation;
+    }
+
+    public String getBearerToken() {
+        return bearerToken;
+    }
+
+    public void setBearerToken(String bearerToken) {
+        this.bearerToken = bearerToken;
+    }
+
+
 
     public String getDocSubmitMode() {
         return docSubmitMode;
