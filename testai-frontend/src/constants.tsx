@@ -8,14 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export const COLORS = {
-  primary: '#6366f1', // Indigo 500
-  primaryDark: '#4f46e5', // Indigo 600
-  secondary: '#0f172a', // Slate 900
-  success: '#10b981', // Emerald 500
-  danger: '#ef4444', // Red 500
-  warning: '#f59e0b', // Amber 500
-  info: '#06b6d4', // Cyan 500
-  background: '#f8fafc', // Slate 50
+  
 };
 
 export const NAVIGATION = [

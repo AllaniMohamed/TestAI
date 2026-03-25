@@ -12,7 +12,7 @@ import VerifyPhonePage from "./pages/VerifyPhonePage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import Dashboard from "./pages/Dashboard";
 import AddServicePage from "./pages/AddServicePage";
-import ServiceDetailsPage from "./pages/ServiceDetailsPage";
+import ServiceDetailsPage from "./pages/ProjectDetailsPage";
 import TestExecutionPage from "./pages/TestExecutionPage";
 import ReportsPage from "./pages/ReportsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";

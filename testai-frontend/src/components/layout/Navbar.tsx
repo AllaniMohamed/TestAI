@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { BellIcon, UserCircleIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  BellIcon,
+  UserCircleIcon,
+  Bars3Icon,
+  ArrowRightOnRectangleIcon,
+  QuestionMarkCircleIcon,
+} from '@heroicons/react/24/outline';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -8,9 +14,9 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
 
-  // Lecture de l'utilisateur dans localStorage au montage et lors des changements (multi-onglets)
   useEffect(() => {
     const updateUserFromStorage = () => {
       const userStr = localStorage.getItem('user');
@@ -28,65 +34,94 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
     };
 
     updateUserFromStorage();
-
-    // Écoute les changements dans d'autres onglets/fenêtres
     window.addEventListener('storage', updateUserFromStorage);
     return () => window.removeEventListener('storage', updateUserFromStorage);
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            {isLoggedIn && (
-              <button 
-                onClick={onMenuToggle}
-                className="p-2 rounded-md text-gray-500 md:hidden hover:bg-gray-100"
-              >
-                <Bars3Icon className="h-6 w-6" />
-              </button>
-            )}
-            <Link to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">T</span>
+    <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl shadow-sm shadow-indigo-500/5 px-6 py-3 flex justify-between items-center w-full border-b border-gray-200/50">
+      {/* Left: Logo + Mobile Menu Toggle */}
+      <div className="flex items-center gap-2 md:hidden">
+        <button
+          onClick={onMenuToggle}
+          className="p-2 rounded-md text-gray-500 hover:bg-gray-100"
+        >
+          <Bars3Icon className="h-6 w-6" />
+        </button>
+        <Link to={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+            <span className="text-white font-bold text-xl">T</span>
+          </div>
+          <span className="text-xl font-bold text-gray-900 tracking-tight">TestAI</span>
+        </Link>
+      </div>
+
+      {/* Desktop Logo */}
+      <Link
+        to={isLoggedIn ? '/dashboard' : '/'}
+        className="hidden md:flex items-center gap-2"
+      >
+        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+          <span className="text-white font-bold text-xl">T</span>
+        </div>
+        <span className="text-xl font-bold text-gray-900 tracking-tight">TestAI</span>
+      </Link>
+
+      {/* Right: Actions */}
+      <div className="flex items-center gap-4">
+        {isLoggedIn ? (
+          <>
+            <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100/50 transition-colors relative">
+              <BellIcon className="h-6 w-6" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+            </button>
+            <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100/50 transition-colors">
+              <QuestionMarkCircleIcon className="h-6 w-6" />
+            </button>
+            <div className="h-8 w-px bg-gray-200 mx-2"></div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 cursor-pointer p-1 rounded-full hover:bg-gray-100/50 transition-colors">
+                <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {user ? user.name : 'Chargement...'}
+                  </p>
+                  <p className="text-xs text-gray-500">{user ? user.role : ''}</p>
+                </div>
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">TestAI</span>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-100/50 transition-colors"
+                title="Déconnexion"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex gap-4">
+            <Link
+              to="/login"
+              className="text-gray-600 font-medium hover:text-primary pt-2"
+            >
+              Connexion
+            </Link>
+            <Link to="/register">
+              <button className="bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+                Commencer
+              </button>
             </Link>
           </div>
-
-          <div className="flex items-center gap-4">
-            {isLoggedIn ? (
-              <>
-                <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100">
-                  <BellIcon className="h-6 w-6" />
-                </button>
-                <div className="flex items-center gap-2 cursor-pointer p-1 rounded-lg hover:bg-gray-50">
-                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
-                  <div className="hidden sm:block text-left">
-                    <p className="text-sm font-semibold text-gray-700">
-                      {user ? user.name : 'Chargement...'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {user ? user.role : ''}
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex gap-4">
-                <Link to="/login" className="text-gray-600 font-medium hover:text-primary pt-2">Connexion</Link>
-                <Link to="/register">
-                  <button className="bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
-                    Commencer
-                  </button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
-    </nav>
+    </header>
   );
 };
 
