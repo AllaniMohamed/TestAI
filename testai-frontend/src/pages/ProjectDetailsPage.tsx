@@ -17,11 +17,17 @@ import {
   PresentationChartLineIcon,
   CogIcon,
   ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   CodeBracketIcon,
   UsersIcon,
   ShareIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  FolderOpenIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ShieldCheckIcon,
+  CalendarIcon,
+  ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   PieChart,
@@ -53,21 +59,13 @@ interface Endpoint {
   method: string;
   path: string;
   description: string;
+  tags?: string;
   parameters?: string;
   requestBody?: string;
   responseBody?: string;
   statusCodes?: string;
   requiresAuth: boolean;
   discoveryType: string;
-}
-
-interface Parameter {
-  name: string;
-  in: string;
-  description?: string;
-  required?: boolean;
-  type?: string;
-  schema?: any;
 }
 
 interface LocationState {
@@ -81,6 +79,16 @@ const PIE_DATA = [
   { name: "Échoués", value: 15, color: "#dc3545" },
 ];
 
+const methodColors: Record<string, string> = {
+  GET: "bg-secondary-container text-on-secondary-container",
+  POST: "bg-primary-container text-on-primary-container",
+  PUT: "bg-tertiary-container text-on-tertiary-container",
+  DELETE: "bg-error-container text-error",
+  PATCH: "bg-secondary-fixed text-on-secondary-fixed",
+  OPTIONS: "bg-surface-container-high text-on-surface-variant",
+  HEAD: "bg-surface-container-high text-on-surface-variant",
+};
+
 const ServiceDetailsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -88,7 +96,6 @@ const ServiceDetailsPage: React.FC = () => {
   const state = location.state as LocationState;
 
   const [activeTab, setActiveTab] = useState("endpoints");
-
   const [project, setProject] = useState<Project | null>(null);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +110,6 @@ const ServiceDetailsPage: React.FC = () => {
   const [managerEmail, setManagerEmail] = useState<string | null>(null);
   const [sharedAt, setSharedAt] = useState<string | null>(null);
 
-  // Récupérer le rôle depuis localStorage
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
@@ -116,7 +122,6 @@ const ServiceDetailsPage: React.FC = () => {
     }
   }, []);
 
-  // Récupérer les infos de partage depuis le state (pour les développeurs)
   useEffect(() => {
     if (state) {
       setAccessLevel(state.accessLevel || null);
@@ -125,34 +130,24 @@ const ServiceDetailsPage: React.FC = () => {
     }
   }, [state]);
 
-  // Charger le projet et ses endpoints
   useEffect(() => {
-    if (id) {
-      loadProjectData();
-    }
+    if (id) loadProjectData();
   }, [id]);
 
   const loadProjectData = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const projectResponse = await projectService.getProjectById(id!);
-      console.log("✅ Projet chargé:", projectResponse.data);
       setProject(projectResponse.data);
-
       const userStr = localStorage.getItem("user");
       const currentUserId = userStr ? JSON.parse(userStr).id : null;
       setIsOwner(projectResponse.data.userId === currentUserId);
-
       const endpointsResponse = await projectService.getProjectEndpoints(id!);
-      console.log("✅ Endpoints chargés:", endpointsResponse.data);
       setEndpoints(endpointsResponse.data);
-
       const countResponse = await projectService.countProjectEndpoints(id!);
       setEndpointsCount(countResponse.data.count || endpointsResponse.data.length);
     } catch (err: any) {
-      console.error("❌ Erreur lors du chargement:", err);
       setError(err.response?.data?.message || "Erreur lors du chargement des données");
     } finally {
       setLoading(false);
@@ -166,7 +161,6 @@ const ServiceDetailsPage: React.FC = () => {
       await projectService.scanProjectEndpoints(id);
       await loadProjectData();
     } catch (err: any) {
-      console.error("❌ Erreur lors du rescan:", err);
       setError(err.response?.data?.message || "Erreur lors du rescan");
     } finally {
       setRescanning(false);
@@ -179,36 +173,32 @@ const ServiceDetailsPage: React.FC = () => {
       await projectService.deleteProject(id);
       navigate("/dashboard");
     } catch (err: any) {
-      console.error("❌ Erreur lors de la suppression:", err);
       setError(err.response?.data?.message || "Erreur lors de la suppression");
     }
   };
 
-  const toggleEndpointDetails = (endpointId: string) => {
-    setExpandedEndpointId((prev) => (prev === endpointId ? null : endpointId));
-  };
-
-  // Définir les permissions
-  const canEdit = isOwner; // Seul le propriétaire peut éditer
+  const canEdit = isOwner;
   const canDelete = isOwner;
   const canShare = isOwner;
-  const canRescan = isOwner; // Rescanner réservé au propriétaire
+  const canRescan = isOwner;
   const canExecuteTests = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
   const canGenerateTests = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
 
+  const groupedEndpoints = endpoints.reduce((groups, ep) => {
+    const firstTag = ep.tags?.split(',')[0]?.trim() || "Général";
+    if (!groups[firstTag]) groups[firstTag] = [];
+    groups[firstTag].push(ep);
+    return groups;
+  }, {} as Record<string, Endpoint[]>);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-surface">
         <Navbar />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <ArrowPathIcon className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">Chargement du projet...</p>
-              </div>
-            </div>
+          <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+            <ArrowPathIcon className="w-12 h-12 text-primary animate-spin" />
           </main>
         </div>
       </div>
@@ -217,11 +207,11 @@ const ServiceDetailsPage: React.FC = () => {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-surface">
         <Navbar />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+          <main className="flex-1 ml-64 p-8">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
               <p className="text-red-600 font-medium">{error || "Projet non trouvé"}</p>
               <Button onClick={() => navigate("/dashboard")} className="mt-4" variant="outline">
@@ -235,86 +225,54 @@ const ServiceDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
       <Navbar />
-      <div className="flex">
+      <div className="flex pt-0">
         <Sidebar />
-        <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+        <main className="flex-1 ml-64 p-6 md:p-12 max-w-7xl mx-auto w-full">
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-blue-50 text-primary rounded-2xl flex items-center justify-center">
-                <BeakerIcon className="w-8 h-8" />
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-3 text-sm text-on-surface-variant font-medium">
+                <span>Projects</span>
+                <span className="material-symbols-outlined text-xs">chevron_right</span>
+                <span className="text-primary font-bold">{project.name}</span>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                <p className="text-gray-500 font-mono text-sm">{project.projectUrl}</p>
-                <div className="flex gap-2 mt-2">
-                  <Badge variant="info">{project.docMode}</Badge>
-                  <Badge variant="default">{project.authType}</Badge>
+              <div className="flex items-center space-x-4">
+                <h2 className="text-4xl font-headline font-bold tracking-tight text-on-surface">{project.name}</h2>
+                <Badge variant="info">{project.docMode}</Badge>
+                <Badge variant="default">{project.authType}</Badge>
+              </div>
+              <p className="text-on-surface-variant max-w-2xl font-body">{project.description}</p>
+              {userRole === "DEVELOPER" && managerEmail && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 space-y-1">
+                  <p><span className="font-semibold">Partagé par :</span> {managerEmail}</p>
+                  <p><span className="font-semibold">Niveau d'accès :</span> {accessLevel === "READ_WRITE" ? "Lecture/Écriture" : "Lecture seule"}</p>
+                  {sharedAt && <p><span className="font-semibold">Partagé le :</span> {new Date(sharedAt).toLocaleDateString("fr-FR")}</p>}
                 </div>
-                {/* Informations de partage pour les développeurs */}
-                {userRole === "DEVELOPER" && managerEmail && (
-                  <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
-                    <p className="text-blue-800">
-                      <span className="font-semibold">Partagé par :</span> {managerEmail}
-                    </p>
-                    <p className="text-blue-800">
-                      <span className="font-semibold">Niveau d'accès :</span>{" "}
-                      {accessLevel === "READ_WRITE" ? "Lecture/Écriture" : "Lecture seule"}
-                    </p>
-                    {sharedAt && (
-                      <p className="text-blue-800">
-                        <span className="font-semibold">Partagé le :</span>{" "}
-                        {new Date(sharedAt).toLocaleDateString("fr-FR")}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-
-            {/* Boutons d'action conditionnels selon les permissions */}
             <div className="flex gap-2">
               {canShare && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<UsersIcon className="w-4 h-4" />}
-                    onClick={() => navigate(`/service/${id}/shares`)}
-                  >
+                  <Button variant="outline" size="sm" icon={<UsersIcon className="w-4 h-4" />} onClick={() => navigate(`/service/${id}/shares`)}>
                     Gérer les partages
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<ShareIcon className="w-4 h-4" />}
-                    onClick={() => setShowShareModal(true)}
-                  >
+                  <Button variant="outline" size="sm" icon={<ShareIcon className="w-4 h-4" />} onClick={() => setShowShareModal(true)}>
                     Partager
                   </Button>
                 </>
               )}
-
               {canEdit && (
                 <Button variant="outline" size="sm" icon={<PencilSquareIcon className="w-4 h-4" />}>
                   Éditer
                 </Button>
               )}
-
               {canDelete && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-500 border-red-200 hover:bg-red-50"
-                  icon={<TrashIcon className="w-4 h-4" />}
-                  onClick={handleDeleteProject}
-                >
+                <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50" icon={<TrashIcon className="w-4 h-4" />} onClick={handleDeleteProject}>
                   Supprimer
                 </Button>
               )}
-
               {canExecuteTests && (
                 <Link to={`/service/${id}/execute`}>
                   <Button icon={<PlayIcon className="w-5 h-5" />}>Exécuter Tests</Button>
@@ -324,235 +282,264 @@ const ServiceDetailsPage: React.FC = () => {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-8 border-b border-gray-200 mb-8 overflow-x-auto whitespace-nowrap scrollbar-hide">
-            <TabItem active={activeTab === "endpoints"} label="Endpoints" onClick={() => setActiveTab("endpoints")} icon={<ListBulletIcon className="w-5 h-5" />} />
-            <TabItem active={activeTab === "tests"} label="Tests" onClick={() => setActiveTab("tests")} icon={<BeakerIcon className="w-5 h-5" />} />
-            <TabItem active={activeTab === "reports"} label="Rapports" onClick={() => setActiveTab("reports")} icon={<PresentationChartLineIcon className="w-5 h-5" />} />
-            <TabItem active={activeTab === "settings"} label="Paramètres" onClick={() => setActiveTab("settings")} icon={<CogIcon className="w-5 h-5" />} />
+          <div className="border-b border-outline-variant/30 mb-8">
+            <nav className="flex space-x-8">
+              <TabItem active={activeTab === "endpoints"} label="Endpoints" onClick={() => setActiveTab("endpoints")} icon={<ListBulletIcon className="w-5 h-5" />} />
+              <TabItem active={activeTab === "tests"} label="Tests" onClick={() => setActiveTab("tests")} icon={<BeakerIcon className="w-5 h-5" />} />
+              <TabItem active={activeTab === "reports"} label="Rapports" onClick={() => setActiveTab("reports")} icon={<PresentationChartLineIcon className="w-5 h-5" />} />
+              <TabItem active={activeTab === "settings"} label="Paramètres" onClick={() => setActiveTab("settings")} icon={<CogIcon className="w-5 h-5" />} />
+            </nav>
           </div>
 
-          {/* Tab Content */}
-          <div className="animate-fadeIn">
-            {activeTab === "endpoints" && (
-              <Card className="p-0">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          {activeTab === "endpoints" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-9 space-y-8">
+                <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-bold">Endpoints Détectés ({endpointsCount})</h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-on-surface-variant mt-1">
                       {endpoints.length === 0
                         ? "Aucun endpoint détecté"
                         : `${endpoints.filter((e) => e.discoveryType === "SWAGGER").length} depuis Swagger, ${endpoints.filter((e) => e.discoveryType === "MANUAL").length} manuels`}
                     </p>
                   </div>
                   {canRescan && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRescanEndpoints}
-                      loading={rescanning}
-                      icon={!rescanning && <ArrowPathIcon className="w-4 h-4" />}
-                    >
+                    <Button variant="outline" size="sm" onClick={handleRescanEndpoints} loading={rescanning} icon={!rescanning && <ArrowPathIcon className="w-4 h-4" />}>
                       Rescanner
                     </Button>
                   )}
                 </div>
 
                 {endpoints.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">
-                    <ListBulletIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg font-medium">Aucun endpoint trouvé</p>
-                    <p className="text-sm mt-2">
+                  <div className="bg-surface-container-low p-12 rounded-2xl border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center">
+                    <ListBulletIcon className="w-16 h-16 text-outline mb-4" />
+                    <h3 className="text-xl font-bold text-on-surface mb-2">Aucun endpoint trouvé</h3>
+                    <p className="text-on-surface-variant max-w-sm">
                       {project.docMode === "SWAGGER"
                         ? "Le scan Swagger n'a détecté aucun endpoint."
                         : "Ajoutez des endpoints manuellement."}
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 text-left">
-                        <tr>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase"></th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Méthode</th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Chemin</th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Description</th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Type</th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Auth</th>
-                          <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {endpoints.map((ep) => (
-                          <React.Fragment key={ep.id}>
-                            <tr
-                              className="hover:bg-gray-50 transition cursor-pointer"
-                              onClick={() => toggleEndpointDetails(ep.id)}
-                            >
-                              <td className="px-6 py-4 w-8">
-                                {expandedEndpointId === ep.id ? (
-                                  <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-                                ) : (
-                                  <ChevronRightIcon className="w-5 h-5 text-gray-400" />
-                                )}
-                              </td>
-                              <td className="px-6 py-4">
-                                <Badge variant="method" method={ep.method as any}>
-                                  {ep.method}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4 font-mono text-sm text-gray-700">{ep.path}</td>
-                              <td className="px-6 py-4 text-sm text-gray-600">{ep.description || "-"}</td>
-                              <td className="px-6 py-4">
-                                <Badge variant={ep.discoveryType === "SWAGGER" ? "success" : "default"}>
-                                  {ep.discoveryType}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4">
-                                {ep.requiresAuth ? (
-                                  <Badge variant="warning">Oui</Badge>
-                                ) : (
-                                  <Badge variant="default">Aucune</Badge>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                {canGenerateTests ? (
-                                  <button
-                                    className="text-primary font-bold text-sm hover:underline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // Logique pour générer tests (à implémenter)
-                                    }}
-                                  >
-                                    Générer tests
-                                  </button>
-                                ) : (
-                                  <span className="text-gray-400 text-sm cursor-not-allowed">Générer tests</span>
-                                )}
-                              </td>
-                            </tr>
-                            {expandedEndpointId === ep.id && (
-                              <tr>
-                                <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                                  <EndpointDetails endpoint={ep} />
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
+                  Object.entries(groupedEndpoints).map(([tag, eps]) => (
+                    <div key={tag} className="space-y-4">
+                      <div className="flex items-center space-x-2 text-on-surface-variant">
+                        <FolderOpenIcon className="w-5 h-5" />
+                        <h3 className="font-headline font-bold text-lg">{tag}</h3>
+                        <span className="text-xs font-mono text-on-surface-variant">({eps.length})</span>
+                      </div>
+                      <div className="space-y-2">
+                        {eps.map((ep) => (
+                          <EndpointAccordion
+                            key={ep.id}
+                            endpoint={ep}
+                            isExpanded={expandedEndpointId === ep.id}
+                            onToggle={() => setExpandedEndpointId(prev => prev === ep.id ? null : ep.id)}
+                            canGenerateTests={canGenerateTests}
+                          />
                         ))}
-                      </tbody>
-                    </table>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="lg:col-span-3 space-y-6">
+                {/* Access Level Card (for developers) */}
+                {userRole === "DEVELOPER" && (
+                  <div className="bg-surface-container-highest/30 rounded-xl p-6 space-y-4 border border-outline-variant/20">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-headline font-bold">Access Level</h3>
+                      <ShieldCheckIcon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border border-outline-variant/10">
+                      <div className="text-[10px] uppercase font-bold text-primary mb-1">Developer Role</div>
+                      <div className="text-sm font-semibold">{accessLevel === "READ_WRITE" ? "READ_WRITE" : "READ_ONLY"}</div>
+                    </div>
+                    <ul className="space-y-2 text-xs text-on-surface-variant">
+                      <li className="flex items-center space-x-2">
+                        <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                        <span>Consulter les endpoints</span>
+                      </li>
+                      {accessLevel === "READ_WRITE" && (
+                        <li className="flex items-center space-x-2">
+                          <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                          <span>Générer des tests</span>
+                        </li>
+                      )}
+                      <li className="flex items-center space-x-2">
+                        <XCircleIcon className="w-4 h-4 text-slate-400" />
+                        <span>Modifier le service</span>
+                      </li>
+                    </ul>
                   </div>
                 )}
-              </Card>
-            )}
 
-            {activeTab === "tests" && (
-              <div className="text-center p-12 text-gray-500">
-                <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-lg font-medium">Fonctionnalité en cours de développement</p>
-                <p className="text-sm mt-2">Les tests seront bientôt disponibles</p>
-              </div>
-            )}
+                {/* Health Card */}
+                <div className="bg-surface-container-low rounded-xl p-6 space-y-4">
+                  <h3 className="font-headline font-bold text-lg">Overall Health</h3>
+                  <div className="flex items-center justify-center py-6">
+                    <div className="relative w-32 h-32">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle className="text-surface-container-high" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeWidth="8"></circle>
+                        <circle className="text-primary" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeDasharray="364" strokeDashoffset="36" strokeWidth="8"></circle>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-headline font-bold">92%</span>
+                        <span className="text-[10px] uppercase font-bold text-on-surface-variant">Passing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-on-surface-variant">Active Tests</span>
+                      <span className="font-bold">48/52</span>
+                    </div>
+                    <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-primary w-[92%] h-full"></div>
+                    </div>
+                  </div>
+                </div>
 
-            {activeTab === "reports" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card title="Répartition des résultats">
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={PIE_DATA} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                          {PIE_DATA.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="flex justify-center gap-6 mt-4">
-                      {PIE_DATA.map((d) => (
-                        <div key={d.name} className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
-                          <span className="text-sm font-medium text-gray-600">{d.name} ({d.value}%)</span>
+                {/* Upcoming Audits */}
+                <div className="bg-surface-container-highest/40 p-6 rounded-3xl border border-primary/5">
+                  <h4 className="font-bold text-on-surface text-sm mb-4">Upcoming Audits</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
+                          <ShieldCheckIcon className="w-5 h-5" />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-                <Card
-                  title="Historique de succès"
-                  footer={
-                    <Button variant="outline" className="w-full" icon={<DocumentArrowDownIcon className="w-5 h-5" />}>
-                      Exporter Rapport PDF
-                    </Button>
-                  }
-                >
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={[
-                        { name: "Lun", success: 90 },
-                        { name: "Mar", success: 92 },
-                        { name: "Mer", success: 85 },
-                        { name: "Jeu", success: 95 },
-                        { name: "Ven", success: 98 },
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="success" stroke="#2E75B6" strokeWidth={3} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {activeTab === "settings" && (
-              <div className="max-w-2xl mx-auto space-y-8">
-                <Card title="Informations du Projet">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                      <input type="text" className="w-full p-2 border rounded" value={project.name} disabled />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <textarea className="w-full p-2 border rounded" rows={3} value={project.description} disabled />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-                      <input type="text" className="w-full p-2 border rounded" value={project.projectUrl} disabled />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Mode Documentation</label>
-                        <input type="text" className="w-full p-2 border rounded" value={project.docMode} disabled />
+                        <div>
+                          <p className="text-xs font-bold">Security Pass</p>
+                          <p className="text-[10px] text-on-surface-variant">In 2 days</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Type d'Auth</label>
-                        <input type="text" className="w-full p-2 border rounded" value={project.authType} disabled />
+                      <ArrowRightIcon className="w-4 h-4 text-slate-300" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                          <CalendarIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Compliance API</p>
+                          <p className="text-[10px] text-on-surface-variant">In 5 days</p>
+                        </div>
                       </div>
+                      <ArrowRightIcon className="w-4 h-4 text-slate-300" />
                     </div>
                   </div>
-                </Card>
-
-                <Card title="Configuration Jenkins">
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-gray-300" defaultChecked />
-                      <span className="text-gray-700">Activer le déclenchement automatique</span>
-                    </label>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Fréquence (Cron expression)</label>
-                      <input type="text" className="w-full p-2 border rounded" defaultValue="0 0 * * *" />
-                    </div>
-                  </div>
-                </Card>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Modal de partage */}
+          {activeTab === "tests" && (
+            <div className="text-center p-12 text-gray-500">
+              <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+              <p className="text-lg font-medium">Fonctionnalité en cours de développement</p>
+              <p className="text-sm mt-2">Les tests seront bientôt disponibles</p>
+            </div>
+          )}
+
+          {activeTab === "reports" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card title="Répartition des résultats">
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={PIE_DATA} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                        {PIE_DATA.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex justify-center gap-6 mt-4">
+                    {PIE_DATA.map((d) => (
+                      <div key={d.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
+                        <span className="text-sm font-medium text-gray-600">{d.name} ({d.value}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+              <Card
+                title="Historique de succès"
+                footer={
+                  <Button variant="outline" className="w-full" icon={<DocumentArrowDownIcon className="w-5 h-5" />}>
+                    Exporter Rapport PDF
+                  </Button>
+                }
+              >
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={[
+                      { name: "Lun", success: 90 },
+                      { name: "Mar", success: 92 },
+                      { name: "Mer", success: 85 },
+                      { name: "Jeu", success: 95 },
+                      { name: "Ven", success: 98 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="success" stroke="#2E75B6" strokeWidth={3} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "settings" && (
+            <div className="max-w-2xl mx-auto space-y-8">
+              <Card title="Informations du Projet">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <input type="text" className="w-full p-2 border rounded" value={project.name} disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea className="w-full p-2 border rounded" rows={3} value={project.description} disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                    <input type="text" className="w-full p-2 border rounded" value={project.projectUrl} disabled />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mode Documentation</label>
+                      <input type="text" className="w-full p-2 border rounded" value={project.docMode} disabled />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Type d'Auth</label>
+                      <input type="text" className="w-full p-2 border rounded" value={project.authType} disabled />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card title="Configuration Jenkins">
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" className="w-5 h-5 rounded border-gray-300" defaultChecked />
+                    <span className="text-gray-700">Activer le déclenchement automatique</span>
+                  </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fréquence (Cron expression)</label>
+                    <input type="text" className="w-full p-2 border rounded" defaultValue="0 0 * * *" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {showShareModal && project && (
             <ShareProjectModal
               projectId={id!}
@@ -570,237 +557,190 @@ const ServiceDetailsPage: React.FC = () => {
   );
 };
 
-// Composant pour afficher les détails d'un endpoint (inchangé)
-const EndpointDetails: React.FC<{ endpoint: Endpoint }> = ({ endpoint }) => {
-  let parameters: any[] = [];
-  let requestBody: any = null;
-  let responseBody: any = null;
-  let statusCodes: string[] = [];
+// Composant d'accordéon pour un endpoint
+const EndpointAccordion: React.FC<{
+  endpoint: Endpoint;
+  isExpanded: boolean;
+  onToggle: () => void;
+  canGenerateTests: boolean;
+}> = ({ endpoint, isExpanded, onToggle, canGenerateTests }) => {
+  const methodColor = methodColors[endpoint.method] || "bg-surface-container-high text-on-surface-variant";
 
+  // Parser les paramètres (pour le tableau)
+  let parameters: any[] = [];
   try {
-    if (endpoint.parameters) {
-      parameters = JSON.parse(endpoint.parameters);
-    }
+    if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
   } catch (e) {
     console.warn("Erreur parsing parameters", e);
   }
 
+  // Parser requestBody et responseBody pour le JSON
+  let requestBodyParsed = null;
+  let responseBodyParsed = null;
   try {
-    if (endpoint.requestBody) {
-      requestBody = JSON.parse(endpoint.requestBody);
-    }
-  } catch (e) {
-    console.warn("Erreur parsing requestBody", e);
-  }
-
+    if (endpoint.requestBody) requestBodyParsed = JSON.parse(endpoint.requestBody);
+  } catch (e) {}
   try {
-    if (endpoint.responseBody) {
-      responseBody = JSON.parse(endpoint.responseBody);
-    }
-  } catch (e) {
-    console.warn("Erreur parsing responseBody", e);
-  }
-
-  if (endpoint.statusCodes) {
-    statusCodes = endpoint.statusCodes.split(",").map((s) => s.trim());
-  }
+    if (endpoint.responseBody) responseBodyParsed = JSON.parse(endpoint.responseBody);
+  } catch (e) {}
 
   return (
-    <div className="space-y-6">
-      {parameters.length > 0 && (
-        <div>
-          <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <CodeBracketIcon className="w-5 h-5 text-gray-400" />
-            Paramètres
-          </h4>
-          <ParameterTable parameters={parameters} />
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors group"
+      >
+        <div className="flex items-center space-x-6 flex-wrap gap-2">
+          <span className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}>
+            {endpoint.method}
+          </span>
+          <div className="text-left">
+            <div className="font-mono text-sm text-on-surface">{endpoint.path}</div>
+            <div className="text-[11px] text-on-surface-variant">{endpoint.description || "Aucune description"}</div>
+          </div>
         </div>
-      )}
-
-      {requestBody && (
-        <div>
-          <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <CodeBracketIcon className="w-5 h-5 text-gray-400" />
-            Corps de la requête
-          </h4>
-          <SchemaViewer schema={requestBody} />
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 aura-pulse"></div>
+            <span className="text-xs font-medium text-on-surface-variant">Active</span>
+          </div>
+          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+            {isExpanded ? "unfold_less" : "unfold_more"}
+          </span>
         </div>
-      )}
+      </button>
 
-      {responseBody && (
-        <div>
-          <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <CodeBracketIcon className="w-5 h-5 text-gray-400" />
-            Corps de la réponse
-          </h4>
-          <SchemaViewer schema={responseBody} />
-        </div>
-      )}
+      {isExpanded && (
+        <div className="px-6 py-8 border-t border-outline-variant/30 space-y-8">
+          {/* Tableau des paramètres */}
+          {parameters.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                <CodeBracketIcon className="w-4 h-4" />
+                Paramètres
+              </h4>
+              <div className="overflow-x-auto bg-surface-container-lowest rounded-lg border border-outline-variant/30">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-container-high text-on-surface-variant text-[10px] uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Nom</th>
+                      <th className="px-4 py-2 text-left">Emplacement</th>
+                      <th className="px-4 py-2 text-left">Requis</th>
+                      <th className="px-4 py-2 text-left">Type</th>
+                      <th className="px-4 py-2 text-left">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10">
+                    {parameters.map((p, idx) => {
+                      const name = p.name || p.$ref || "?";
+                      const in_ = p.in || (p.$ref ? "référence" : "-");
+                      const required = p.required ? "Oui" : "Non";
+                      let type = p.type || (p.schema ? p.schema.type : "object");
+                      if (p.schema && p.schema.type) type = p.schema.type;
+                      const description = p.description || "-";
+                      return (
+                        <tr key={idx}>
+                          <td className="px-4 py-2 font-mono">{name}</td>
+                          <td className="px-4 py-2">{in_}</td>
+                          <td className="px-4 py-2">{required}</td>
+                          <td className="px-4 py-2">{type}</td>
+                          <td className="px-4 py-2">{description}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-      {statusCodes.length > 0 && (
-        <div>
-          <h4 className="font-bold text-gray-700 mb-2">Codes de statut</h4>
-          <div className="flex flex-wrap gap-2">
-            {statusCodes.map((code) => (
-              <Badge
-                key={code}
-                variant={
-                  code.startsWith("2")
-                    ? "success"
-                    : code.startsWith("4")
-                      ? "warning"
-                      : code.startsWith("5")
+          {/* Request Body (JSON) */}
+          {requestBodyParsed && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                <CodeBracketIcon className="w-4 h-4" />
+                Corps de la requête
+              </h4>
+              <div className="bg-inverse-surface p-4 rounded-xl font-mono text-xs text-on-primary-container overflow-x-auto">
+                <pre>{JSON.stringify(requestBodyParsed, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* Response Body (JSON) */}
+          {responseBodyParsed && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                <CodeBracketIcon className="w-4 h-4" />
+                Corps de la réponse
+              </h4>
+              <div className="bg-inverse-surface p-4 rounded-xl font-mono text-xs text-on-primary-container overflow-x-auto">
+                <pre>{JSON.stringify(responseBodyParsed, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* Status Codes & Auth */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Codes de statut</h4>
+              <div className="flex flex-wrap gap-2">
+                {endpoint.statusCodes?.split(",").map((code) => (
+                  <Badge
+                    key={code}
+                    variant={
+                      code.startsWith("2")
+                        ? "success"
+                        : code.startsWith("4")
+                        ? "warning"
+                        : code.startsWith("5")
                         ? "danger"
                         : "default"
-                }
-              >
-                {code}
-              </Badge>
-            ))}
+                    }
+                  >
+                    {code.trim()}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Authentification</h4>
+              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
+                <span className="text-sm font-medium">Requiert auth</span>
+                <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
+                  {endpoint.requiresAuth ? "Oui" : "Non"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bouton Générer tests */}
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                console.log("Générer tests pour", endpoint.id);
+              }}
+              disabled={!canGenerateTests}
+              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${
+                canGenerateTests
+                  ? "hover:bg-primary hover:text-white cursor-pointer"
+                  : "opacity-50 cursor-not-allowed"
+              }`}
+            >
+              Générer tests
+            </button>
           </div>
         </div>
       )}
-
-      {parameters.length === 0 &&
-        !requestBody &&
-        !responseBody &&
-        statusCodes.length === 0 && (
-          <p className="text-gray-500 italic">Aucun détail supplémentaire</p>
-        )}
     </div>
   );
 };
 
-// Tableau des paramètres (inchangé)
-const ParameterTable: React.FC<{ parameters: any[] }> = ({ parameters }) => {
-  const rows = parameters.map((p, idx) => {
-    const name = p.name || p.$ref || "?";
-    const in_ = p.in || (p.$ref ? "référence" : "-");
-    const required = p.required ? "Oui" : "Non";
-    let type = p.type || (p.schema ? p.schema.type : "object");
-    if (p.schema && p.schema.type) type = p.schema.type;
-    const description = p.description || "-";
-    return { name, in_, required, type, description };
-  });
-
-  return (
-    <div className="overflow-x-auto bg-white rounded-lg border">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-2 text-left">Nom</th>
-            <th className="px-4 py-2 text-left">Emplacement</th>
-            <th className="px-4 py-2 text-left">Requis</th>
-            <th className="px-4 py-2 text-left">Type</th>
-            <th className="px-4 py-2 text-left">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={idx} className="border-t">
-              <td className="px-4 py-2 font-mono">{row.name}</td>
-              <td className="px-4 py-2">{row.in_}</td>
-              <td className="px-4 py-2">{row.required}</td>
-              <td className="px-4 py-2">{row.type}</td>
-              <td className="px-4 py-2">{row.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-// Visualiseur de schéma (inchangé)
-const SchemaViewer: React.FC<{ schema: any }> = ({ schema }) => {
-  const target = schema.schema || schema;
-
-  if (target.$ref) {
-    return <div className="text-yellow-600">Référence : {target.$ref}</div>;
-  }
-
-  if (target.type === "object" && target.properties) {
-    const requiredSet = new Set(target.required || []);
-    const properties = Object.entries(target.properties).map(
-      ([name, prop]: [string, any]) => ({
-        name,
-        type: prop.type || "any",
-        required: requiredSet.has(name),
-        description: prop.description || "",
-        format: prop.format,
-        example: prop.example,
-        enum: prop.enum,
-      }),
-    );
-
-    return (
-      <div className="space-y-2">
-        {properties.length === 0 ? (
-          <p className="text-gray-500">Aucune propriété</p>
-        ) : (
-          <div className="overflow-x-auto bg-white rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-2 text-left">Propriété</th>
-                  <th className="px-4 py-2 text-left">Type</th>
-                  <th className="px-4 py-2 text-left">Requis</th>
-                  <th className="px-4 py-2 text-left">Description</th>
-                  <th className="px-4 py-2 text-left">Contraintes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {properties.map((prop, idx) => (
-                  <tr key={idx} className="border-t">
-                    <td className="px-4 py-2 font-mono">{prop.name}</td>
-                    <td className="px-4 py-2">
-                      {prop.type}
-                      {prop.format ? ` (${prop.format})` : ""}
-                    </td>
-                    <td className="px-4 py-2">
-                      {prop.required ? "Oui" : "Non"}
-                    </td>
-                    <td className="px-4 py-2">{prop.description || "-"}</td>
-                    <td className="px-4 py-2">
-                      {prop.enum && <span>enum: {prop.enum.join(", ")}</span>}
-                      {prop.example && (
-                        <span>ex: {JSON.stringify(prop.example)}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (target.type === "array" && target.items) {
-    return (
-      <div className="space-y-2">
-        <p className="font-mono">Tableau d'éléments :</p>
-        <div className="ml-4">
-          <SchemaViewer schema={target.items} />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <pre className="bg-gray-100 p-3 rounded-lg text-xs overflow-x-auto">
-      {JSON.stringify(target, null, 2)}
-    </pre>
-  );
-};
-
-// TabItem (inchangé)
 const TabItem = ({ active, label, onClick, icon }: { active: boolean; label: string; onClick: () => void; icon: React.ReactNode }) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 pb-4 px-2 font-semibold transition-all duration-200 border-b-2 
-      ${active ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-900"}`}
+      ${active ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface"}`}
   >
     {icon}
     {label}

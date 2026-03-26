@@ -235,6 +235,23 @@ export const userService = {
 
   updateProfile: (profileData: Partial<User>): Promise<AxiosResponse<User>> =>
     api.put("/user-service/api/users/me", profileData),
+
+  uploadAvatar: (userId: string, file: File): Promise<AxiosResponse<any>> => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    return api.post(`/user-service/api/users/${userId}/avatar`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  deleteAvatar: (userId: string): Promise<AxiosResponse<any>> =>
+    api.delete(`/user-service/api/users/${userId}/avatar`),
+
+  getAvatarUrl: (fileName: string): string =>
+  `${API_BASE_URL}/user-service/api/users/avatars/${fileName}`,
 };
 
 // Project Service

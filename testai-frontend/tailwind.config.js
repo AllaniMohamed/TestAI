@@ -15,7 +15,7 @@ export default {
         "inverse-on-surface": "#eef0ff",
         "surface-variant": "#dae2fd",
         "error": "#ba1a1a",
-        "surface": "#faf8ff",
+        "surface": "#f8fafc",
         "surface-container-lowest": "#ffffff",
         "surface-bright": "#faf8ff",
         "primary": "#3525cd",

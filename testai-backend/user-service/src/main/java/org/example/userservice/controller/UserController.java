@@ -2,13 +2,21 @@ package org.example.userservice.controller;
 
 
 import org.example.userservice.dto.UserDTO;
+import org.example.userservice.service.FileStorageService;
 import org.example.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -18,6 +26,8 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final FileStorageService fileStorageService;
+
 
     /**
      * Récupérer un utilisateur par ID
@@ -42,7 +52,98 @@ public class UserController {
     }
 
     /**
-     * Mettre à jour un utilisateur
+     * ⭐ NOUVEAU : Upload avatar
+     */
+    @PostMapping("/{id}/avatar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> uploadAvatar(
+            @PathVariable UUID id,
+            @RequestParam("avatar") MultipartFile file) {
+        try {
+            log.info("📸 Upload avatar pour l'utilisateur: {}", id);
+
+            UserDTO updatedUser = userService.uploadAvatar(id, file);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Avatar mis à jour avec succès",
+                    "user", updatedUser
+            ));
+
+        } catch (Exception e) {
+            log.error("❌ Erreur upload avatar: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * ⭐ NOUVEAU : Servir les avatars (accès public)
+     */
+    @GetMapping("/avatars/{fileName:.+}")
+    public ResponseEntity<Resource> getAvatar(
+            @PathVariable String fileName,
+            HttpServletRequest request) {
+        try {
+            // Charger le fichier comme ressource
+            Resource resource = fileStorageService.loadFileAsResource(fileName);
+
+            // Déterminer le type de contenu
+            String contentType = null;
+            try {
+                contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+            } catch (IOException ex) {
+                log.info("⚠️ Impossible de déterminer le type de fichier");
+            }
+
+            // Fallback au type par défaut
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            log.error("❌ Erreur chargement avatar: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * ⭐ NOUVEAU : Supprimer l'avatar
+     */
+    @DeleteMapping("/{id}/avatar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> deleteAvatar(@PathVariable UUID id) {
+        try {
+            log.info("🗑️ Suppression avatar pour l'utilisateur: {}", id);
+
+            UserDTO updatedUser = userService.deleteAvatar(id);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Avatar supprimé avec succès",
+                    "user", updatedUser
+            ));
+
+        } catch (Exception e) {
+            log.error("❌ Erreur suppression avatar: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * ⭐ MODIFIÉ : Mettre à jour un utilisateur (SANS avatar)
+     * L'avatar est géré via uploadAvatar()
      */
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
@@ -50,6 +151,7 @@ public class UserController {
             @PathVariable UUID id,
             @RequestBody UserDTO userDTO) {
         log.info("Mise à jour de l'utilisateur: {}", id);
+
         UserDTO updatedUser = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updatedUser);
     }

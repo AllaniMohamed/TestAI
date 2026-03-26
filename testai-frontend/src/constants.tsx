@@ -15,7 +15,7 @@ export const NAVIGATION = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Services', href: '/services', icon: ServerIcon },
   { name: 'Rapports', href: '/reports', icon: ChartBarIcon },
-  { name: 'Paramètres', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Paramètres', href: '/profile', icon: Cog6ToothIcon },
 ];
 
 export const MOCK_SERVICES = [

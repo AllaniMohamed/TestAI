@@ -7,9 +7,11 @@ import org.example.userservice.entity.User.UserRole;
 import org.example.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.Map;
@@ -26,6 +28,8 @@ public class UserService {
     private final EmailService emailService;
     private final TwilioVerifyService twilioVerifyService;
     private final ProjectServiceClient projectServiceClient;
+    @Autowired
+    private FileStorageService fileStorageService;
 
 
     // ⭐️ CONFIGURATION : Activer/Désactiver la vérification téléphone
@@ -656,26 +660,6 @@ public class UserService {
         return mapToDTO(user);
     }
 
-    @Transactional
-    public UserDTO updateUser(UUID id, UserDTO userDTO) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-
-        if (userDTO.getName() != null) {
-            user.setName(userDTO.getName());
-        }
-        if (userDTO.getCompany() != null) {
-            user.setCompany(userDTO.getCompany());
-        }
-        if (userDTO.getAvatar() != null) {
-            user.setAvatar(userDTO.getAvatar());
-        }
-
-        user = userRepository.save(user);
-        log.info("Utilisateur mis à jour: {}", user.getId());
-
-        return mapToDTO(user);
-    }
 
     public AuthResponse refreshToken(String refreshToken) {
         log.info("Rafraîchissement du token");
@@ -688,6 +672,85 @@ public class UserService {
                 (Integer) keycloakResponse.get("expires_in"),
                 null
         );
+    }
+    /**
+     * ⭐ NOUVEAU : Mettre à jour l'avatar uniquement
+     */
+    @Transactional
+    public UserDTO uploadAvatar(UUID userId, MultipartFile file) {
+        log.info("Upload avatar pour l'utilisateur: {}", userId);
+
+        // 1. Récupérer l'utilisateur
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        // 2. Supprimer l'ancien avatar si existe
+        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+            String oldFileName = fileStorageService.extractFileNameFromUrl(user.getAvatar());
+            fileStorageService.deleteAvatar(oldFileName);
+            log.info("🗑️ Ancien avatar supprimé pour {}", user.getEmail());
+        }
+
+        // 3. Stocker le nouvel avatar
+        String fileName = fileStorageService.storeAvatar(file);
+        String avatarUrl = fileStorageService.getAvatarUrl(fileName);
+
+        // 4. Mettre à jour l'utilisateur
+        user.setAvatar(avatarUrl);
+        user = userRepository.save(user);
+
+        log.info("✅ Avatar mis à jour pour {}: {}", user.getEmail(), avatarUrl);
+
+        return mapToDTO(user);
+    }
+
+    /**
+     * ⭐ MODIFIÉ : Mettre à jour les infos utilisateur (SANS avatar ici)
+     * L'avatar est géré séparément via uploadAvatar()
+     */
+    @Transactional
+    public UserDTO updateUser(UUID id, UserDTO userDTO) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        // Mettre à jour uniquement les champs textuels
+        if (userDTO.getName() != null && !userDTO.getName().isEmpty()) {
+            user.setName(userDTO.getName());
+        }
+        if (userDTO.getCompany() != null) {
+            user.setCompany(userDTO.getCompany());
+        }
+
+        // ⚠️ NE PAS permettre la mise à jour de l'avatar via ce endpoint
+        // L'avatar doit être uploadé via uploadAvatar()
+
+        user = userRepository.save(user);
+        log.info("✅ Utilisateur mis à jour: {}", user.getId());
+
+        return mapToDTO(user);
+    }
+
+    /**
+     * ⭐ NOUVEAU : Supprimer l'avatar
+     */
+    @Transactional
+    public UserDTO deleteAvatar(UUID userId) {
+        log.info("Suppression avatar pour l'utilisateur: {}", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+            String fileName = fileStorageService.extractFileNameFromUrl(user.getAvatar());
+            fileStorageService.deleteAvatar(fileName);
+
+            user.setAvatar(null);
+            user = userRepository.save(user);
+
+            log.info("✅ Avatar supprimé pour {}", user.getEmail());
+        }
+
+        return mapToDTO(user);
     }
 
     private UserDTO mapToDTO(User user) {

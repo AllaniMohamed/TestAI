@@ -15,15 +15,17 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [avatarBlobUrl, setAvatarBlobUrl] = useState<string | null>(null);
 
+  // Récupérer l'utilisateur depuis localStorage
   useEffect(() => {
     const updateUserFromStorage = () => {
       const userStr = localStorage.getItem('user');
       if (userStr) {
         try {
           const userData = JSON.parse(userStr);
-          setUser({ name: userData.name, role: userData.role });
+          setUser(userData);
         } catch (e) {
           console.error('Erreur de parsing user', e);
           setUser(null);
@@ -37,6 +39,47 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
     window.addEventListener('storage', updateUserFromStorage);
     return () => window.removeEventListener('storage', updateUserFromStorage);
   }, []);
+
+  // Récupérer l'avatar avec le token et créer un blob URL
+  useEffect(() => {
+    let abortController = new AbortController();
+
+    const fetchAvatar = async () => {
+      if (!user?.avatar) {
+        if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
+        setAvatarBlobUrl(null);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(user.avatar, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load avatar');
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setAvatarBlobUrl(blobUrl);
+      } catch (error) {
+        console.error('Error fetching avatar:', error);
+        setAvatarBlobUrl(null);
+      }
+    };
+
+    fetchAvatar();
+
+    return () => {
+      abortController.abort();
+      if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
+    };
+  }, [user?.avatar]);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
@@ -88,7 +131,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
             <div className="h-8 w-px bg-gray-200 mx-2"></div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 cursor-pointer p-1 rounded-full hover:bg-gray-100/50 transition-colors">
-                <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                {avatarBlobUrl ? (
+                  <img src={avatarBlobUrl} alt={user?.name} className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                )}
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-gray-700">
                     {user ? user.name : 'Chargement...'}

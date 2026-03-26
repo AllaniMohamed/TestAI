@@ -163,8 +163,12 @@ services:
       EUREKA_ENABLED: true
       EUREKA_URL: http://eureka-server:8761/eureka/
       JAVA_OPTS: "-Xmx512m -Xms256m"
+      FILE_UPLOAD_DIR: /tmp/uploads/avatars
+
     ports:
       - "8081:8081"
+    volumes:
+      - user-uploads:/app/uploads  
     depends_on:
       user-db:
         condition: service_healthy
@@ -335,6 +339,9 @@ volumes:
   project-uploads:
     driver: local
     name: testai-project-uploads
+  user-uploads:
+    driver: local
+    name: testai-user-uploads
 
 # RÉSEAU
 networks:

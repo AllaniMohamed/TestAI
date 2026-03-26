@@ -44,6 +44,17 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+    # ========================================
+    # CONFIGURATION UPLOAD FICHIERS
+    # ========================================
+    servlet:
+      multipart:
+        enabled: true
+        max-file-size: 5MB          # Taille max par fichier
+        max-request-size: 10MB      # Taille max requête totale
+        file-size-threshold: 2KB    # Seuil avant écriture disque
+
+
 
 # Configuration Serveur
 server:
@@ -101,6 +112,15 @@ twilio:
   account-sid: ${TWILIO_ACCOUNT_SID}
   auth-token: ${TWILIO_AUTH_TOKEN}
   verify-service-sid: ${TWILIO_VERIFY_SERVICE_SID}
+
+# ========================================
+# CONFIGURATION STOCKAGE FICHIERS
+# ========================================
+file:
+  upload:
+    dir: /tmp/uploads/avatars
+    base-url: http://localhost:8888/user-service/api/users/avatars
+
 
 app:
   frontend-url: http://localhost:5173
