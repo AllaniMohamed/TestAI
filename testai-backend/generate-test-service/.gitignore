@@ -3,4 +3,5 @@ put-post-adapter/
 .idea/
 .vscode/
 __pycache__/
+venv/
 .venv/
