@@ -1,0 +1,7 @@
+Flask
+torch
+transformers
+peft
+bitsandbytes
+einops
+faker
