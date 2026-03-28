@@ -1,0 +1,72 @@
+package com.example.testservice.service;
+
+import com.example.testservice.dto.*;
+import com.example.testservice.entity.Test;
+import com.example.testservice.feignclient.GenerateTestClient;
+import com.example.testservice.repository.TestRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+public class TestService {
+    @Autowired
+    private TestRepository testRepository;
+    @Autowired
+    private GenerateTestClient generateTestClient;
+
+    @Transactional
+    public List<TestResponse> generateTests(List<EndpointDTO> endpoints){
+        List<GenerateTestResponse> generatedTests = generateTestClient.generateTests(endpoints);
+        List<TestResponse> response = new ArrayList<>();
+        for(GenerateTestResponse gen : generatedTests){
+            Test test = testRepository.findByProjectIdAndEndpointId(gen.getProjectId(),gen.getEndpointId()).orElse(new Test());
+            TestResponse singleResponse = new TestResponse();
+            test.setEndpointId(gen.getEndpointId());
+            test.setProjectId(gen.getProjectId()); singleResponse.setProjectId(gen.getEndpointId());
+            test.setEndpointPath(gen.getEndpoint()); singleResponse.setEndpointPath(gen.getEndpoint());
+            List<String> categories = new ArrayList<>();
+            for (Map<String, Object> singleTest: gen.getTests()){
+                String category = singleTest.get("category").toString();
+                switch (category){
+                    case "POSITIVE":
+                        test.setPositive(singleTest);
+                        break;
+                    case "WRONG_TYPE":
+                        test.setWrongType(singleTest);
+                        break;
+                    case "MISSING_FIELDS":
+                        test.setMissingFields(singleTest);
+                        break;
+                    case "VALIDATION":
+                        test.setValidation(singleTest);
+                        break;
+                    case "BOUNDARY":
+                        test.setBoundary(singleTest);
+                        break;
+                    case "AUTH":
+                        test.setAuth(singleTest);
+                        break;
+                }
+                categories.add(category);
+            }
+            singleResponse.setInsertedTests(categories);
+            testRepository.save(test);
+            response.add(singleResponse);
+        }
+        return response;
+    }
+
+    public List<Test> getAllTests(){
+        return testRepository.findAll();
+    }
+
+    public List<Test> getAllTestsByProjectId(UUID projectId){
+        return testRepository.findAllByProjectId(projectId).orElse(new ArrayList<>());
+    }
+}

@@ -23,11 +23,10 @@ ai_gen = AIGenerator()
 @app.route('/set_headers', methods=['POST'])
 def set_headers():
     data = request.get_json()
-    if not data or 'headers' not in data:
-        return jsonify({"error": "Missing 'headers' key"}), 400
-    headers = data['headers']
-    config.set_default_headers(headers)
-    return jsonify({"updated_headers": headers})
+    if not data:
+        return jsonify({"error": "Missing headers"}), 400
+    config.set_default_headers(data)
+    return jsonify({"updated_headers": data})
 
 @app.route('/get_headers', methods=['GET'])
 def get_headers():
@@ -41,13 +40,12 @@ def reset_headers():
 @app.route('/generate_tests', methods=['POST'])
 def generate_tests():
     data = request.get_json()
-    if not data or 'endpoints' not in data:
-        return jsonify({"error": "Missing 'endpoints' key"}), 400
+    if not data or data == []:
+        return jsonify({"error": "No Endpoints found"}), 400
 
-    raw_endpoints = data['endpoints']
     results = []
 
-    for raw_ep in raw_endpoints:
+    for raw_ep in data:
         # Convert to standard format
         try:
             converted = convert_endpoint(raw_ep)
@@ -65,6 +63,8 @@ def generate_tests():
             tests = ai_gen.generate(converted)
 
         results.append({
+            "endpointId": raw_ep['id'],
+            "projectId": raw_ep['projectId'],
             "endpoint": f"{method} {converted['path']}",
             "tests": tests
         })
@@ -72,4 +72,4 @@ def generate_tests():
     return jsonify(results)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8083)
+    app.run(host='0.0.0.0', port=8084)
