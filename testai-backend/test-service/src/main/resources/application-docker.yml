@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: test-service
+
+  # Database configuration (utilise variables d'environnement)
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:test-db}:${DB_PORT:5432}/${DB_NAME:test_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+  # Security OAuth2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://keycloak:8080/realms/testai}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://keycloak:8080/realms/testai/protocol/openid-connect/certs}
+
+# Server configuration
+server:
+  port: ${SERVER_PORT:8085}
+
+# Eureka configuration
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://eureka-server:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.testai: DEBUG
+
+# ⭐️ AI-SERVICE Configuration
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://ai-service:8084}

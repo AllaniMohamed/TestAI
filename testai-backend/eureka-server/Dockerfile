@@ -1,22 +1,28 @@
-FROM eclipse-temurin:17-jdk-alpine AS build
+# ==========================================
+# Stage 1: Build with Maven
+# ==========================================
+FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /app
 
-# Copier les fichiers Maven
+# Copy pom.xml first to leverage Docker cache
 COPY pom.xml .
-COPY src ./src
+RUN mvn dependency:go-offline -B
 
-# Build avec Maven (utilise le wrapper ou installer maven)
-RUN apk add --no-cache maven
+# Copy source code and build
+COPY src ./src
 RUN mvn clean package -DskipTests
 
+# ==========================================
+# Stage 2: Runtime with JRE only
+# ==========================================
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copier le JAR depuis l'étape de build
-COPY --from=build /app/target/*.jar app.jar
+# Copy the built JAR from the builder stage
+COPY --from=builder /app/target/*.jar app.jar
 
-# Exposer le port
+# Expose the service port
 EXPOSE 8761
 
-# Démarrer l'application
+# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
