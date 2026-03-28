@@ -31,6 +31,25 @@ spring:
           filters:
             - StripPrefix=0
 
+        # ==========================================
+        # TEST-SERVICE ROUTES (if needed)
+        # ==========================================
+        - id: test-service
+          uri: lb://test-service
+          predicates:
+            - Path=/api/tests/**
+          filters:
+            - StripPrefix=0
+
+        # ==========================================
+        # AI-SERVICE ROUTES (Flask)
+        # ==========================================
+        - id: ai-service
+          uri: http://ai-service:8084
+          predicates:
+            - Path=/ai-service/**
+          filters:
+            - StripPrefix=1
 
 
       globalcors:

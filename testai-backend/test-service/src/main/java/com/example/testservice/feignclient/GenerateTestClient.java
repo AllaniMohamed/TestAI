@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name= "generate-test-service", url = "http://127.0.0.1:8084/", configuration = FeignClientConfig.class)
-public interface GenerateTestClient {
+@FeignClient(name = "ai-service", url = "http://ai-service:8084", configuration = FeignClientConfig.class)public interface GenerateTestClient {
     @PostMapping("/generate_tests")
     List<GenerateTestResponse> generateTests(@RequestBody List<EndpointDTO> requests);
 

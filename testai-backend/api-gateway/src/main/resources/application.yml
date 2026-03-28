@@ -70,6 +70,25 @@ spring:
           filters:
             - RewritePath=/api/auth/(?<segment>.*), /api/auth/$\{segment}
 
+        # ==========================================
+        # TEST-SERVICE ROUTES
+        # ==========================================
+        - id: test-service
+          uri: lb://TEST-SERVICE        # uses service discovery (Eureka)
+          predicates:
+            - Path=/api/tests/**
+          filters:
+            - RewritePath=/api/tests/(?<segment>.*), /api/tests/$\{segment}
+
+        # ==========================================
+        # AI-SERVICE ROUTES (Flask, no Eureka registration)
+        # ==========================================
+        - id: ai-service
+          uri: http://ai-service:8084   # static URI – adjust if you use a sidecar
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /$\{segment}
 # Eureka Configuration
 eureka:
   client:
