@@ -48,11 +48,14 @@ def load_model():
     base_model = AutoModelForCausalLM.from_pretrained(
         config.BASE_MODEL_PATH,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map=None,
         local_files_only=True,
-        trust_remote_code=True
+        trust_remote_code=True,
     )
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    base_model.to(device)
+    
     print("Loading LoRA adapter...")
     model = PeftModel.from_pretrained(base_model, config.ADAPTER_PATH)
     model.eval()
