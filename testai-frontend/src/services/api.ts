@@ -79,6 +79,8 @@ interface Endpoint {
   statusCodes?: string;
   requiresAuth: boolean;
   discoveryType: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ScanSwaggerRequest {
@@ -129,6 +131,25 @@ interface InvitationInfo {
   accessLevel: string;
   status: string;
   invitedAt: string;
+}
+
+interface Test {
+  id: string;
+  projectId: string;
+  endpointId: string;
+  endpointPath: string;
+  positive?: Record<string, any>;
+  wrongType?: Record<string, any>;
+  missingField?: Record<string, any>;
+  boundary?: Record<string, any>;
+  validation?: Record<string, any>;
+  auth?: Record<string, any>;
+}
+
+interface GeneratedTestStatus {
+  projectId: string;
+  endpointId: string;
+  insertedTests: string[];
 }
 
 // ==========================================
@@ -334,6 +355,44 @@ export const endpointService = {
   ): Promise<AxiosResponse<ScanSwaggerResponse>> =>
     api.post("/endpoint-service/api/endpoints/scan", { projectId, swaggerUrl }),
 };
+
+export const testService = {
+  getAllTests: (): Promise<AxiosResponse<Test[]>> =>
+    api.get("/test-service/api/tests"),
+
+  getTestsByProjectId: (projectId: string): Promise<AxiosResponse<Test[]>> =>
+    api.get(`/test-service/api/tests/project/${projectId}`),
+
+  getTestsByProjectIdAndEndpointId: (projectId: string, endpointId: string): Promise<AxiosResponse<Test[]>> =>
+    api.get(`/test-service/api/tests/${projectId}/${endpointId}`),
+
+  generate: (testData: Partial<String[]>): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
+    {
+      var endpoints : Endpoint[] = [];
+      if(testData.length > 0){
+        testData.forEach((item) => {
+          endpointService.getEndpointById(item as string).then((response) => {
+            endpoints.push(response.data);
+          }).catch((error) => {
+            console.error(`Erreur lors de la récupération de l'endpoint ${item}:`, error);
+          });
+        });
+      }
+      return api.post("/test-service/api/tests/generate", endpoints)
+    },
+
+  update: (test: Partial<Test>): Promise<AxiosResponse<string>> => 
+    api.put(`/test-service/api/tests/update`, test),
+
+  getHeaders: (): Promise<AxiosResponse<Record<string, string>>> =>
+    api.get(`/test-service/api/tests/headers`),
+
+  resetHeaders: (): Promise<AxiosResponse<Record<string, string>>> =>
+    api.get(`/test-service/api/tests/reset_headers`),
+
+  setHeaders: (headers: Record<string, string>): Promise<AxiosResponse<Record<string, string>>> =>
+    api.post(`/test-service/api/tests/headers`, headers),
+};
 // ==========================================
 // SHARED ACCESS SERVICE ⭐
 // ==========================================
@@ -392,6 +451,8 @@ export type {
   User,
   Project,
   Endpoint,
+  Test,
+  GeneratedTestStatus,
   ScanSwaggerRequest,
   ScanSwaggerResponse,
   SharedAccess,

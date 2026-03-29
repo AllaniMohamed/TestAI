@@ -35,6 +35,23 @@ public class TestController {
         return ResponseEntity.ok(testService.getAllTestsByProjectId(projectId));
     }
 
+    @GetMapping("/{projectId}/{endpointId}")
+    public ResponseEntity<Test> getTestsByProjectIdAndEndpointId(@PathVariable UUID projectId, @PathVariable UUID endpointId){
+        Test test = testService.getTestsByProjectIdAndEndpointId(projectId, endpointId);
+        return ResponseEntity.ok(test);
+    }
+
+    @PutMapping("/update")
+    public ResponseEntity<String> updateTest(@RequestBody Test newTest){
+        Test response = testService.updateTest(newTest);
+        if(response != null){
+            return ResponseEntity.ok("Tests for endpoint " + response.getEndpointPath() + " updated");
+        }
+        else{
+            return ResponseEntity.badRequest().body("Tests not found to update");
+        }
+    }
+
     @GetMapping("/headers")
     public ResponseEntity<Map<String, Object>> getHeaders(){
         return ResponseEntity.ok(generateTestClient.getHeaders());

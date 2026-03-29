@@ -69,4 +69,25 @@ public class TestService {
     public List<Test> getAllTestsByProjectId(UUID projectId){
         return testRepository.findAllByProjectId(projectId).orElse(new ArrayList<>());
     }
+
+    public Test getTestsByProjectIdAndEndpointId(UUID projectId, UUID endpointId){
+        return testRepository.findByProjectIdAndEndpointId(projectId, endpointId).orElse(null);
+    }
+
+    @Transactional
+    public Test updateTest(Test updatedTest){
+        Test oldTest = testRepository.findById(updatedTest.getId()).orElse(null);
+        if(oldTest != null){
+            oldTest.setPositive(updatedTest.getPositive());
+            oldTest.setValidation(updatedTest.getAuth());
+            oldTest.setBoundary(updatedTest.getBoundary());
+            oldTest.setMissingFields(updatedTest.getMissingFields());
+            oldTest.setWrongType(updatedTest.getWrongType());
+            oldTest.setAuth(updatedTest.getAuth());
+            return testRepository.save(oldTest);
+        }
+        else{
+            return null;
+        }
+    }
 }
