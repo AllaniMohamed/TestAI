@@ -52,6 +52,28 @@ public class TestController {
         }
     }
 
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<Map<String, String>> deleteByProjectId(@PathVariable UUID projectId){
+        Map<String, String> response = testService.deleteByProjectId(projectId);
+        if(response.containsKey("success")){
+            return ResponseEntity.ok(response);
+        }
+        else{
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @DeleteMapping("/{projectId}/{endpointId}")
+    public ResponseEntity<Map<String, String>> deleteByProjectIdAndEndpointId(@PathVariable UUID projectId, @PathVariable UUID endpointId){
+        Map<String, String> response = testService.deleteByProjectIdAndEndpointId(projectId, endpointId);
+        if(response.containsKey("success")){
+            return ResponseEntity.ok(response);
+        }
+        else{
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
     @GetMapping("/headers")
     public ResponseEntity<Map<String, Object>> getHeaders(){
         return ResponseEntity.ok(generateTestClient.getHeaders());

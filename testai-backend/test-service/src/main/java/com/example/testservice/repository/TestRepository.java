@@ -11,6 +11,7 @@ import java.util.UUID;
 @Repository
 public interface TestRepository extends JpaRepository<Test, UUID> {
     Optional<Test> findByProjectIdAndEndpointId(UUID projectId, UUID endpointId);
-
     Optional<List<Test>> findAllByProjectId(UUID projectId);
+    void deleteByProjectId(UUID projectId);
+    void deleteByProjectIdAndEndpointId(UUID projectId, UUID endpointId);
 }

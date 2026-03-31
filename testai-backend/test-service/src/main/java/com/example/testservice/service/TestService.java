@@ -8,10 +8,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class TestService {
@@ -89,5 +86,29 @@ public class TestService {
         else{
             return null;
         }
+    }
+
+    public Map<String, String> deleteByProjectId(UUID projectId){
+        Map<String, String> response = new HashMap<>();
+        try{
+            testRepository.deleteByProjectId(projectId);
+            response.put("success", "Tests for Project " + projectId + " Deleted Successfully!!");
+        }
+        catch (Exception e){
+            response.put("failure", e.toString());
+        }
+        return response;
+    }
+
+    public Map<String, String> deleteByProjectIdAndEndpointId(UUID projectId, UUID endpointId){
+        Map<String, String> response = new HashMap<>();
+        try{
+            testRepository.deleteByProjectIdAndEndpointId(projectId, endpointId);
+            response.put("success", "Tests for Endpoint " + endpointId + " in Project "+ projectId + " Deleted Successfully!!");
+        }
+        catch (Exception e){
+            response.put("failure", e.toString());
+        }
+        return response;
     }
 }

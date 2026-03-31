@@ -3,6 +3,7 @@ package com.testai.endpointservice.service;
 import com.testai.endpointservice.dto.CreateEndpointRequest;
 import com.testai.endpointservice.dto.EndpointDTO;
 import com.testai.endpointservice.entity.Endpoint;
+import com.testai.endpointservice.feignclient.TestClient;
 import com.testai.endpointservice.repository.EndpointRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class EndpointService {
 
     private final EndpointRepository endpointRepository;
+    private final TestClient testClient;
 
     /**
      * Créer un endpoint manuellement
@@ -158,8 +160,9 @@ public class EndpointService {
         if (!endpointRepository.existsById(endpointId)) {
             throw new RuntimeException("Endpoint non trouvé");
         }
-
+        Endpoint endpoint = endpointRepository.findById(endpointId).orElseThrow();
         endpointRepository.deleteById(endpointId);
+        testClient.deleteTestsByProjectIdAndEndpointId(endpoint.getProjectId(), endpointId);
         log.info("✅ Endpoint supprimé avec succès");
     }
 
@@ -171,6 +174,7 @@ public class EndpointService {
         log.info("🗑️ Suppression de tous les endpoints du projet {}", projectId);
 
         endpointRepository.deleteByProjectId(projectId);
+        testClient.deleteTestsByProjectId(projectId);
         log.info("✅ Endpoints supprimés avec succès");
     }
 
