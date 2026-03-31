@@ -470,7 +470,7 @@ const ServiceDetailsPage: React.FC = () => {
               </div>
             ) : (
               Object.entries(tag_tests(tests)).map(([tag, tests]) => (
-                <div key={tag} className="space-y-4">
+                <div key={tag} className="space-y-4 mt-4">
                   <div className="flex items-center space-x-2 text-on-surface-variant">
                         <NewspaperIcon className="w-5 h-5" />
                         <h3 className="font-headline font-bold text-lg">{tag}</h3>
@@ -815,7 +815,7 @@ const TestAccordion: React.FC<{
   });
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
+    <div className="bg-surface-container-lowest border  border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors group"
@@ -859,27 +859,6 @@ const TestAccordion: React.FC<{
             ) : null
           )}
 
-          {/* Test Status & Results */}
-          <div className="grid grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Statut</h4>
-              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
-                <span className="text-sm font-medium">Statut du test</span>
-                <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
-                  Pending
-                </span>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Exécution</h4>
-              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
-                <span className="text-sm font-medium">Dernier résultat</span>
-                <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
-                  -
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>

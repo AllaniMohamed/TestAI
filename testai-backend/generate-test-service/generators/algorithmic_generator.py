@@ -1,6 +1,7 @@
 import random
 from faker import Faker
 from generators.base import BaseGenerator
+import config
 
 fake = Faker()
 Faker.seed(42)
@@ -271,17 +272,6 @@ def resolve_expected_status(category, method, has_required_path, has_required_qu
 
 
 # ─────────────────────────────────────────────────────────
-# AUTH HEADER GENERATION
-# ─────────────────────────────────────────────────────────
-
-def generate_auth_header():
-    """Generate a realistic auth header."""
-    return {
-        "Authorization": f"Bearer {fake.sha256()[:64]}"
-    }
-
-
-# ─────────────────────────────────────────────────────────
 # CORE TEST GENERATORS
 # ─────────────────────────────────────────────────────────
 
@@ -325,7 +315,7 @@ def generate_tests_for_endpoint(endpoint):
         }
     }
     if requires_auth:
-        test_positive["response"]["headers"] = generate_auth_header()
+        test_positive["response"]["headers"] = config.DEFAULT_HEADERS
     tests.append(test_positive)
 
     # ─── 2. AUTH (skip if requiresAuth=false) ───
@@ -369,7 +359,7 @@ def generate_tests_for_endpoint(endpoint):
             }
         }
         if requires_auth:
-            test_wrong["response"]["headers"] = generate_auth_header()
+            test_wrong["response"]["headers"] = config.DEFAULT_HEADERS
         tests.append(test_wrong)
 
     # ─── 4. MISSING_FIELDS ───
@@ -407,7 +397,7 @@ def generate_tests_for_endpoint(endpoint):
             }
         }
         if requires_auth:
-            test_missing["response"]["headers"] = generate_auth_header()
+            test_missing["response"]["headers"] = config.DEFAULT_HEADERS
         tests.append(test_missing)
 
     # ─── 5. VALIDATION ───
@@ -434,7 +424,7 @@ def generate_tests_for_endpoint(endpoint):
             }
         }
         if requires_auth:
-            test_validation["response"]["headers"] = generate_auth_header()
+            test_validation["response"]["headers"] = config.DEFAULT_HEADERS
         tests.append(test_validation)
 
     # ─── 6. BOUNDARY ───
@@ -461,7 +451,7 @@ def generate_tests_for_endpoint(endpoint):
             }
         }
         if requires_auth:
-            test_boundary["response"]["headers"] = generate_auth_header()
+            test_boundary["response"]["headers"] = config.DEFAULT_HEADERS
         tests.append(test_boundary)
 
     return tests
@@ -496,7 +486,7 @@ def generate_tests_no_params(endpoint):
         }
     }
     if requires_auth:
-        test_positive["response"]["headers"] = generate_auth_header()
+        test_positive["response"]["headers"] = config.DEFAULT_HEADERS
     tests.append(test_positive)
 
     # AUTH
