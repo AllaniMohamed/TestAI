@@ -5,7 +5,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
-import { projectService } from "../services/api";
+import { projectService, type Test, type Endpoint, testService } from "../services/api";
 import ShareProjectModal from "../components/modals/ShareProjectModal";
 import {
   PencilSquareIcon,
@@ -20,14 +20,14 @@ import {
   CodeBracketIcon,
   UsersIcon,
   ShareIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   FolderOpenIcon,
   CheckCircleIcon,
   XCircleIcon,
   ShieldCheckIcon,
   CalendarIcon,
   ArrowRightIcon,
+  ClipboardDocumentCheckIcon,
+  NewspaperIcon
 } from "@heroicons/react/24/outline";
 import {
   PieChart,
@@ -52,20 +52,6 @@ interface Project {
   authType: string;
   createdAt: string;
   userId: string;
-}
-
-interface Endpoint {
-  id: string;
-  method: string;
-  path: string;
-  description: string;
-  tags?: string;
-  parameters?: string;
-  requestBody?: string;
-  responseBody?: string;
-  statusCodes?: string;
-  requiresAuth: boolean;
-  discoveryType: string;
 }
 
 interface LocationState {
@@ -98,11 +84,13 @@ const ServiceDetailsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("endpoints");
   const [project, setProject] = useState<Project | null>(null);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [endpointsCount, setEndpointsCount] = useState(0);
   const [rescanning, setRescanning] = useState(false);
   const [expandedEndpointId, setExpandedEndpointId] = useState<string | null>(null);
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
@@ -134,6 +122,21 @@ const ServiceDetailsPage: React.FC = () => {
     if (id) loadProjectData();
   }, [id]);
 
+  function tag_tests(tests: Test[]) {
+    return tests.reduce((grouped, test) => {
+      const path = test.endpointPath?.split(' ')[1]?.trim();
+      const resourceTag = path?.split('/')[1]?.split('?')[0] || "Général"; // Gets first segment: 'pet', 'store', etc.
+      
+      if (!grouped[resourceTag]) {
+        grouped[resourceTag] = [];
+      }
+      grouped[resourceTag].push(test);
+      
+      return grouped;
+    }, {} as Record<string, Test[]>);
+  }
+
+
   const loadProjectData = async () => {
     try {
       setLoading(true);
@@ -144,9 +147,11 @@ const ServiceDetailsPage: React.FC = () => {
       const currentUserId = userStr ? JSON.parse(userStr).id : null;
       setIsOwner(projectResponse.data.userId === currentUserId);
       const endpointsResponse = await projectService.getProjectEndpoints(id!);
-      setEndpoints(endpointsResponse.data);
+      setEndpoints(endpointsResponse.data as Endpoint[]);
       const countResponse = await projectService.countProjectEndpoints(id!);
       setEndpointsCount(countResponse.data.count || endpointsResponse.data.length);
+      const testsResponse = await testService.getTestsByProjectId(id!);
+      setTests(testsResponse.data as Test[]);
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur lors du chargement des données");
     } finally {
@@ -174,6 +179,19 @@ const ServiceDetailsPage: React.FC = () => {
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur lors de la suppression");
+    }
+  };
+
+  const handleGenerateTests = async (endpointsToGenerate: Endpoint[]) => {
+    if(!confirm(`Générer des tests pour ${endpointsToGenerate.length} endpoints ?`)) return;
+    try {
+      await testService.generate(endpointsToGenerate).then(async () => {
+        const testsResponse = await testService.getTestsByProjectId(id!);
+        setTests(testsResponse.data as Test[]);
+        alert("Tests générés avec succès ! You can now view them in the 'Tests' tab.");
+      });
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Erreur lors de la génération des tests");
     }
   };
 
@@ -303,6 +321,11 @@ const ServiceDetailsPage: React.FC = () => {
                         : `${endpoints.filter((e) => e.discoveryType === "SWAGGER").length} depuis Swagger, ${endpoints.filter((e) => e.discoveryType === "MANUAL").length} manuels`}
                     </p>
                   </div>
+                  {endpoints.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => handleGenerateTests(endpoints)} icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}>
+                      Générer tous les tests
+                    </Button>
+                  )}
                   {canRescan && (
                     <Button variant="outline" size="sm" onClick={handleRescanEndpoints} loading={rescanning} icon={!rescanning && <ArrowPathIcon className="w-4 h-4" />}>
                       Rescanner
@@ -322,11 +345,14 @@ const ServiceDetailsPage: React.FC = () => {
                   </div>
                 ) : (
                   Object.entries(groupedEndpoints).map(([tag, eps]) => (
-                    <div key={tag} className="space-y-4">
+                    <div key={tag} className="space-y-4 relative">
                       <div className="flex items-center space-x-2 text-on-surface-variant">
                         <FolderOpenIcon className="w-5 h-5" />
                         <h3 className="font-headline font-bold text-lg">{tag}</h3>
                         <span className="text-xs font-mono text-on-surface-variant">({eps.length})</span>
+                        <Button className="absolute right-0" size="sm" onClick={() => handleGenerateTests(eps)}>
+                          Générer les tests de ce groupe
+                        </Button>
                       </div>
                       <div className="space-y-2">
                         {eps.map((ep) => (
@@ -436,11 +462,33 @@ const ServiceDetailsPage: React.FC = () => {
           )}
 
           {activeTab === "tests" && (
-            <div className="text-center p-12 text-gray-500">
-              <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p className="text-lg font-medium">Fonctionnalité en cours de développement</p>
-              <p className="text-sm mt-2">Les tests seront bientôt disponibles</p>
-            </div>
+            tests.length === 0 ? (
+              <div className="text-center p-12 text-gray-500">
+                <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium">Il n'y a pas de tests disponibles</p>
+                <p className="text-sm mt-2">Générez des tests pour voir les résultats ici</p>
+              </div>
+            ) : (
+              Object.entries(tag_tests(tests)).map(([tag, tests]) => (
+                <div key={tag} className="space-y-4">
+                  <div className="flex items-center space-x-2 text-on-surface-variant">
+                        <NewspaperIcon className="w-5 h-5" />
+                        <h3 className="font-headline font-bold text-lg">{tag}</h3>
+                        <span className="text-xs font-mono text-on-surface-variant">({tests.length})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {tests.map((test) => (
+                      <TestAccordion
+                        key={test.id}
+                        test={test}
+                        isExpanded={expandedTestId === test.id}
+                        onToggle={() => setExpandedTestId(prev => prev === test.id ? null : test.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )
           )}
 
           {activeTab === "reports" && (
@@ -729,6 +777,108 @@ const EndpointAccordion: React.FC<{
             >
               Générer tests
             </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TestAccordion: React.FC<{
+  test: Test;
+  isExpanded: boolean;
+  onToggle: () => void;
+}> = ({ test, isExpanded, onToggle}) => {
+  const method = test.endpointPath.split(" ")[0];
+  const methodColor = methodColors[method] || "bg-surface-container-high text-on-surface-variant";
+
+  // Parser test data for JSON displays
+  let testDataParsed: Record<string, any> = {};
+  const sections = [
+    { key: 'positive', label: 'Test Positif' },
+    { key: 'validation', label: 'Test de Validation' },
+    { key: 'boundary', label: 'Test de Limite' },
+    { key: 'wrongType', label: 'Test de Type Incorrect' },
+    { key: 'missingField', label: 'Test de Champ Manquant' },
+    { key: 'auth', label: 'Test de Sécurité' }
+  ];
+
+  sections.forEach(section => {
+    try {
+      const value = (test as any)[section.key];
+      if (value) {
+        testDataParsed[section.key] = typeof value === 'string' ? JSON.parse(value) : value;
+      }
+    } catch (e) {
+      testDataParsed[section.key] = (test as any)[section.key];
+    }
+  });
+
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors group"
+      >
+        <div className="flex items-center space-x-6 flex-wrap gap-2">
+          <span className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}>
+            {method}
+          </span>
+          <div className="text-left">
+            <div className="font-mono text-sm text-on-surface">{test.endpointPath}</div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 aura-pulse"></div>
+            <span className="text-xs font-medium text-on-surface-variant">Active</span>
+          </div>
+          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+            {isExpanded ? "unfold_less" : "unfold_more"}
+          </span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="px-6 py-8 border-t border-outline-variant/30 space-y-8">
+          {/* Test Data Sections (6 JSON sections) */}
+          {sections.map(section => 
+            testDataParsed[section.key] ? (
+              <div key={section.key}>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                  <CodeBracketIcon className="w-4 h-4" />
+                  {section.label}
+                </h4>
+                <textarea
+                  value={JSON.stringify(testDataParsed[section.key], null, 2)}
+                  readOnly
+                  className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  rows={13}
+                />
+              </div>
+            ) : null
+          )}
+
+          {/* Test Status & Results */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Statut</h4>
+              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
+                <span className="text-sm font-medium">Statut du test</span>
+                <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
+                  Pending
+                </span>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Exécution</h4>
+              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
+                <span className="text-sm font-medium">Dernier résultat</span>
+                <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
+                  -
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}

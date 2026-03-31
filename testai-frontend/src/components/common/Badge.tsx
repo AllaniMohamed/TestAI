@@ -3,7 +3,7 @@ import React from 'react';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'success' | 'danger' | 'warning' | 'info' | 'gray' | 'method';
+  variant?: 'success' | 'danger' | 'warning' | 'info' | 'gray' | 'method' | 'default';
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 }
 
@@ -22,6 +22,7 @@ const Badge: React.FC<BadgeProps> = ({ children, variant = 'gray', method }) => 
     warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     info: 'bg-cyan-100 text-cyan-700 border-cyan-200',
     gray: 'bg-gray-100 text-gray-700 border-gray-200',
+    default: 'bg-blue-100 text-blue-700 border-blue-200',
     method: method ? methodColors[method] : 'bg-gray-100 text-gray-700',
   };
 

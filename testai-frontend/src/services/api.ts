@@ -71,6 +71,23 @@ interface Endpoint {
   id: string;
   projectId: string;
   method: string;
+  tags?: string;
+  path: string;
+  description?: string;
+  parameters?: string;
+  requestBody?: string;
+  responseBody?: string;
+  statusCodes?: string;
+  requiresAuth: boolean;
+  discoveryType: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface EndpointDTO {
+  id: string;
+  projectId: string;
+  method: string;
   path: string;
   description?: string;
   parameters?: string;
@@ -361,25 +378,13 @@ export const testService = {
     api.get("/test-service/api/tests"),
 
   getTestsByProjectId: (projectId: string): Promise<AxiosResponse<Test[]>> =>
-    api.get(`/test-service/api/tests/project/${projectId}`),
+    api.get(`/test-service/api/tests/${projectId}`),
 
   getTestsByProjectIdAndEndpointId: (projectId: string, endpointId: string): Promise<AxiosResponse<Test[]>> =>
     api.get(`/test-service/api/tests/${projectId}/${endpointId}`),
 
-  generate: (testData: Partial<String[]>): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
-    {
-      var endpoints : Endpoint[] = [];
-      if(testData.length > 0){
-        testData.forEach((item) => {
-          endpointService.getEndpointById(item as string).then((response) => {
-            endpoints.push(response.data);
-          }).catch((error) => {
-            console.error(`Erreur lors de la récupération de l'endpoint ${item}:`, error);
-          });
-        });
-      }
-      return api.post("/test-service/api/tests/generate", endpoints)
-    },
+  generate: (endpoints: Partial<Endpoint[]>): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
+    api.post("/test-service/api/tests/generate", endpoints as EndpointDTO[], {timeout: 300000}),
 
   update: (test: Partial<Test>): Promise<AxiosResponse<string>> => 
     api.put(`/test-service/api/tests/update`, test),
@@ -392,7 +397,14 @@ export const testService = {
 
   setHeaders: (headers: Record<string, string>): Promise<AxiosResponse<Record<string, string>>> =>
     api.post(`/test-service/api/tests/headers`, headers),
+
+  deleteTestByProjectIdAndEndpointId: (projectId: string, endpointId: string): Promise<AxiosResponse<Record<string, string>>> =>
+    api.delete(`/test-service/api/tests/${projectId}/${endpointId}`),
+  
+  deleteTestsByProjectId: (projectId: string): Promise<AxiosResponse<Record<string, string>>> =>
+    api.delete(`/test-service/api/tests/project/${projectId}`),
 };
+
 // ==========================================
 // SHARED ACCESS SERVICE ⭐
 // ==========================================
