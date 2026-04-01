@@ -97,6 +97,7 @@ const ServiceDetailsPage: React.FC = () => {
   const [accessLevel, setAccessLevel] = useState<'READ_ONLY' | 'READ_WRITE' | null>(null);
   const [managerEmail, setManagerEmail] = useState<string | null>(null);
   const [sharedAt, setSharedAt] = useState<string | null>(null);
+  const [loadingTests, setLoadingTests] = useState<boolean>(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -126,16 +127,21 @@ const ServiceDetailsPage: React.FC = () => {
     return tests.reduce((grouped, test) => {
       const path = test.endpointPath?.split(' ')[1]?.trim();
       const resourceTag = path?.split('/')[1]?.split('?')[0] || "Général"; // Gets first segment: 'pet', 'store', etc.
-      
+
       if (!grouped[resourceTag]) {
         grouped[resourceTag] = [];
       }
       grouped[resourceTag].push(test);
-      
+
       return grouped;
     }, {} as Record<string, Test[]>);
   }
 
+  const refreshTests = async () => {
+    if (!id) return;
+    const testsResponse = await testService.getTestsByProjectId(id!);
+    setTests(testsResponse.data as Test[]);
+  }
 
   const loadProjectData = async () => {
     try {
@@ -150,8 +156,7 @@ const ServiceDetailsPage: React.FC = () => {
       setEndpoints(endpointsResponse.data as Endpoint[]);
       const countResponse = await projectService.countProjectEndpoints(id!);
       setEndpointsCount(countResponse.data.count || endpointsResponse.data.length);
-      const testsResponse = await testService.getTestsByProjectId(id!);
-      setTests(testsResponse.data as Test[]);
+      await refreshTests();
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur lors du chargement des données");
     } finally {
@@ -183,17 +188,51 @@ const ServiceDetailsPage: React.FC = () => {
   };
 
   const handleGenerateTests = async (endpointsToGenerate: Endpoint[]) => {
-    if(!confirm(`Générer des tests pour ${endpointsToGenerate.length} endpoints ?`)) return;
+    if (!confirm(`Générer des tests pour ${endpointsToGenerate.length} endpoints ?`)){setLoadingTests(false); return;};
     try {
+      setLoadingTests(true);
       await testService.generate(endpointsToGenerate).then(async () => {
         const testsResponse = await testService.getTestsByProjectId(id!);
-        setTests(testsResponse.data as Test[]);
+        if (tests.length === 0) {
+          setTests(testsResponse.data as Test[]);
+        }
+        else {
+          let newTests = testsResponse.data as Test[];
+          // Replace old tests with new ones if they have the same ID, keep old ones that aren't updated
+          setTests(prev => {
+            const updated = prev.map(t =>
+              newTests.find(nt => nt.id === t.id) || t
+            );
+            // Add any completely new tests
+            const newIds = new Set(updated.map(t => t.id));
+            const addedTests = newTests.filter(nt => !newIds.has(nt.id));
+            return [...updated, ...addedTests];
+          });
+        }
         alert("Tests générés avec succès ! You can now view them in the 'Tests' tab.");
+        setLoadingTests(false);
       });
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur lors de la génération des tests");
+      setLoadingTests(false);
     }
   };
+
+  const regenerateTests = async (testIds: string[]) => {
+    if (!confirm(`Régénérer ${testIds.length} tests ?`)) return;
+    try {
+      setLoadingTests(true);
+      // Get the test objects to extract their endpoint paths
+      const testsToRegenerate = tests.filter(t => testIds.includes(t.id));
+      const endpointIds = new Set(testsToRegenerate.map(t => t.endpointId));
+      const endpointsRegen = endpoints.filter(ep => endpointIds.has(ep.id));
+      handleGenerateTests(endpointsRegen);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Erreur lors de la régénération des tests");
+      setLoadingTests(false);
+    }
+  };
+
 
   const canEdit = isOwner;
   const canDelete = isOwner;
@@ -362,6 +401,7 @@ const ServiceDetailsPage: React.FC = () => {
                             isExpanded={expandedEndpointId === ep.id}
                             onToggle={() => setExpandedEndpointId(prev => prev === ep.id ? null : ep.id)}
                             canGenerateTests={canGenerateTests}
+                            handleGenerateTests={handleGenerateTests}
                           />
                         ))}
                       </div>
@@ -462,33 +502,46 @@ const ServiceDetailsPage: React.FC = () => {
           )}
 
           {activeTab === "tests" && (
-            tests.length === 0 ? (
-              <div className="text-center p-12 text-gray-500">
-                <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-lg font-medium">Il n'y a pas de tests disponibles</p>
-                <p className="text-sm mt-2">Générez des tests pour voir les résultats ici</p>
-              </div>
-            ) : (
-              Object.entries(tag_tests(tests)).map(([tag, tests]) => (
-                <div key={tag} className="space-y-4 mt-4">
-                  <div className="flex items-center space-x-2 text-on-surface-variant">
-                        <NewspaperIcon className="w-5 h-5" />
-                        <h3 className="font-headline font-bold text-lg">{tag}</h3>
-                        <span className="text-xs font-mono text-on-surface-variant">({tests.length})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {tests.map((test) => (
-                      <TestAccordion
-                        key={test.id}
-                        test={test}
-                        isExpanded={expandedTestId === test.id}
-                        onToggle={() => setExpandedTestId(prev => prev === test.id ? null : test.id)}
-                      />
-                    ))}
-                  </div>
+            <>
+              {endpoints.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => handleGenerateTests(endpoints)} icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}>
+                  Regénérer tous les tests
+                </Button>
+              )}
+              {tests.length === 0 ? (
+                <div className="text-center p-12 text-gray-500">
+                  <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                  <p className="text-lg font-medium">Il n'y a pas de tests disponibles</p>
+                  <p className="text-sm mt-2">Générez des tests pour voir les résultats ici</p>
                 </div>
-              ))
-            )
+              ) : (
+                Object.entries(tag_tests(tests)).map(([tag, tests]) => (
+                  <div key={tag} className="space-y-4 mt-4">
+                    <div className="flex items-center space-x-2 text-on-surface-variant relative">
+                      <NewspaperIcon className="w-5 h-5" />
+                      <h3 className="font-headline font-bold text-lg">{tag}</h3>
+                      <span className="text-xs font-mono text-on-surface-variant">({tests.length})</span>
+                      <Button className="absolute right-0" size="sm" onClick={() => regenerateTests(tests.map(t => t.id))}>
+                        Regénérer les tests de ce groupe
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {tests.map((test) => (
+                        <TestAccordion
+                          key={test.id}
+                          test={test}
+                          isExpanded={expandedTestId === test.id}
+                          onToggle={() => setExpandedTestId(prev => prev === test.id ? null : test.id)}
+                          regenerateTests={regenerateTests}
+                          canRegenerateTests={canGenerateTests}
+                          refreshTests={refreshTests}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
           )}
 
           {activeTab === "reports" && (
@@ -599,6 +652,15 @@ const ServiceDetailsPage: React.FC = () => {
               }}
             />
           )}
+
+          {loadingTests && (
+            <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4">
+                <BeakerIcon className="w-8 h-8 text-primary animate-spin" />
+                <span className="text-lg font-medium">Génération des tests en cours...</span>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -610,8 +672,9 @@ const EndpointAccordion: React.FC<{
   endpoint: Endpoint;
   isExpanded: boolean;
   onToggle: () => void;
+  handleGenerateTests: (endpoints: Endpoint[]) => void;
   canGenerateTests: boolean;
-}> = ({ endpoint, isExpanded, onToggle, canGenerateTests }) => {
+}> = ({ endpoint, isExpanded, onToggle, handleGenerateTests, canGenerateTests }) => {
   const methodColor = methodColors[endpoint.method] || "bg-surface-container-high text-on-surface-variant";
 
   // Parser les paramètres (pour le tableau)
@@ -627,10 +690,10 @@ const EndpointAccordion: React.FC<{
   let responseBodyParsed = null;
   try {
     if (endpoint.requestBody) requestBodyParsed = JSON.parse(endpoint.requestBody);
-  } catch (e) {}
+  } catch (e) { }
   try {
     if (endpoint.responseBody) responseBodyParsed = JSON.parse(endpoint.responseBody);
-  } catch (e) {}
+  } catch (e) { }
 
   return (
     <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
@@ -740,10 +803,10 @@ const EndpointAccordion: React.FC<{
                       code.startsWith("2")
                         ? "success"
                         : code.startsWith("4")
-                        ? "warning"
-                        : code.startsWith("5")
-                        ? "danger"
-                        : "default"
+                          ? "warning"
+                          : code.startsWith("5")
+                            ? "danger"
+                            : "default"
                     }
                   >
                     {code.trim()}
@@ -766,14 +829,13 @@ const EndpointAccordion: React.FC<{
           <div className="pt-2">
             <button
               onClick={() => {
-                console.log("Générer tests pour", endpoint.id);
+                handleGenerateTests([endpoint]);
               }}
               disabled={!canGenerateTests}
-              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${
-                canGenerateTests
+              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canGenerateTests
                   ? "hover:bg-primary hover:text-white cursor-pointer"
                   : "opacity-50 cursor-not-allowed"
-              }`}
+                }`}
             >
               Générer tests
             </button>
@@ -788,9 +850,14 @@ const TestAccordion: React.FC<{
   test: Test;
   isExpanded: boolean;
   onToggle: () => void;
-}> = ({ test, isExpanded, onToggle}) => {
+  regenerateTests: (testIds: string[]) => void;
+  canRegenerateTests: boolean;
+  refreshTests: () => void;
+}> = ({ test, isExpanded, onToggle, regenerateTests, canRegenerateTests, refreshTests }) => {
   const method = test.endpointPath.split(" ")[0];
   const methodColor = methodColors[method] || "bg-surface-container-high text-on-surface-variant";
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
 
   // Parser test data for JSON displays
   let testDataParsed: Record<string, any> = {};
@@ -842,23 +909,107 @@ const TestAccordion: React.FC<{
       {isExpanded && (
         <div className="px-6 py-8 border-t border-outline-variant/30 space-y-8">
           {/* Test Data Sections (6 JSON sections) */}
-          {sections.map(section => 
+          {sections.map(section =>
             testDataParsed[section.key] ? (
               <div key={section.key}>
                 <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
                   <CodeBracketIcon className="w-4 h-4" />
                   {section.label}
                 </h4>
-                <textarea
-                  value={JSON.stringify(testDataParsed[section.key], null, 2)}
-                  readOnly
-                  className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  rows={13}
-                />
+                {editMode ? (
+                  <textarea
+                    value={rawTestData[section.key] !== undefined ? rawTestData[section.key] : JSON.stringify(testDataParsed[section.key], null, 2)}
+                    className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    rows={13}
+                    onChange={(event) => {
+                      setRawTestData(prev => ({
+                        ...prev,
+                        [section.key]: event.target.value
+                      }));
+                    }}
+                  />
+                ) : (
+                  <div className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 overflow-x-auto max-h-96">
+                    <pre className="whitespace-pre-wrap break-words">{JSON.stringify(testDataParsed[section.key], null, 2)}</pre>
+                  </div>
+                )}
               </div>
             ) : null
           )}
+          {/* Bouton Regénérer tests */}
+          <div className="pt-2 grid grid-cols-2 gap-4">
+            <button
+              onClick={async () => {
+                if (editMode) {
+                  // Validate and save changes
+                  let hasChanges = false;
+                  let errorMessage = "";
+                  const parsedData: Record<string, any> = {};
 
+                  for (const key in rawTestData) {
+                    if (rawTestData[key] !== undefined) {
+                      try {
+                        parsedData[key] = JSON.parse(rawTestData[key]);
+                        // Check if it differs from original
+                        if (JSON.stringify(parsedData[key]) !== JSON.stringify(testDataParsed[key])) {
+                          hasChanges = true;
+                        }
+                      } catch (e) {
+                        errorMessage = `Erreur de format JSON dans la section ${sections.find(s => s.key === key)?.label || key}`;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (errorMessage != "") {
+                    setRawTestData({});
+                    if(confirm(errorMessage + "\nContinuer à éditer ?")){
+                      errorMessage = "";
+                      return;
+                    }
+                    else{
+                      setEditMode(false);
+                      return; // Exit edit mode without saving
+                    }
+                    
+                  }
+                  
+                  if (!hasChanges) {
+                    if (!confirm("Aucune modification détectée. Continuer à éditer ?")) {
+                      setRawTestData({});
+                    }
+                    else {
+                      return; // Stay in edit mode
+                    }
+                  } else {
+                    var updatedTest = { ...test };
+                    for (const key in parsedData) {
+                      (updatedTest as any)[key] = JSON.stringify(parsedData[key]);
+                    }
+                    await testService.update(updatedTest as Test);
+                    refreshTests();
+                    setRawTestData({});
+                  }
+                }
+                setEditMode(prev => !prev);
+              }}
+              className="w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all hover:bg-primary hover:text-white cursor-pointer"
+            >
+              {editMode ? "Enregistrer les modifications" : "Modifier le test"}
+            </button>
+            <button
+              onClick={() => {
+                regenerateTests([test.id]);
+              }}
+              disabled={!canRegenerateTests}
+              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canRegenerateTests
+                  ? "hover:bg-primary hover:text-white cursor-pointer"
+                  : "opacity-50 cursor-not-allowed"
+                }`}
+            >
+              Regénérer tests
+            </button>
+          </div>
         </div>
       )}
     </div>
