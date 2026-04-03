@@ -130,6 +130,25 @@ services:
       retries: 5
     restart: unless-stopped
 
+  execution-db:
+    image: postgres:15-alpine
+    container_name: testai-execution-db
+    environment:
+      POSTGRES_DB: execution_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - execution-db-data:/var/lib/postgresql/data
+    networks:
+      - testai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d execution_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
   # ==========================================
   # KEYCLOAK
   # ==========================================
@@ -371,6 +390,49 @@ services:
       retries: 5
       start_period: 20s
     restart: unless-stopped
+  
+  execution-service:
+    build:
+      context: ./execution-service
+      dockerfile: Dockerfile
+    container_name: testai-execution-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: execution-db
+      DB_PORT: 5432
+      DB_NAME: execution_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      SERVER_PORT: 8086
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "8086:8086"
+    depends_on:
+      execution-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - testai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+  test-api:
+    build:
+      context: ./REST-API   
+      dockerfile: Dockerfile
+    container_name: testai-test-api
+    ports:
+      - "5000:5000"
+    networks:
+      - testai-network
+    restart: unless-stopped
+
 
   # ==========================================
   # API GATEWAY
@@ -454,7 +516,9 @@ volumes:
   user-uploads:
     driver: local
     name: testai-user-uploads
-
+  execution-db-data:
+    driver: local
+    name: testai-execution-db-data
 # ==========================================
 # RÉSEAU
 # ==========================================

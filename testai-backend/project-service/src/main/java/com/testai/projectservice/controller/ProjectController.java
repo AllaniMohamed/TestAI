@@ -54,12 +54,16 @@ public class ProjectController {
             if (userServiceClient.getUserById(request.getUserId()) == null) {
                 return ResponseEntity.badRequest().body("User does not exist");
             }
+            /*
             if (isInvalidLink(request.getProjectUrl())) {
                 return ResponseEntity.badRequest().body("Invalid Service URL !!");
             }
             if (request.getDocSubmitMode().equals("url") && isInvalidLink(request.getDocUrl())) {
                 return ResponseEntity.badRequest().body("Invalid Documentation URL !!");
             }
+            */
+
+
             Project newProject = projectService.createProject(request);
             return ResponseEntity.ok(newProject);
         } catch (Exception e) {

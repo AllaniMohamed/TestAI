@@ -157,7 +157,7 @@ interface Test {
   endpointPath: string;
   positive?: Record<string, any>;
   wrongType?: Record<string, any>;
-  missingField?: Record<string, any>;
+  missingFields?: Record<string, any>;
   boundary?: Record<string, any>;
   validation?: Record<string, any>;
   auth?: Record<string, any>;
@@ -451,6 +451,101 @@ export const sharedAccessService = {
     api.post(`/project-service/api/invitations/${token}/activate`),
 };
 
+// ==========================================
+// EXECUTION SERVICE
+// ==========================================
+
+export interface ExecuteProjectRequest {
+  projectId: string;
+  executedBy: string;
+  executionContext?: string; // "manual", "scheduled", "ci_cd"
+}
+
+export interface TestTypeStats {
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+}
+
+export interface EndpointSummary {
+  endpointId: string;
+  method: string;
+  path: string;
+  totalTests: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+}
+
+export interface ProjectExecutionResponse {
+  executionId: string;
+  projectId: string;
+  projectName: string;
+  totalEndpoints: number;
+  totalTests: number;
+  testsPassed: number;
+  testsFailed: number;
+  testsError: number;
+  successRate: number;
+  totalDurationMs: number;
+  statsByType: Record<string, TestTypeStats>;
+  failedEndpoints: EndpointSummary[];
+  status: string; // "RUNNING", "COMPLETED", "FAILED"
+  executedAt: string;
+  completedAt: string;
+}
+export interface TestExecution {
+  id: string;
+  projectId: string;
+  endpointId: string;
+  endpointPath: string;
+  httpMethod: string;
+  testType: TestType;
+  requestUrl: string;
+  requestHeaders?: Record<string, string>;
+  requestBody?: Record<string, any>;
+  responseStatusCode: number;
+  responseHeaders?: Record<string, string>;
+  responseBody?: Record<string, any>;
+  responseTimeMs?: number;
+  status: TestStatus;
+  expectedStatusCode?: number;
+  statusCodeMatch?: boolean;
+  schemaValidationPassed?: boolean;
+  errorMessage?: string;
+  validationErrors?: Record<string, any>;
+  executedBy: string;
+  executedAt: string;
+  executionContext?: string;
+  executionId: string;
+}
+
+export type TestType = "POSITIVE" | "WRONG_TYPE" | "MISSING_FIELDS" | "VALIDATION" | "BOUNDARY" | "AUTH";
+
+export type TestStatus = "SUCCESS" | "FAILED" | "ERROR";
+
+export const executionService = {
+  startExecution: (request: ExecuteProjectRequest): Promise<AxiosResponse<{ executionId: string }>> =>
+    api.post("/execution-service/api/executions/execute-project", request),
+
+  getProjectExecutions: (projectId: string): Promise<AxiosResponse<ProjectExecutionResponse[]>> =>
+    api.get(`/execution-service/api/executions/project/${projectId}`),
+
+
+  getExecutionLogs: (executionId: string): Promise<AxiosResponse<string[]>> =>
+    api.get(`/execution-service/api/executions/${executionId}/logs`),
+
+  getExecutionStatus: (executionId: string): Promise<AxiosResponse<ProjectExecutionResponse>> =>
+    api.get(`/execution-service/api/executions/${executionId}/status`),
+
+  getExecutionById: (executionId: string): Promise<AxiosResponse<ProjectExecutionResponse>> =>
+    api.get(`/execution-service/api/executions/${executionId}`),
+  
+  
+  getTestExecutionsByExecutionId: (executionId: string): Promise<AxiosResponse<TestExecution[]>> =>
+    api.get(`/execution-service/api/executions/${executionId}/test-executions`),
+};
 // ==========================================
 // TYPES ⭐
 // ==========================================

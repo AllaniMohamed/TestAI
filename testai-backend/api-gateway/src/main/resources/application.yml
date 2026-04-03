@@ -74,7 +74,7 @@ spring:
         # TEST-SERVICE ROUTES
         # ==========================================
         - id: test-service
-          uri: lb://TEST-SERVICE        # uses service discovery (Eureka)
+          uri: lb://TEST-SERVICE
           predicates:
             - Path=/api/tests/**
           filters:
@@ -84,11 +84,22 @@ spring:
         # AI-SERVICE ROUTES (Flask, no Eureka registration)
         # ==========================================
         - id: ai-service
-          uri: http://ai-service:8084   # static URI – adjust if you use a sidecar
+          uri: http://ai-service:8084
           predicates:
             - Path=/api/ai/**
           filters:
             - RewritePath=/api/ai/(?<segment>.*), /$\{segment}
+
+        # ==========================================
+        # EXECUTION-SERVICE ROUTES (Spring Boot, Eureka)
+        # ==========================================
+        - id: execution-service
+          uri: lb://EXECUTION-SERVICE
+          predicates:
+            - Path=/api/executions/**
+          filters:
+            - RewritePath=/api/executions/(?<segment>.*), /api/executions/$\{segment}
+
 # Eureka Configuration
 eureka:
   client:

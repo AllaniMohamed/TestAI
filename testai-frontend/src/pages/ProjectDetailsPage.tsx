@@ -5,7 +5,15 @@ import Sidebar from "../components/layout/Sidebar";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
-import { projectService, type Test, type Endpoint, testService } from "../services/api";
+import {
+  projectService,
+  type Test,
+  type Endpoint,
+  testService,
+  executionService,
+  type ProjectExecutionResponse,
+} from "../services/api";
+import api from "../services/api";
 import ShareProjectModal from "../components/modals/ShareProjectModal";
 import {
   PencilSquareIcon,
@@ -27,7 +35,8 @@ import {
   CalendarIcon,
   ArrowRightIcon,
   ClipboardDocumentCheckIcon,
-  NewspaperIcon
+  NewspaperIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import {
   PieChart,
@@ -56,8 +65,21 @@ interface Project {
 
 interface LocationState {
   managerEmail?: string;
-  accessLevel?: 'READ_ONLY' | 'READ_WRITE';
+  accessLevel?: "READ_ONLY" | "READ_WRITE";
   sharedAt?: string;
+}
+
+interface TestExecution {
+  id: string;
+  endpointId: string;
+  endpointPath: string;
+  httpMethod: string;
+  testType: string;
+  status: "SUCCESS" | "FAILED" | "ERROR";
+  expectedStatusCode: number;
+  responseStatusCode: number;
+  executedAt: string;
+  errorMessage?: string;
 }
 
 const PIE_DATA = [
@@ -89,15 +111,25 @@ const ServiceDetailsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [endpointsCount, setEndpointsCount] = useState(0);
   const [rescanning, setRescanning] = useState(false);
-  const [expandedEndpointId, setExpandedEndpointId] = useState<string | null>(null);
+  const [expandedEndpointId, setExpandedEndpointId] = useState<string | null>(
+    null,
+  );
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
-  const [accessLevel, setAccessLevel] = useState<'READ_ONLY' | 'READ_WRITE' | null>(null);
+  const [accessLevel, setAccessLevel] = useState<
+    "READ_ONLY" | "READ_WRITE" | null
+  >(null);
   const [managerEmail, setManagerEmail] = useState<string | null>(null);
   const [sharedAt, setSharedAt] = useState<string | null>(null);
   const [loadingTests, setLoadingTests] = useState<boolean>(false);
+
+  // Historique
+  const [executions, setExecutions] = useState<ProjectExecutionResponse[]>([]);
+  const [selectedExecution, setSelectedExecution] = useState<ProjectExecutionResponse | null>(null);
+  const [testExecutions, setTestExecutions] = useState<TestExecution[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -123,25 +155,30 @@ const ServiceDetailsPage: React.FC = () => {
     if (id) loadProjectData();
   }, [id]);
 
+  useEffect(() => {
+    if (activeTab === "history" && id) {
+      loadExecutionHistory();
+    }
+  }, [activeTab, id]);
+
   function tag_tests(tests: Test[]) {
-    return tests.reduce((grouped, test) => {
-      const path = test.endpointPath?.split(' ')[1]?.trim();
-      const resourceTag = path?.split('/')[1]?.split('?')[0] || "Général"; // Gets first segment: 'pet', 'store', etc.
-
-      if (!grouped[resourceTag]) {
-        grouped[resourceTag] = [];
-      }
-      grouped[resourceTag].push(test);
-
-      return grouped;
-    }, {} as Record<string, Test[]>);
+    return tests.reduce(
+      (grouped, test) => {
+        const path = test.endpointPath?.split(" ")[1]?.trim();
+        const resourceTag = path?.split("/")[1]?.split("?")[0] || "Général";
+        if (!grouped[resourceTag]) grouped[resourceTag] = [];
+        grouped[resourceTag].push(test);
+        return grouped;
+      },
+      {} as Record<string, Test[]>,
+    );
   }
 
   const refreshTests = async () => {
     if (!id) return;
     const testsResponse = await testService.getTestsByProjectId(id!);
     setTests(testsResponse.data as Test[]);
-  }
+  };
 
   const loadProjectData = async () => {
     try {
@@ -155,10 +192,14 @@ const ServiceDetailsPage: React.FC = () => {
       const endpointsResponse = await projectService.getProjectEndpoints(id!);
       setEndpoints(endpointsResponse.data as Endpoint[]);
       const countResponse = await projectService.countProjectEndpoints(id!);
-      setEndpointsCount(countResponse.data.count || endpointsResponse.data.length);
+      setEndpointsCount(
+        countResponse.data.count || endpointsResponse.data.length,
+      );
       await refreshTests();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erreur lors du chargement des données");
+      setError(
+        err.response?.data?.message || "Erreur lors du chargement des données",
+      );
     } finally {
       setLoading(false);
     }
@@ -178,7 +219,11 @@ const ServiceDetailsPage: React.FC = () => {
   };
 
   const handleDeleteProject = async () => {
-    if (!id || !window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) return;
+    if (
+      !id ||
+      !window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")
+    )
+      return;
     try {
       await projectService.deleteProject(id);
       navigate("/dashboard");
@@ -188,32 +233,38 @@ const ServiceDetailsPage: React.FC = () => {
   };
 
   const handleGenerateTests = async (endpointsToGenerate: Endpoint[]) => {
-    if (!confirm(`Générer des tests pour ${endpointsToGenerate.length} endpoints ?`)){setLoadingTests(false); return;};
+    if (
+      !confirm(
+        `Générer des tests pour ${endpointsToGenerate.length} endpoints ?`,
+      )
+    ) {
+      setLoadingTests(false);
+      return;
+    }
     try {
       setLoadingTests(true);
       await testService.generate(endpointsToGenerate).then(async () => {
         const testsResponse = await testService.getTestsByProjectId(id!);
         if (tests.length === 0) {
           setTests(testsResponse.data as Test[]);
-        }
-        else {
+        } else {
           let newTests = testsResponse.data as Test[];
-          // Replace old tests with new ones if they have the same ID, keep old ones that aren't updated
-          setTests(prev => {
-            const updated = prev.map(t =>
-              newTests.find(nt => nt.id === t.id) || t
+          setTests((prev) => {
+            const updated = prev.map(
+              (t) => newTests.find((nt) => nt.id === t.id) || t,
             );
-            // Add any completely new tests
-            const newIds = new Set(updated.map(t => t.id));
-            const addedTests = newTests.filter(nt => !newIds.has(nt.id));
+            const newIds = new Set(updated.map((t) => t.id));
+            const addedTests = newTests.filter((nt) => !newIds.has(nt.id));
             return [...updated, ...addedTests];
           });
         }
-        alert("Tests générés avec succès ! You can now view them in the 'Tests' tab.");
+        alert("Tests générés avec succès !");
         setLoadingTests(false);
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erreur lors de la génération des tests");
+      setError(
+        err.response?.data?.message || "Erreur lors de la génération des tests",
+      );
       setLoadingTests(false);
     }
   };
@@ -222,31 +273,66 @@ const ServiceDetailsPage: React.FC = () => {
     if (!confirm(`Régénérer ${testIds.length} tests ?`)) return;
     try {
       setLoadingTests(true);
-      // Get the test objects to extract their endpoint paths
-      const testsToRegenerate = tests.filter(t => testIds.includes(t.id));
-      const endpointIds = new Set(testsToRegenerate.map(t => t.endpointId));
-      const endpointsRegen = endpoints.filter(ep => endpointIds.has(ep.id));
+      const testsToRegenerate = tests.filter((t) => testIds.includes(t.id));
+      const endpointIds = new Set(testsToRegenerate.map((t) => t.endpointId));
+      const endpointsRegen = endpoints.filter((ep) => endpointIds.has(ep.id));
       handleGenerateTests(endpointsRegen);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erreur lors de la régénération des tests");
+      setError(
+        err.response?.data?.message ||
+          "Erreur lors de la régénération des tests",
+      );
       setLoadingTests(false);
     }
   };
 
+  const loadExecutionHistory = async () => {
+    if (!id) return;
+    setLoadingHistory(true);
+    try {
+      const res = await executionService.getProjectExecutions(id);
+      setExecutions(res.data);
+      if (res.data.length > 0) {
+        setSelectedExecution(res.data[0]);
+        await loadTestExecutions(res.data[0].executionId);
+      }
+    } catch (err) {
+      console.error("Erreur chargement historique", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const loadTestExecutions = async (executionId: string) => {
+    try {
+      const res = await api.get(
+        `execution-service/api/executions/${executionId}/test-executions`,
+      );
+      setTestExecutions(res.data);
+    } catch (err) {
+      console.error("Erreur chargement détails", err);
+      setTestExecutions([]);
+    }
+  };
 
   const canEdit = isOwner;
   const canDelete = isOwner;
   const canShare = isOwner;
   const canRescan = isOwner;
-  const canExecuteTests = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
-  const canGenerateTests = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
+  const canExecuteTests =
+    isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
+  const canGenerateTests =
+    isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
 
-  const groupedEndpoints = endpoints.reduce((groups, ep) => {
-    const firstTag = ep.tags?.split(',')[0]?.trim() || "Général";
-    if (!groups[firstTag]) groups[firstTag] = [];
-    groups[firstTag].push(ep);
-    return groups;
-  }, {} as Record<string, Endpoint[]>);
+  const groupedEndpoints = endpoints.reduce(
+    (groups, ep) => {
+      const firstTag = ep.tags?.split(",")[0]?.trim() || "Général";
+      if (!groups[firstTag]) groups[firstTag] = [];
+      groups[firstTag].push(ep);
+      return groups;
+    },
+    {} as Record<string, Endpoint[]>,
+  );
 
   if (loading) {
     return (
@@ -270,8 +356,14 @@ const ServiceDetailsPage: React.FC = () => {
           <Sidebar />
           <main className="flex-1 ml-64 p-8">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <p className="text-red-600 font-medium">{error || "Projet non trouvé"}</p>
-              <Button onClick={() => navigate("/dashboard")} className="mt-4" variant="outline">
+              <p className="text-red-600 font-medium">
+                {error || "Projet non trouvé"}
+              </p>
+              <Button
+                onClick={() => navigate("/dashboard")}
+                className="mt-4"
+                variant="outline"
+              >
                 Retour au Dashboard
               </Button>
             </div>
@@ -292,47 +384,91 @@ const ServiceDetailsPage: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-3 text-sm text-on-surface-variant font-medium">
                 <span>Projects</span>
-                <span className="material-symbols-outlined text-xs">chevron_right</span>
+                <span className="material-symbols-outlined text-xs">
+                  chevron_right
+                </span>
                 <span className="text-primary font-bold">{project.name}</span>
               </div>
               <div className="flex items-center space-x-4">
-                <h2 className="text-4xl font-headline font-bold tracking-tight text-on-surface">{project.name}</h2>
+                <h2 className="text-4xl font-headline font-bold tracking-tight text-on-surface">
+                  {project.name}
+                </h2>
                 <Badge variant="info">{project.docMode}</Badge>
                 <Badge variant="default">{project.authType}</Badge>
               </div>
-              <p className="text-on-surface-variant max-w-2xl font-body">{project.description}</p>
+              <p className="text-on-surface-variant max-w-2xl font-body">
+                {project.description}
+              </p>
+              <p className="text-on-surface-variant max-w-2xl font-body">
+                {project.projectUrl}
+              </p>
               {userRole === "DEVELOPER" && managerEmail && (
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 space-y-1">
-                  <p><span className="font-semibold">Partagé par :</span> {managerEmail}</p>
-                  <p><span className="font-semibold">Niveau d'accès :</span> {accessLevel === "READ_WRITE" ? "Lecture/Écriture" : "Lecture seule"}</p>
-                  {sharedAt && <p><span className="font-semibold">Partagé le :</span> {new Date(sharedAt).toLocaleDateString("fr-FR")}</p>}
+                  <p>
+                    <span className="font-semibold">Partagé par :</span>{" "}
+                    {managerEmail}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Niveau d'accès :</span>{" "}
+                    {accessLevel === "READ_WRITE"
+                      ? "Lecture/Écriture"
+                      : "Lecture seule"}
+                  </p>
+                  {sharedAt && (
+                    <p>
+                      <span className="font-semibold">Partagé le :</span>{" "}
+                      {new Date(sharedAt).toLocaleDateString("fr-FR")}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
             <div className="flex gap-2">
               {canShare && (
                 <>
-                  <Button variant="outline" size="sm" icon={<UsersIcon className="w-4 h-4" />} onClick={() => navigate(`/service/${id}/shares`)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<UsersIcon className="w-4 h-4" />}
+                    onClick={() => navigate(`/service/${id}/shares`)}
+                  >
                     Gérer les partages
                   </Button>
-                  <Button variant="outline" size="sm" icon={<ShareIcon className="w-4 h-4" />} onClick={() => setShowShareModal(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<ShareIcon className="w-4 h-4" />}
+                    onClick={() => setShowShareModal(true)}
+                  >
                     Partager
                   </Button>
                 </>
               )}
               {canEdit && (
-                <Button variant="outline" size="sm" icon={<PencilSquareIcon className="w-4 h-4" />}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<PencilSquareIcon className="w-4 h-4" />}
+                >
                   Éditer
                 </Button>
               )}
               {canDelete && (
-                <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50" icon={<TrashIcon className="w-4 h-4" />} onClick={handleDeleteProject}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-500 border-red-200 hover:bg-red-50"
+                  icon={<TrashIcon className="w-4 h-4" />}
+                  onClick={handleDeleteProject}
+                >
                   Supprimer
                 </Button>
               )}
               {canExecuteTests && (
                 <Link to={`/service/${id}/execute`}>
-                  <Button icon={<PlayIcon className="w-5 h-5" />}>Exécuter Tests</Button>
+                  <Button icon={<PlayIcon className="w-5 h-5" />}>
+                    Exécuter Tests
+                  </Button>
                 </Link>
               )}
             </div>
@@ -341,19 +477,48 @@ const ServiceDetailsPage: React.FC = () => {
           {/* Tabs */}
           <div className="border-b border-outline-variant/30 mb-8">
             <nav className="flex space-x-8">
-              <TabItem active={activeTab === "endpoints"} label="Endpoints" onClick={() => setActiveTab("endpoints")} icon={<ListBulletIcon className="w-5 h-5" />} />
-              <TabItem active={activeTab === "tests"} label="Tests" onClick={() => setActiveTab("tests")} icon={<BeakerIcon className="w-5 h-5" />} />
-              <TabItem active={activeTab === "reports"} label="Rapports" onClick={() => setActiveTab("reports")} icon={<PresentationChartLineIcon className="w-5 h-5" />} />
-              <TabItem active={activeTab === "settings"} label="Paramètres" onClick={() => setActiveTab("settings")} icon={<CogIcon className="w-5 h-5" />} />
+              <TabItem
+                active={activeTab === "endpoints"}
+                label="Endpoints"
+                onClick={() => setActiveTab("endpoints")}
+                icon={<ListBulletIcon className="w-5 h-5" />}
+              />
+              <TabItem
+                active={activeTab === "tests"}
+                label="Tests"
+                onClick={() => setActiveTab("tests")}
+                icon={<BeakerIcon className="w-5 h-5" />}
+              />
+              <TabItem
+                active={activeTab === "reports"}
+                label="Rapports"
+                onClick={() => setActiveTab("reports")}
+                icon={<PresentationChartLineIcon className="w-5 h-5" />}
+              />
+              <TabItem
+                active={activeTab === "settings"}
+                label="Paramètres"
+                onClick={() => setActiveTab("settings")}
+                icon={<CogIcon className="w-5 h-5" />}
+              />
+              <TabItem
+                active={activeTab === "history"}
+                label="Historique"
+                onClick={() => setActiveTab("history")}
+                icon={<ClockIcon className="w-5 h-5" />}
+              />
             </nav>
           </div>
 
+          {/* Onglet Endpoints (complet) */}
           {activeTab === "endpoints" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-9 space-y-8">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold">Endpoints Détectés ({endpointsCount})</h3>
+                    <h3 className="text-lg font-bold">
+                      Endpoints Détectés ({endpointsCount})
+                    </h3>
                     <p className="text-sm text-on-surface-variant mt-1">
                       {endpoints.length === 0
                         ? "Aucun endpoint détecté"
@@ -361,12 +526,25 @@ const ServiceDetailsPage: React.FC = () => {
                     </p>
                   </div>
                   {endpoints.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => handleGenerateTests(endpoints)} icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateTests(endpoints)}
+                      icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}
+                    >
                       Générer tous les tests
                     </Button>
                   )}
                   {canRescan && (
-                    <Button variant="outline" size="sm" onClick={handleRescanEndpoints} loading={rescanning} icon={!rescanning && <ArrowPathIcon className="w-4 h-4" />}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRescanEndpoints}
+                      loading={rescanning}
+                      icon={
+                        !rescanning && <ArrowPathIcon className="w-4 h-4" />
+                      }
+                    >
                       Rescanner
                     </Button>
                   )}
@@ -375,7 +553,9 @@ const ServiceDetailsPage: React.FC = () => {
                 {endpoints.length === 0 ? (
                   <div className="bg-surface-container-low p-12 rounded-2xl border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center">
                     <ListBulletIcon className="w-16 h-16 text-outline mb-4" />
-                    <h3 className="text-xl font-bold text-on-surface mb-2">Aucun endpoint trouvé</h3>
+                    <h3 className="text-xl font-bold text-on-surface mb-2">
+                      Aucun endpoint trouvé
+                    </h3>
                     <p className="text-on-surface-variant max-w-sm">
                       {project.docMode === "SWAGGER"
                         ? "Le scan Swagger n'a détecté aucun endpoint."
@@ -387,9 +567,17 @@ const ServiceDetailsPage: React.FC = () => {
                     <div key={tag} className="space-y-4 relative">
                       <div className="flex items-center space-x-2 text-on-surface-variant">
                         <FolderOpenIcon className="w-5 h-5" />
-                        <h3 className="font-headline font-bold text-lg">{tag}</h3>
-                        <span className="text-xs font-mono text-on-surface-variant">({eps.length})</span>
-                        <Button className="absolute right-0" size="sm" onClick={() => handleGenerateTests(eps)}>
+                        <h3 className="font-headline font-bold text-lg">
+                          {tag}
+                        </h3>
+                        <span className="text-xs font-mono text-on-surface-variant">
+                          ({eps.length})
+                        </span>
+                        <Button
+                          className="absolute right-0"
+                          size="sm"
+                          onClick={() => handleGenerateTests(eps)}
+                        >
                           Générer les tests de ce groupe
                         </Button>
                       </div>
@@ -399,7 +587,11 @@ const ServiceDetailsPage: React.FC = () => {
                             key={ep.id}
                             endpoint={ep}
                             isExpanded={expandedEndpointId === ep.id}
-                            onToggle={() => setExpandedEndpointId(prev => prev === ep.id ? null : ep.id)}
+                            onToggle={() =>
+                              setExpandedEndpointId((prev) =>
+                                prev === ep.id ? null : ep.id,
+                              )
+                            }
                             canGenerateTests={canGenerateTests}
                             handleGenerateTests={handleGenerateTests}
                           />
@@ -411,7 +603,6 @@ const ServiceDetailsPage: React.FC = () => {
               </div>
 
               <div className="lg:col-span-3 space-y-6">
-                {/* Access Level Card (for developers) */}
                 {userRole === "DEVELOPER" && (
                   <div className="bg-surface-container-highest/30 rounded-xl p-6 space-y-4 border border-outline-variant/20">
                     <div className="flex items-center justify-between">
@@ -419,8 +610,14 @@ const ServiceDetailsPage: React.FC = () => {
                       <ShieldCheckIcon className="w-5 h-5 text-primary" />
                     </div>
                     <div className="bg-white p-3 rounded-lg shadow-sm border border-outline-variant/10">
-                      <div className="text-[10px] uppercase font-bold text-primary mb-1">Developer Role</div>
-                      <div className="text-sm font-semibold">{accessLevel === "READ_WRITE" ? "READ_WRITE" : "READ_ONLY"}</div>
+                      <div className="text-[10px] uppercase font-bold text-primary mb-1">
+                        Developer Role
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {accessLevel === "READ_WRITE"
+                          ? "READ_WRITE"
+                          : "READ_ONLY"}
+                      </div>
                     </div>
                     <ul className="space-y-2 text-xs text-on-surface-variant">
                       <li className="flex items-center space-x-2">
@@ -440,25 +637,49 @@ const ServiceDetailsPage: React.FC = () => {
                     </ul>
                   </div>
                 )}
-
-                {/* Health Card */}
                 <div className="bg-surface-container-low rounded-xl p-6 space-y-4">
-                  <h3 className="font-headline font-bold text-lg">Overall Health</h3>
+                  <h3 className="font-headline font-bold text-lg">
+                    Overall Health
+                  </h3>
                   <div className="flex items-center justify-center py-6">
                     <div className="relative w-32 h-32">
                       <svg className="w-full h-full transform -rotate-90">
-                        <circle className="text-surface-container-high" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeWidth="8"></circle>
-                        <circle className="text-primary" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeDasharray="364" strokeDashoffset="36" strokeWidth="8"></circle>
+                        <circle
+                          className="text-surface-container-high"
+                          cx="64"
+                          cy="64"
+                          fill="transparent"
+                          r="58"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                        ></circle>
+                        <circle
+                          className="text-primary"
+                          cx="64"
+                          cy="64"
+                          fill="transparent"
+                          r="58"
+                          stroke="currentColor"
+                          strokeDasharray="364"
+                          strokeDashoffset="36"
+                          strokeWidth="8"
+                        ></circle>
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-2xl font-headline font-bold">92%</span>
-                        <span className="text-[10px] uppercase font-bold text-on-surface-variant">Passing</span>
+                        <span className="text-2xl font-headline font-bold">
+                          92%
+                        </span>
+                        <span className="text-[10px] uppercase font-bold text-on-surface-variant">
+                          Passing
+                        </span>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
-                      <span className="text-on-surface-variant">Active Tests</span>
+                      <span className="text-on-surface-variant">
+                        Active Tests
+                      </span>
                       <span className="font-bold">48/52</span>
                     </div>
                     <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
@@ -466,10 +687,10 @@ const ServiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Upcoming Audits */}
                 <div className="bg-surface-container-highest/40 p-6 rounded-3xl border border-primary/5">
-                  <h4 className="font-bold text-on-surface text-sm mb-4">Upcoming Audits</h4>
+                  <h4 className="font-bold text-on-surface text-sm mb-4">
+                    Upcoming Audits
+                  </h4>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm">
                       <div className="flex items-center space-x-3">
@@ -478,7 +699,9 @@ const ServiceDetailsPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-xs font-bold">Security Pass</p>
-                          <p className="text-[10px] text-on-surface-variant">In 2 days</p>
+                          <p className="text-[10px] text-on-surface-variant">
+                            In 2 days
+                          </p>
                         </div>
                       </div>
                       <ArrowRightIcon className="w-4 h-4 text-slate-300" />
@@ -490,7 +713,9 @@ const ServiceDetailsPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-xs font-bold">Compliance API</p>
-                          <p className="text-[10px] text-on-surface-variant">In 5 days</p>
+                          <p className="text-[10px] text-on-surface-variant">
+                            In 5 days
+                          </p>
                         </div>
                       </div>
                       <ArrowRightIcon className="w-4 h-4 text-slate-300" />
@@ -501,18 +726,28 @@ const ServiceDetailsPage: React.FC = () => {
             </div>
           )}
 
+          {/* Onglet Tests */}
           {activeTab === "tests" && (
             <>
               {endpoints.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => handleGenerateTests(endpoints)} icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateTests(endpoints)}
+                  icon={<ClipboardDocumentCheckIcon className="w-4 h-4" />}
+                >
                   Regénérer tous les tests
                 </Button>
               )}
               {tests.length === 0 ? (
                 <div className="text-center p-12 text-gray-500">
                   <BeakerIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-lg font-medium">Il n'y a pas de tests disponibles</p>
-                  <p className="text-sm mt-2">Générez des tests pour voir les résultats ici</p>
+                  <p className="text-lg font-medium">
+                    Il n'y a pas de tests disponibles
+                  </p>
+                  <p className="text-sm mt-2">
+                    Générez des tests pour voir les résultats ici
+                  </p>
                 </div>
               ) : (
                 Object.entries(tag_tests(tests)).map(([tag, tests]) => (
@@ -520,8 +755,14 @@ const ServiceDetailsPage: React.FC = () => {
                     <div className="flex items-center space-x-2 text-on-surface-variant relative">
                       <NewspaperIcon className="w-5 h-5" />
                       <h3 className="font-headline font-bold text-lg">{tag}</h3>
-                      <span className="text-xs font-mono text-on-surface-variant">({tests.length})</span>
-                      <Button className="absolute right-0" size="sm" onClick={() => regenerateTests(tests.map(t => t.id))}>
+                      <span className="text-xs font-mono text-on-surface-variant">
+                        ({tests.length})
+                      </span>
+                      <Button
+                        className="absolute right-0"
+                        size="sm"
+                        onClick={() => regenerateTests(tests.map((t) => t.id))}
+                      >
                         Regénérer les tests de ce groupe
                       </Button>
                     </div>
@@ -531,7 +772,11 @@ const ServiceDetailsPage: React.FC = () => {
                           key={test.id}
                           test={test}
                           isExpanded={expandedTestId === test.id}
-                          onToggle={() => setExpandedTestId(prev => prev === test.id ? null : test.id)}
+                          onToggle={() =>
+                            setExpandedTestId((prev) =>
+                              prev === test.id ? null : test.id,
+                            )
+                          }
                           regenerateTests={regenerateTests}
                           canRegenerateTests={canGenerateTests}
                           refreshTests={refreshTests}
@@ -544,13 +789,20 @@ const ServiceDetailsPage: React.FC = () => {
             </>
           )}
 
+          {/* Onglet Rapports */}
           {activeTab === "reports" && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card title="Répartition des résultats">
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={PIE_DATA} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      <Pie
+                        data={PIE_DATA}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
                         {PIE_DATA.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
@@ -561,8 +813,13 @@ const ServiceDetailsPage: React.FC = () => {
                   <div className="flex justify-center gap-6 mt-4">
                     {PIE_DATA.map((d) => (
                       <div key={d.name} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
-                        <span className="text-sm font-medium text-gray-600">{d.name} ({d.value}%)</span>
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: d.color }}
+                        ></div>
+                        <span className="text-sm font-medium text-gray-600">
+                          {d.name} ({d.value}%)
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -571,25 +828,36 @@ const ServiceDetailsPage: React.FC = () => {
               <Card
                 title="Historique de succès"
                 footer={
-                  <Button variant="outline" className="w-full" icon={<DocumentArrowDownIcon className="w-5 h-5" />}>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    icon={<DocumentArrowDownIcon className="w-5 h-5" />}
+                  >
                     Exporter Rapport PDF
                   </Button>
                 }
               >
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[
-                      { name: "Lun", success: 90 },
-                      { name: "Mar", success: 92 },
-                      { name: "Mer", success: 85 },
-                      { name: "Jeu", success: 95 },
-                      { name: "Ven", success: 98 },
-                    ]}>
+                    <LineChart
+                      data={[
+                        { name: "Lun", success: 90 },
+                        { name: "Mar", success: 92 },
+                        { name: "Mer", success: 85 },
+                        { name: "Jeu", success: 95 },
+                        { name: "Ven", success: 98 },
+                      ]}
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip />
-                      <Line type="monotone" dataKey="success" stroke="#2E75B6" strokeWidth={3} />
+                      <Line
+                        type="monotone"
+                        dataKey="success"
+                        stroke="#2E75B6"
+                        strokeWidth={3}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -597,50 +865,225 @@ const ServiceDetailsPage: React.FC = () => {
             </div>
           )}
 
+          {/* Onglet Paramètres */}
           {activeTab === "settings" && (
             <div className="max-w-2xl mx-auto space-y-8">
               <Card title="Informations du Projet">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                    <input type="text" className="w-full p-2 border rounded" value={project.name} disabled />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nom
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      value={project.name}
+                      disabled
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea className="w-full p-2 border rounded" rows={3} value={project.description} disabled />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      className="w-full p-2 border rounded"
+                      rows={3}
+                      value={project.description}
+                      disabled
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-                    <input type="text" className="w-full p-2 border rounded" value={project.projectUrl} disabled />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      URL
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      value={project.projectUrl}
+                      disabled
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Mode Documentation</label>
-                      <input type="text" className="w-full p-2 border rounded" value={project.docMode} disabled />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mode Documentation
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full p-2 border rounded"
+                        value={project.docMode}
+                        disabled
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type d'Auth</label>
-                      <input type="text" className="w-full p-2 border rounded" value={project.authType} disabled />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Type d'Auth
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full p-2 border rounded"
+                        value={project.authType}
+                        disabled
+                      />
                     </div>
                   </div>
                 </div>
               </Card>
-
               <Card title="Configuration Jenkins">
                 <div className="space-y-4">
                   <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" className="w-5 h-5 rounded border-gray-300" defaultChecked />
-                    <span className="text-gray-700">Activer le déclenchement automatique</span>
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 rounded border-gray-300"
+                      defaultChecked
+                    />
+                    <span className="text-gray-700">
+                      Activer le déclenchement automatique
+                    </span>
                   </label>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fréquence (Cron expression)</label>
-                    <input type="text" className="w-full p-2 border rounded" defaultValue="0 0 * * *" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fréquence (Cron expression)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      defaultValue="0 0 * * *"
+                    />
                   </div>
                 </div>
               </Card>
             </div>
           )}
+ {activeTab === "history" && (
+            <div className="space-y-8">
+              <h3 className="text-lg font-bold">Historique des exécutions</h3>
+              {loadingHistory ? (
+                <div className="text-center p-8">Chargement...</div>
+              ) : executions.length === 0 ? (
+                <div className="text-center p-12 text-gray-500">
+                  <ClockIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                  <p>Aucune exécution pour ce projet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Liste des exécutions */}
+                  <div className="lg:col-span-1 space-y-4">
+                    {executions.map((exec) => (
+                      <div
+                        key={exec.executionId}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                          selectedExecution?.executionId === exec.executionId
+                            ? "border-primary bg-primary/5"
+                            : "border-outline-variant/20 hover:bg-surface-container-low"
+                        }`}
+                        onClick={() => {
+                          setSelectedExecution(exec);
+                          loadTestExecutions(exec.executionId);
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-sm font-bold">{new Date(exec.executedAt).toLocaleDateString()}</p>
+                            <p className="text-xs text-on-surface-variant">{new Date(exec.executedAt).toLocaleTimeString()}</p>
+                          </div>
+                          <Badge variant={exec.status === "COMPLETED" ? "success" : "danger"}>
+                            {exec.status}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                          <div>
+                            <p className="font-bold">{exec.testsPassed}</p>
+                            <p className="text-on-surface-variant">Réussis</p>
+                          </div>
+                          <div>
+                            <p className="font-bold text-red-600">{exec.testsFailed}</p>
+                            <p className="text-on-surface-variant">Échoués</p>
+                          </div>
+                          <div>
+                            <p className="font-bold">{exec.successRate?.toFixed(0) ?? 0}%</p>
+                            <p className="text-on-surface-variant">Taux</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
+                  {/* Détails de l’exécution sélectionnée */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {selectedExecution && (
+                      <>
+                        <Card title="Statistiques">
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: "Réussis", value: selectedExecution.testsPassed, color: "#28a745" },
+                                    { name: "Échoués", value: selectedExecution.testsFailed, color: "#dc3545" },
+                                    { name: "Erreurs", value: selectedExecution.testsError, color: "#ffc107" },
+                                  ]}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                >
+                                  <Cell fill="#28a745" />
+                                  <Cell fill="#dc3545" />
+                                  <Cell fill="#ffc107" />
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-center gap-6 mt-4">
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span>Réussis ({selectedExecution.testsPassed})</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><span>Échoués ({selectedExecution.testsFailed})</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-500"></div><span>Erreurs ({selectedExecution.testsError})</span></div>
+                          </div>
+                        </Card>
+
+                        <Card title="Détail des tests">
+                          {testExecutions.length === 0 ? (
+                            <p className="text-gray-500">Aucun test exécuté</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead className="bg-surface-container-high text-on-surface-variant text-xs uppercase">
+                                  <tr>
+                                    <th className="px-4 py-2 text-left">Endpoint</th>
+                                    <th className="px-4 py-2 text-left">Type</th>
+                                    <th className="px-4 py-2 text-left">Statut</th>
+                                    <th className="px-4 py-2 text-left">Code attendu</th>
+                                    <th className="px-4 py-2 text-left">Code reçu</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {testExecutions.map((te) => (
+                                    <tr key={te.id} className="border-t border-outline-variant/10">
+                                      <td className="px-4 py-2 font-mono text-xs">{te.endpointPath}</td>
+                                      <td className="px-4 py-2">{te.testType}</td>
+                                      <td className="px-4 py-2"><Badge variant={te.status === "SUCCESS" ? "success" : te.status === "FAILED" ? "danger" : "warning"}>{te.status}</Badge></td>
+                                      <td className="px-4 py-2">{te.expectedStatusCode}</td>
+                                      <td className="px-4 py-2">{te.responseStatusCode}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </Card>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Modal de partage */}
           {showShareModal && project && (
             <ShareProjectModal
               projectId={id!}
@@ -657,7 +1100,9 @@ const ServiceDetailsPage: React.FC = () => {
             <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4">
                 <BeakerIcon className="w-8 h-8 text-primary animate-spin" />
-                <span className="text-lg font-medium">Génération des tests en cours...</span>
+                <span className="text-lg font-medium">
+                  Génération des tests en cours...
+                </span>
               </div>
             </div>
           )}
@@ -667,33 +1112,42 @@ const ServiceDetailsPage: React.FC = () => {
   );
 };
 
-// Composant d'accordéon pour un endpoint
+// ==========================================
+// Composants EndpointAccordion, TestAccordion, TabItem
+// ==========================================
+
 const EndpointAccordion: React.FC<{
   endpoint: Endpoint;
   isExpanded: boolean;
   onToggle: () => void;
   handleGenerateTests: (endpoints: Endpoint[]) => void;
   canGenerateTests: boolean;
-}> = ({ endpoint, isExpanded, onToggle, handleGenerateTests, canGenerateTests }) => {
-  const methodColor = methodColors[endpoint.method] || "bg-surface-container-high text-on-surface-variant";
+}> = ({
+  endpoint,
+  isExpanded,
+  onToggle,
+  handleGenerateTests,
+  canGenerateTests,
+}) => {
+  const methodColor =
+    methodColors[endpoint.method] ||
+    "bg-surface-container-high text-on-surface-variant";
 
-  // Parser les paramètres (pour le tableau)
   let parameters: any[] = [];
   try {
     if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
-  } catch (e) {
-    console.warn("Erreur parsing parameters", e);
-  }
+  } catch (e) {}
 
-  // Parser requestBody et responseBody pour le JSON
   let requestBodyParsed = null;
   let responseBodyParsed = null;
   try {
-    if (endpoint.requestBody) requestBodyParsed = JSON.parse(endpoint.requestBody);
-  } catch (e) { }
+    if (endpoint.requestBody)
+      requestBodyParsed = JSON.parse(endpoint.requestBody);
+  } catch (e) {}
   try {
-    if (endpoint.responseBody) responseBodyParsed = JSON.parse(endpoint.responseBody);
-  } catch (e) { }
+    if (endpoint.responseBody)
+      responseBodyParsed = JSON.parse(endpoint.responseBody);
+  } catch (e) {}
 
   return (
     <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
@@ -702,18 +1156,26 @@ const EndpointAccordion: React.FC<{
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors group"
       >
         <div className="flex items-center space-x-6 flex-wrap gap-2">
-          <span className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}>
+          <span
+            className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}
+          >
             {endpoint.method}
           </span>
           <div className="text-left">
-            <div className="font-mono text-sm text-on-surface">{endpoint.path}</div>
-            <div className="text-[11px] text-on-surface-variant">{endpoint.description || "Aucune description"}</div>
+            <div className="font-mono text-sm text-on-surface">
+              {endpoint.path}
+            </div>
+            <div className="text-[11px] text-on-surface-variant">
+              {endpoint.description || "Aucune description"}
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 aura-pulse"></div>
-            <span className="text-xs font-medium text-on-surface-variant">Active</span>
+            <span className="text-xs font-medium text-on-surface-variant">
+              Active
+            </span>
           </div>
           <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
             {isExpanded ? "unfold_less" : "unfold_more"}
@@ -723,12 +1185,10 @@ const EndpointAccordion: React.FC<{
 
       {isExpanded && (
         <div className="px-6 py-8 border-t border-outline-variant/30 space-y-8">
-          {/* Tableau des paramètres */}
           {parameters.length > 0 && (
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                <CodeBracketIcon className="w-4 h-4" />
-                Paramètres
+                <CodeBracketIcon className="w-4 h-4" /> Paramètres
               </h4>
               <div className="overflow-x-auto bg-surface-container-lowest rounded-lg border border-outline-variant/30">
                 <table className="w-full text-sm">
@@ -746,7 +1206,8 @@ const EndpointAccordion: React.FC<{
                       const name = p.name || p.$ref || "?";
                       const in_ = p.in || (p.$ref ? "référence" : "-");
                       const required = p.required ? "Oui" : "Non";
-                      let type = p.type || (p.schema ? p.schema.type : "object");
+                      let type =
+                        p.type || (p.schema ? p.schema.type : "object");
                       if (p.schema && p.schema.type) type = p.schema.type;
                       const description = p.description || "-";
                       return (
@@ -764,37 +1225,31 @@ const EndpointAccordion: React.FC<{
               </div>
             </div>
           )}
-
-          {/* Request Body (JSON) */}
           {requestBodyParsed && (
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                <CodeBracketIcon className="w-4 h-4" />
-                Corps de la requête
+                <CodeBracketIcon className="w-4 h-4" /> Corps de la requête
               </h4>
               <div className="bg-inverse-surface p-4 rounded-xl font-mono text-xs text-on-primary-container overflow-x-auto">
                 <pre>{JSON.stringify(requestBodyParsed, null, 2)}</pre>
               </div>
             </div>
           )}
-
-          {/* Response Body (JSON) */}
           {responseBodyParsed && (
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                <CodeBracketIcon className="w-4 h-4" />
-                Corps de la réponse
+                <CodeBracketIcon className="w-4 h-4" /> Corps de la réponse
               </h4>
               <div className="bg-inverse-surface p-4 rounded-xl font-mono text-xs text-on-primary-container overflow-x-auto">
                 <pre>{JSON.stringify(responseBodyParsed, null, 2)}</pre>
               </div>
             </div>
           )}
-
-          {/* Status Codes & Auth */}
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Codes de statut</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                Codes de statut
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {endpoint.statusCodes?.split(",").map((code) => (
                   <Badge
@@ -815,7 +1270,9 @@ const EndpointAccordion: React.FC<{
               </div>
             </div>
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Authentification</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                Authentification
+              </h4>
               <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-outline-variant/10">
                 <span className="text-sm font-medium">Requiert auth</span>
                 <span className="text-xs font-mono px-2 py-0.5 bg-surface-container text-on-surface-variant rounded">
@@ -824,18 +1281,11 @@ const EndpointAccordion: React.FC<{
               </div>
             </div>
           </div>
-
-          {/* Bouton Générer tests */}
           <div className="pt-2">
             <button
-              onClick={() => {
-                handleGenerateTests([endpoint]);
-              }}
+              onClick={() => handleGenerateTests([endpoint])}
               disabled={!canGenerateTests}
-              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canGenerateTests
-                  ? "hover:bg-primary hover:text-white cursor-pointer"
-                  : "opacity-50 cursor-not-allowed"
-                }`}
+              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canGenerateTests ? "hover:bg-primary hover:text-white cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
             >
               Générer tests
             </button>
@@ -853,28 +1303,36 @@ const TestAccordion: React.FC<{
   regenerateTests: (testIds: string[]) => void;
   canRegenerateTests: boolean;
   refreshTests: () => void;
-}> = ({ test, isExpanded, onToggle, regenerateTests, canRegenerateTests, refreshTests }) => {
+}> = ({
+  test,
+  isExpanded,
+  onToggle,
+  regenerateTests,
+  canRegenerateTests,
+  refreshTests,
+}) => {
   const method = test.endpointPath.split(" ")[0];
-  const methodColor = methodColors[method] || "bg-surface-container-high text-on-surface-variant";
+  const methodColor =
+    methodColors[method] || "bg-surface-container-high text-on-surface-variant";
   const [editMode, setEditMode] = useState<boolean>(false);
   const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
 
-  // Parser test data for JSON displays
   let testDataParsed: Record<string, any> = {};
   const sections = [
-    { key: 'positive', label: 'Test Positif' },
-    { key: 'validation', label: 'Test de Validation' },
-    { key: 'boundary', label: 'Test de Limite' },
-    { key: 'wrongType', label: 'Test de Type Incorrect' },
-    { key: 'missingField', label: 'Test de Champ Manquant' },
-    { key: 'auth', label: 'Test de Sécurité' }
+    { key: "positive", label: "Test Positif" },
+    { key: "validation", label: "Test de Validation" },
+    { key: "boundary", label: "Test de Limite" },
+    { key: "wrongType", label: "Test de Type Incorrect" },
+    { key: "missingFields", label: "Test de Champ Manquant" },
+    { key: "auth", label: "Test de Sécurité" },
   ];
 
-  sections.forEach(section => {
+  sections.forEach((section) => {
     try {
       const value = (test as any)[section.key];
       if (value) {
-        testDataParsed[section.key] = typeof value === 'string' ? JSON.parse(value) : value;
+        testDataParsed[section.key] =
+          typeof value === "string" ? JSON.parse(value) : value;
       }
     } catch (e) {
       testDataParsed[section.key] = (test as any)[section.key];
@@ -882,23 +1340,29 @@ const TestAccordion: React.FC<{
   });
 
   return (
-    <div className="bg-surface-container-lowest border  border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm transition-all">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors group"
       >
         <div className="flex items-center space-x-6 flex-wrap gap-2">
-          <span className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}>
+          <span
+            className={`px-3 py-1 rounded-full ${methodColor} text-[10px] font-black w-16 text-center`}
+          >
             {method}
           </span>
           <div className="text-left">
-            <div className="font-mono text-sm text-on-surface">{test.endpointPath}</div>
+            <div className="font-mono text-sm text-on-surface">
+              {test.endpointPath}
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 aura-pulse"></div>
-            <span className="text-xs font-medium text-on-surface-variant">Active</span>
+            <span className="text-xs font-medium text-on-surface-variant">
+              Active
+            </span>
           </div>
           <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
             {isExpanded ? "unfold_less" : "unfold_more"}
@@ -908,104 +1372,96 @@ const TestAccordion: React.FC<{
 
       {isExpanded && (
         <div className="px-6 py-8 border-t border-outline-variant/30 space-y-8">
-          {/* Test Data Sections (6 JSON sections) */}
-          {sections.map(section =>
+          {sections.map((section) =>
             testDataParsed[section.key] ? (
               <div key={section.key}>
                 <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                  <CodeBracketIcon className="w-4 h-4" />
-                  {section.label}
+                  <CodeBracketIcon className="w-4 h-4" /> {section.label}
                 </h4>
                 {editMode ? (
                   <textarea
-                    value={rawTestData[section.key] !== undefined ? rawTestData[section.key] : JSON.stringify(testDataParsed[section.key], null, 2)}
+                    value={
+                      rawTestData[section.key] !== undefined
+                        ? rawTestData[section.key]
+                        : JSON.stringify(testDataParsed[section.key], null, 2)
+                    }
                     className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     rows={13}
-                    onChange={(event) => {
-                      setRawTestData(prev => ({
+                    onChange={(e) =>
+                      setRawTestData((prev) => ({
                         ...prev,
-                        [section.key]: event.target.value
-                      }));
-                    }}
+                        [section.key]: e.target.value,
+                      }))
+                    }
                   />
                 ) : (
                   <div className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 overflow-x-auto max-h-96">
-                    <pre className="whitespace-pre-wrap break-words">{JSON.stringify(testDataParsed[section.key], null, 2)}</pre>
+                    <pre className="whitespace-pre-wrap break-words">
+                      {JSON.stringify(testDataParsed[section.key], null, 2)}
+                    </pre>
                   </div>
                 )}
               </div>
-            ) : null
+            ) : null,
           )}
-          {/* Bouton Regénérer tests */}
           <div className="pt-2 grid grid-cols-2 gap-4">
             <button
               onClick={async () => {
                 if (editMode) {
-                  // Validate and save changes
                   let hasChanges = false;
                   let errorMessage = "";
                   const parsedData: Record<string, any> = {};
-
                   for (const key in rawTestData) {
                     if (rawTestData[key] !== undefined) {
                       try {
                         parsedData[key] = JSON.parse(rawTestData[key]);
-                        // Check if it differs from original
-                        if (JSON.stringify(parsedData[key]) !== JSON.stringify(testDataParsed[key])) {
+                        if (
+                          JSON.stringify(parsedData[key]) !==
+                          JSON.stringify(testDataParsed[key])
+                        )
                           hasChanges = true;
-                        }
                       } catch (e) {
-                        errorMessage = `Erreur de format JSON dans la section ${sections.find(s => s.key === key)?.label || key}`;
+                        errorMessage = `Erreur JSON dans ${sections.find((s) => s.key === key)?.label || key}`;
                         break;
                       }
                     }
                   }
-
-                  if (errorMessage != "") {
+                  if (errorMessage) {
                     setRawTestData({});
-                    if(confirm(errorMessage + "\nContinuer à éditer ?")){
-                      errorMessage = "";
+                    if (confirm(errorMessage + "\nContinuer à éditer ?")) {
+                      return;
+                    } else {
+                      setEditMode(false);
                       return;
                     }
-                    else{
-                      setEditMode(false);
-                      return; // Exit edit mode without saving
-                    }
-                    
                   }
-                  
                   if (!hasChanges) {
-                    if (!confirm("Aucune modification détectée. Continuer à éditer ?")) {
+                    if (
+                      !confirm(
+                        "Aucune modification détectée. Continuer à éditer ?",
+                      )
+                    )
                       setRawTestData({});
-                    }
-                    else {
-                      return; // Stay in edit mode
-                    }
+                    else return;
                   } else {
-                    var updatedTest = { ...test };
-                    for (const key in parsedData) {
-                      (updatedTest as any)[key] = JSON.stringify(parsedData[key]);
-                    }
+                    const updatedTest = { ...test };
+                    for (const key in parsedData)
+                      (updatedTest as any)[key] = parsedData[key];
                     await testService.update(updatedTest as Test);
                     refreshTests();
                     setRawTestData({});
                   }
                 }
-                setEditMode(prev => !prev);
+                setEditMode((prev) => !prev);
               }}
               className="w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all hover:bg-primary hover:text-white cursor-pointer"
             >
               {editMode ? "Enregistrer les modifications" : "Modifier le test"}
             </button>
             <button
-              onClick={() => {
-                regenerateTests([test.id]);
-              }}
+              onClick={() => regenerateTests([test.id])}
               disabled={!canRegenerateTests}
-              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canRegenerateTests
-                  ? "hover:bg-primary hover:text-white cursor-pointer"
-                  : "opacity-50 cursor-not-allowed"
-                }`}
+              className={`w-full py-2 bg-primary/10 text-primary text-xs font-bold rounded-lg transition-all ${canRegenerateTests ? "hover:bg-primary hover:text-white cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
             >
               Regénérer tests
             </button>
@@ -1016,7 +1472,17 @@ const TestAccordion: React.FC<{
   );
 };
 
-const TabItem = ({ active, label, onClick, icon }: { active: boolean; label: string; onClick: () => void; icon: React.ReactNode }) => (
+const TabItem = ({
+  active,
+  label,
+  onClick,
+  icon,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  icon: React.ReactNode;
+}) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 pb-4 px-2 font-semibold transition-all duration-200 border-b-2 
