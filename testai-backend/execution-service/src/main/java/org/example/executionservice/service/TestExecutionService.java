@@ -30,38 +30,103 @@ public class TestExecutionService {
     private final TestServiceClient testServiceClient;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    /*
+Entrée (ExecuteTestRequest) :{
+  "projectId": "uuid-du-projet",
+  "endpointId": "uuid-de-endpoint",
+  "testType": "POSITIVE",  // ou WRONG_TYPE, MISSING_FIELDS, etc.
+  "executedBy": "uuid-du-user"
+}
+Sortie (ExecuteTestResponse) :{
+  "executionId": "uuid-de-execution",
+  "status": "SUCCESS",
+  "statusCode": 201,
+  "passed": true,
+  "responseTimeMs": 234,
+  "responseBody": {"id": 104, "status": "approved"},
+  "errorMessage": null
+}
+    */
 
     public ExecuteTestResponse executeTest(ExecuteTestRequest request) {
         log.info("🚀 Exécution test: projectId={}, endpointId={}, type={}",
                 request.getProjectId(), request.getEndpointId(), request.getTestType());
 
         Instant startTime = Instant.now();
-
+        /*
+        Appel à project-service → Récupère le projet avec URL de base + credentials
+        Appel à endpoint-service → Récupère l'endpoint (méthode, path)
+        Appel à test-service → Récupère TOUS les tests générés pour cet endpoint
+        ProjectDTO :
+        json{
+          "id": "f76b2b94-...",
+          "name": "Petstore API",
+          "projectUrl": "https://petstore.swagger.io/v2",
+          "authType": "BEARER",
+          ...
+          "credentials": {
+            "bearerToken": "abc123xyz"
+          }
+        }
+        EndpointDTO :
+        json{
+          "id": "d43205fc-...",
+          "method": "POST",
+          "path": "/store/order",
+          "requiresAuth": false
+        }
+        TestDTO (6 tests) :
+        json{
+          "positive": {...},
+          "wrongType": {...},
+          "missingFields": {...},
+          "validation": {...},
+          "boundary": {...},
+          "auth": null
+        }*/
         try {
             ProjectDTO project = projectServiceClient.getProjectById(request.getProjectId());
             EndpointDTO endpoint = endpointServiceClient.getEndpointById(request.getEndpointId());
             TestDTO tests = testServiceClient.getTestsByProjectIdAndEndpointId(
                     request.getProjectId(), request.getEndpointId());
-
+            // Sélection du test à exécuter : methode selectTest qui prend en paramètre le testType et tout les test et retourne le test correspondant
             Map<String, Object> testData = selectTest(tests, request.getTestType());
             if (testData == null) {
                 throw new RuntimeException("Test type " + request.getTestType() + " not found");
             }
-
+            // exemple de testData :
+            /*
+            {
+              "category": "POSITIVE",
+              "response": {
+                "name": "Place an order - Valid data",
+                "headers": {
+                  "Authorization": "Bearer valid_test_token"
+                },
+                "payload": {
+                  "id": 104,
+                  "petId": 39,
+                  "status": "approved"
+                },
+                "pathParams": {},
+                "queryParams": {},
+                "expectedStatus": 201
+              }
+                }*/
             // Extract the "response" object (all tests have this structure)
             Map<String, Object> responseObj = (Map<String, Object>) testData.get("response");
             if (responseObj == null) {
                 throw new RuntimeException("Missing 'response' field in test data");
             }
-
+            // Construction de l'URL complète :
             // 1. Build full URL with path params and query params
-            String fullPath = endpoint.getPath();
-            // Path parameters
+            String fullPath = endpoint.getPath(); // "/store/order/{orderId}"
+            // Path parameters : mettre les paramètres de path ici {orderId}
             Map<String, Object> pathParams = (Map<String, Object>) responseObj.getOrDefault("pathParams", Map.of());
             for (Map.Entry<String, Object> entry : pathParams.entrySet()) {
                 fullPath = fullPath.replace("{" + entry.getKey() + "}", entry.getValue().toString());
             }
-
+            //  Ajouter les query parameters
             String queryString = "";
             Map<String, Object> queryParams = (Map<String, Object>) responseObj.getOrDefault("queryParams", Map.of());
             if (!queryParams.isEmpty()) {
@@ -69,10 +134,13 @@ public class TestExecutionService {
                         .map(e -> e.getKey() + "=" + e.getValue())
                         .collect(Collectors.joining("&"));
             }
+            //URL complète = base + path + query
             String fullUrl = project.getProjectUrl() + fullPath + queryString;
 
             // 2. Build headers (merge test headers with auth headers)
+                // 2.1. Headers de base + auth (si nécessaire)
             HttpHeaders headers = buildHeaders(project, endpoint);
+                // 2.2. Ajouter les headers spécifiques du test
             Map<String, String> testHeaders = (Map<String, String>) responseObj.getOrDefault("headers", Map.of());
             testHeaders.forEach(headers::set);
 
@@ -90,20 +158,24 @@ public class TestExecutionService {
             long execStart = System.currentTimeMillis();
             ResponseEntity<Map> response;
             try {
+                // APPEL HTTP RÉEL vers l'API
                 response = restTemplate.exchange(
-                        fullUrl,
-                        HttpMethod.valueOf(method.toUpperCase()),
-                        entity,
-                        Map.class
+                        fullUrl,                                  // URL complète
+                        HttpMethod.valueOf(method.toUpperCase()), // POST, GET, etc.
+                        entity,                                   // Headers + Body
+                        Map.class                                 // Type de réponse attendu
                 );
+
             } catch (HttpClientErrorException | HttpServerErrorException ex) {
+                // Si l'API retourne 4xx ou 5xx, on capture quand même
                 response = new ResponseEntity<>(
-                        parseBody(ex.getResponseBodyAsString()),
-                        ex.getResponseHeaders(),
-                        ex.getStatusCode()
+                        parseBody(ex.getResponseBodyAsString()),  // Body de l'erreur
+                        ex.getResponseHeaders(),                  // Headers
+                        ex.getStatusCode()                        // Code (400, 401, etc.)
                 );
             }
-            long responseTimeMs = System.currentTimeMillis() - execStart;
+
+            long responseTimeMs = System.currentTimeMillis() - execStart;  // Timer fin
 
             // 5. Validate response
             Integer expectedStatus = (Integer) responseObj.get("expectedStatus");

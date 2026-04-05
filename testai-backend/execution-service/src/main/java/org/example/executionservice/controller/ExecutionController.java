@@ -1,11 +1,14 @@
 package org.example.executionservice.controller;
 
 import org.example.executionservice.dto.*;
+import org.example.executionservice.entity.ProjectExecution;
 import org.example.executionservice.entity.TestExecution;
+import org.example.executionservice.repository.ProjectExecutionRepository;
 import org.example.executionservice.repository.TestExecutionRepository;
 import org.example.executionservice.service.ProjectExecutionService;
 import org.example.executionservice.service.TestExecutionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,67 +18,140 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/executions")
 @RequiredArgsConstructor
+@Slf4j
 public class ExecutionController {
 
-    private final TestExecutionService executionService;
-    private final TestExecutionRepository executionRepository;
+    private final TestExecutionService testExecutionService;
     private final ProjectExecutionService projectExecutionService;
+    private final TestExecutionRepository testExecutionRepository;
+    private final ProjectExecutionRepository projectExecutionRepository;
 
-
+    // ==========================================
+    // EXÉCUTION D'UN SEUL TEST
+    // ==========================================
 
     /**
-     * Exécuter un test spécifique (un endpoint + une catégorie)
+     * Exécuter UN SEUL test (1 endpoint + 1 type de test)
+     * POST /api/executions/execute
      */
     @PostMapping("/execute")
     public ResponseEntity<ExecuteTestResponse> executeTest(@RequestBody ExecuteTestRequest request) {
-        ExecuteTestResponse response = executionService.executeTest(request);
+        log.info("📌 Exécution d'un test: projectId={}, endpointId={}, type={}",
+                request.getProjectId(), request.getEndpointId(), request.getTestType());
+        ExecuteTestResponse response = testExecutionService.executeTest(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==========================================
+    // EXÉCUTION D'UN PROJET COMPLET
+    // ==========================================
+
+    /**
+     * Lancer l'exécution de TOUS les tests d'un projet (asynchrone)
+     * POST /api/executions/execute-project
+     */
+    @PostMapping("/execute-project")
+    public ResponseEntity<StartExecutionResponse> startProjectExecution(
+            @RequestBody ExecuteProjectRequest request
+    ) {
+        log.info("🚀 Démarrage exécution projet: projectId={}", request.getProjectId());
+        StartExecutionResponse response = projectExecutionService.startExecution(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==========================================
+    // RÉCUPÉRATION HISTORIQUE PROJET
+    // ==========================================
+
+    /**
+     * ⭐ Récupérer TOUTES les exécutions (ProjectExecution) d'un projet
+     * Ordonné par date décroissante (plus récent en premier)
+     * GET /api/executions/project/{projectId}
+     */
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<ProjectExecution>> getProjectExecutions(@PathVariable UUID projectId) {
+        log.info("📋 Récupération historique projet: {}", projectId);
+        List<ProjectExecution> executions = projectExecutionRepository
+                .findByProjectIdOrderByExecutedAtDesc(projectId);
+        log.info("✅ {} exécutions trouvées", executions.size());
+        return ResponseEntity.ok(executions);
+    }
+
+    /**
+     * Récupérer les logs d'une exécution de projet
+     * GET /api/executions/{executionId}/logs
+     */
+    @GetMapping("/{executionId}/logs")
+    public ResponseEntity<List<String>> getExecutionLogs(@PathVariable UUID executionId) {
+        log.info("📜 Récupération logs exécution: {}", executionId);
+        List<String> logs = projectExecutionService.getExecutionLogs(executionId);
+        return ResponseEntity.ok(logs);
+    }
+
+    /**
+     * Récupérer le statut d'une exécution de projet
+     * GET /api/executions/{executionId}/status
+     */
+    @GetMapping("/{executionId}/status")
+    public ResponseEntity<ProjectExecutionResponse> getExecutionStatus(@PathVariable UUID executionId) {
+        log.info("📊 Récupération statut exécution: {}", executionId);
+        ProjectExecutionResponse response = projectExecutionService.getExecutionStatus(executionId);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Récupérer toutes les exécutions d’un projet
+     * ⭐ Récupérer TOUS les TestExecution d'une ProjectExecution
+     * GET /api/executions/{executionId}/test-executions
      */
-    @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<TestExecution>> getExecutionsByProject(@PathVariable UUID projectId) {
-        List<TestExecution> executions = executionRepository.findByProjectId(projectId);
-        return ResponseEntity.ok(executions);
+    @GetMapping("/{executionId}/test-executions")
+    public ResponseEntity<List<TestExecution>> getTestExecutionsByExecutionId(
+            @PathVariable UUID executionId
+    ) {
+        log.info("🔍 Récupération tests de l'exécution: {}", executionId);
+        List<TestExecution> testExecutions = testExecutionRepository
+                .findByExecutionIdOrderByExecutedAtDesc(executionId);
+        log.info("✅ {} tests trouvés", testExecutions.size());
+        return ResponseEntity.ok(testExecutions);
     }
 
     /**
-     * Récupérer toutes les exécutions d’un endpoint
-     */
-    @GetMapping("/endpoint/{endpointId}")
-    public ResponseEntity<List<TestExecution>> getExecutionsByEndpoint(@PathVariable UUID endpointId) {
-        List<TestExecution> executions = executionRepository.findByEndpointId(endpointId);
-        return ResponseEntity.ok(executions);
-    }
-
-    /**
-     * Récupérer une exécution par son ID
+     * Récupérer UNE ProjectExecution par son ID
+     * GET /api/executions/{executionId}
      */
     @GetMapping("/{executionId}")
-    public ResponseEntity<TestExecution> getExecutionById(@PathVariable UUID executionId) {
-        TestExecution execution = executionRepository.findById(executionId)
-                .orElseThrow(() -> new RuntimeException("Execution not found"));
+    public ResponseEntity<ProjectExecution> getProjectExecutionById(@PathVariable UUID executionId) {
+        log.info("🔎 Récupération exécution: {}", executionId);
+        ProjectExecution execution = projectExecutionRepository.findById(executionId)
+                .orElseThrow(() -> new RuntimeException("ProjectExecution not found: " + executionId));
         return ResponseEntity.ok(execution);
     }
-    @PostMapping("/execute-project")
-    public ResponseEntity<StartExecutionResponse> startExecution(@RequestBody ExecuteProjectRequest request) {
-        return ResponseEntity.ok(projectExecutionService.startExecution(request));
-    }
 
-    @GetMapping("/{executionId}/logs")
-    public ResponseEntity<List<String>> getExecutionLogs(@PathVariable UUID executionId) {
-        return ResponseEntity.ok(projectExecutionService.getExecutionLogs(executionId));
-    }
+    // ==========================================
+    // RÉCUPÉRATION PAR ENDPOINT
+    // ==========================================
 
-    @GetMapping("/{executionId}/status")
-    public ResponseEntity<ProjectExecutionResponse> getExecutionStatus(@PathVariable UUID executionId) {
-        return ResponseEntity.ok(projectExecutionService.getExecutionStatus(executionId));
-    }
-    @GetMapping("/{executionId}/test-executions")
-    public ResponseEntity<List<TestExecution>> getTestExecutionsByExecutionId(@PathVariable UUID executionId) {
-        List<TestExecution> executions = executionRepository.findByExecutionId(executionId);
+    /**
+     * Récupérer tous les TestExecution d'un endpoint
+     * GET /api/executions/endpoint/{endpointId}
+     */
+    @GetMapping("/endpoint/{endpointId}")
+    public ResponseEntity<List<TestExecution>> getTestExecutionsByEndpoint(
+            @PathVariable UUID endpointId
+    ) {
+        log.info("📍 Récupération tests de l'endpoint: {}", endpointId);
+        List<TestExecution> executions = testExecutionRepository.findByEndpointId(endpointId);
         return ResponseEntity.ok(executions);
+    }
+
+    /**
+     * Récupérer UN TestExecution par son ID
+     * GET /api/executions/test/{testExecutionId}
+     */
+    @GetMapping("/test/{testExecutionId}")
+    public ResponseEntity<TestExecution> getTestExecutionById(@PathVariable UUID testExecutionId) {
+        log.info("🔎 Récupération test exécution: {}", testExecutionId);
+        TestExecution execution = testExecutionRepository.findById(testExecutionId)
+                .orElseThrow(() -> new RuntimeException("TestExecution not found: " + testExecutionId));
+        return ResponseEntity.ok(execution);
     }
 }

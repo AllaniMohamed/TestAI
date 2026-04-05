@@ -461,6 +461,10 @@ export interface ExecuteProjectRequest {
   executionContext?: string; // "manual", "scheduled", "ci_cd"
 }
 
+export interface StartExecutionResponse {
+  executionId: string;
+}
+
 export interface TestTypeStats {
   total: number;
   passed: number;
@@ -478,6 +482,39 @@ export interface EndpointSummary {
   passRate: number;
 }
 
+// ⭐ ProjectExecution entity (ce que le backend renvoie)
+export interface ProjectExecution {
+  id: string;
+  projectId: string;
+  projectName: string;
+  totalEndpoints: number;
+  totalTests: number;
+  testsPassed: number;
+  testsFailed: number;
+  testsError: number;
+  successRate: number;
+  totalDurationMs: number;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  executedAt: string;
+  completedAt?: string;
+  executedBy: string;
+  executionContext: string;
+  
+  // Stats par type de test
+  positiveTests?: number;
+  positivePassedTests?: number;
+  wrongTypeTests?: number;
+  wrongTypePassedTests?: number;
+  missingFieldsTests?: number;
+  missingFieldsPassedTests?: number;
+  boundaryTests?: number;
+  boundaryPassedTests?: number;
+  validationTests?: number;
+  validationPassedTests?: number;
+  authTests?: number;
+  authPassedTests?: number;
+}
+
 export interface ProjectExecutionResponse {
   executionId: string;
   projectId: string;
@@ -491,10 +528,11 @@ export interface ProjectExecutionResponse {
   totalDurationMs: number;
   statsByType: Record<string, TestTypeStats>;
   failedEndpoints: EndpointSummary[];
-  status: string; // "RUNNING", "COMPLETED", "FAILED"
+  status: string;
   executedAt: string;
   completedAt: string;
 }
+
 export interface TestExecution {
   id: string;
   projectId: string;
@@ -522,29 +560,54 @@ export interface TestExecution {
 }
 
 export type TestType = "POSITIVE" | "WRONG_TYPE" | "MISSING_FIELDS" | "VALIDATION" | "BOUNDARY" | "AUTH";
-
 export type TestStatus = "SUCCESS" | "FAILED" | "ERROR";
 
 export const executionService = {
-  startExecution: (request: ExecuteProjectRequest): Promise<AxiosResponse<{ executionId: string }>> =>
+  // ==========================================
+  // EXÉCUTION
+  // ==========================================
+  
+  /**
+   * Lancer l'exécution de tous les tests d'un projet
+   */
+  startExecution: (request: ExecuteProjectRequest): Promise<AxiosResponse<StartExecutionResponse>> =>
     api.post("/execution-service/api/executions/execute-project", request),
 
-  getProjectExecutions: (projectId: string): Promise<AxiosResponse<ProjectExecutionResponse[]>> =>
+  // ==========================================
+  // RÉCUPÉRATION HISTORIQUE
+  // ==========================================
+  
+  /**
+   * ⭐ Récupérer toutes les ProjectExecution d'un projet
+   * Retourne: ProjectExecution[] (ordonné par date décroissante)
+   */
+  getProjectExecutions: (projectId: string): Promise<AxiosResponse<ProjectExecution[]>> =>
     api.get(`/execution-service/api/executions/project/${projectId}`),
 
+  /**
+   * Récupérer UNE ProjectExecution par son ID
+   */
+  getProjectExecutionById: (executionId: string): Promise<AxiosResponse<ProjectExecution>> =>
+    api.get(`/execution-service/api/executions/${executionId}`),
 
+  /**
+   * ⭐ Récupérer tous les TestExecution d'une ProjectExecution
+   * Retourne: TestExecution[]
+   */
+  getTestExecutionsByExecutionId: (executionId: string): Promise<AxiosResponse<TestExecution[]>> =>
+    api.get(`/execution-service/api/executions/${executionId}/test-executions`),
+
+  /**
+   * Récupérer les logs d'une exécution
+   */
   getExecutionLogs: (executionId: string): Promise<AxiosResponse<string[]>> =>
     api.get(`/execution-service/api/executions/${executionId}/logs`),
 
+  /**
+   * Récupérer le statut d'une exécution
+   */
   getExecutionStatus: (executionId: string): Promise<AxiosResponse<ProjectExecutionResponse>> =>
     api.get(`/execution-service/api/executions/${executionId}/status`),
-
-  getExecutionById: (executionId: string): Promise<AxiosResponse<ProjectExecutionResponse>> =>
-    api.get(`/execution-service/api/executions/${executionId}`),
-  
-  
-  getTestExecutionsByExecutionId: (executionId: string): Promise<AxiosResponse<TestExecution[]>> =>
-    api.get(`/execution-service/api/executions/${executionId}/test-executions`),
 };
 // ==========================================
 // TYPES ⭐
