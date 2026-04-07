@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -154,4 +155,29 @@ public class ExecutionController {
                 .orElseThrow(() -> new RuntimeException("TestExecution not found: " + testExecutionId));
         return ResponseEntity.ok(execution);
     }
+
+    /**
+     * ⭐ Supprimer toutes les exécutions d'un projet
+     * DELETE /api/executions/project/{projectId}
+     */
+    @DeleteMapping("/project/{projectId}")
+    public ResponseEntity<Map<String, String>> deleteExecutionsByProjectId(
+            @PathVariable UUID projectId
+    ) {
+        log.info("🗑️ Suppression des exécutions du projet {}", projectId);
+        try {
+            String message = projectExecutionService.deleteExecutionsByProjectId(projectId);
+            return ResponseEntity.ok(Map.of(
+                    "success", "true",
+                    "message", message
+            ));
+        } catch (Exception e) {
+            log.error("❌ Erreur suppression : {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "success", "false",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
 }

@@ -35,5 +35,9 @@ public interface SharedAccessRepository extends JpaRepository<SharedAccess, UUID
 
     List<SharedAccess> findBySharedBy(UUID managerId);
     List<SharedAccess> findByDeveloperEmailAndUserIdIsNull(String email);
-
+    /**
+     * ⭐ Supprimer tous les partages d'un projet
+     * Retourne le nombre de partages supprimés
+     */
+    int deleteByProjectId(UUID projectId);
 }

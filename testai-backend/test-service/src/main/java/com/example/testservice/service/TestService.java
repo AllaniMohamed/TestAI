@@ -87,7 +87,7 @@ public class TestService {
             return null;
         }
     }
-
+    @Transactional
     public Map<String, String> deleteByProjectId(UUID projectId){
         Map<String, String> response = new HashMap<>();
         try{
@@ -99,7 +99,7 @@ public class TestService {
         }
         return response;
     }
-
+    @Transactional
     public Map<String, String> deleteByProjectIdAndEndpointId(UUID projectId, UUID endpointId){
         Map<String, String> response = new HashMap<>();
         try{

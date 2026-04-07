@@ -1,6 +1,7 @@
 package org.example.executionservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
 import org.example.executionservice.dto.*;
 import org.example.executionservice.entity.*;
 import org.example.executionservice.entity.ProjectExecution.ExecutionStatus;
@@ -433,5 +434,26 @@ public class ProjectExecutionService {
                 .sorted((a, b) -> Integer.compare(b.getFailed(), a.getFailed()))
                 .limit(10)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * ⭐ Supprimer toutes les exécutions d'un projet
+     */
+    @Transactional
+    public String deleteExecutionsByProjectId(UUID projectId) {
+        log.info("🗑️ Suppression des exécutions du projet {}", projectId);
+
+        // 1. Supprimer tous les TestExecution
+        int deletedTests = testExecutionRepository.deleteByProjectId(projectId);
+        log.info("✅ {} TestExecution supprimés", deletedTests);
+
+        // 2. Supprimer tous les ProjectExecution
+        int deletedProjects = projectExecutionRepository.deleteByProjectId(projectId);
+        log.info("✅ {} ProjectExecution supprimés", deletedProjects);
+
+        return String.format(
+                "Supprimé : %d ProjectExecution, %d TestExecution",
+                deletedProjects, deletedTests
+        );
     }
 }

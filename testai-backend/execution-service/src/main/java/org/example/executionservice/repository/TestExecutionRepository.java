@@ -1,5 +1,6 @@
 package org.example.executionservice.repository;
 
+import jakarta.transaction.Transactional;
 import org.example.executionservice.entity.TestExecution;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -29,4 +30,6 @@ public interface TestExecutionRepository extends JpaRepository<TestExecution, UU
      * Récupérer tous les tests d'une exécution de projet, ordonnés par date
      */
     List<TestExecution> findByExecutionIdOrderByExecutedAtDesc(UUID executionId);
+    @Transactional
+    int deleteByProjectId(UUID projectId);
 }

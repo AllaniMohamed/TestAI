@@ -1,5 +1,6 @@
 package org.example.executionservice.repository;
 
+import jakarta.transaction.Transactional;
 import org.example.executionservice.entity.ProjectExecution;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -24,4 +25,6 @@ public interface ProjectExecutionRepository extends JpaRepository<ProjectExecuti
      * Compter les exécutions d'un projet
      */
     Long countByProjectId(UUID projectId);
+    @Transactional
+    int deleteByProjectId(UUID projectId);
 }

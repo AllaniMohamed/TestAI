@@ -3,6 +3,7 @@ import com.example.testservice.dto.*;
 import com.example.testservice.entity.Test;
 import com.example.testservice.feignclient.GenerateTestClient;
 import com.example.testservice.service.TestService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,7 +54,7 @@ public class TestController {
     }
 
     @DeleteMapping("/{projectId}")
-    public ResponseEntity<Map<String, String>> deleteByProjectId(@PathVariable UUID projectId){
+    public ResponseEntity<Map<String, String>> deleteTestsByProjectId(@PathVariable UUID projectId){
         Map<String, String> response = testService.deleteByProjectId(projectId);
         if(response.containsKey("success")){
             return ResponseEntity.ok(response);

@@ -7,6 +7,7 @@ import com.testai.endpointservice.dto.ScanSwaggerResponse;
 import com.testai.endpointservice.entity.Endpoint;
 import com.testai.endpointservice.service.EndpointService;
 import com.testai.endpointservice.service.SwaggerScannerService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

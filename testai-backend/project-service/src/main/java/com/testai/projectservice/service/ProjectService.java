@@ -1,17 +1,16 @@
 package com.testai.projectservice.service;
 
-import com.testai.projectservice.dto.ProjectDTO;
-import com.testai.projectservice.dto.UserDTO;
-import com.testai.projectservice.dto.EndpointDTO;
-import com.testai.projectservice.dto.ScanSwaggerRequest;
-import com.testai.projectservice.dto.ScanSwaggerResponse;
+import com.testai.projectservice.dto.*;
 import com.testai.projectservice.entity.ApiCredentials;
 import com.testai.projectservice.entity.Project;
 import com.testai.projectservice.exception.UserNotFoundException;
 import com.testai.projectservice.feignclient.EndpointServiceClient;
+import com.testai.projectservice.feignclient.ExecutionServiceClient;
+import com.testai.projectservice.feignclient.TestServiceClient;
 import com.testai.projectservice.feignclient.UserServiceClient;
 import com.testai.projectservice.repository.ApiCredentialsRepository;
 import com.testai.projectservice.repository.ProjectRepository;
+import com.testai.projectservice.repository.SharedAccessRepository;
 import feign.FeignException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +35,12 @@ public class ProjectService {
     private EndpointServiceClient endpointServiceClient;  // ⭐️ Feign Client pour endpoint-service
     @Autowired
     private ApiCredentialsRepository credentialsRepository;
+    @Autowired
+    private TestServiceClient testServiceClient;
+    @Autowired
+    private SharedAccessRepository sharedAccessRepository;
+    @Autowired
+    private ExecutionServiceClient executionServiceClient;
 
     @Transactional
     public Project createProject(ProjectDTO request) {
@@ -265,5 +270,248 @@ public class ProjectService {
             log.error("❌ Erreur lors de la suppression du projet : {}", e.getMessage());
             return "Failed to delete project: " + e.getMessage();
         }
+    }
+    /**
+     * ⭐ Mettre à jour un projet
+     */
+    @Transactional
+    public Project updateProject(UUID projectId, UpdateProjectRequest request) {
+        log.info("✏️ Mise à jour du projet {}", projectId);
+
+        // 1. Récupérer le projet
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        // 2. Mettre à jour les champs basiques
+        if (request.getName() != null && !request.getName().isBlank()) {
+            project.setName(request.getName());
+        }
+
+        if (request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+
+        if (request.getProjectUrl() != null && !request.getProjectUrl().isBlank()) {
+            project.setProjectUrl(request.getProjectUrl());
+        }
+
+        if (request.getDocUrl() != null && !request.getDocUrl().isBlank()) {
+            project.setDocUrl(request.getDocUrl());
+        }
+
+        // 3. Gérer le changement d'authType
+        if (request.getAuthType() != null && request.getAuthType() != project.getAuthType()) {
+            log.info("🔐 Changement d'authType : {} → {}", project.getAuthType(), request.getAuthType());
+            project.setAuthType(request.getAuthType());
+
+            // Supprimer les anciennes credentials si elles existent
+            if (project.getCredentials() != null) {
+                credentialsRepository.delete(project.getCredentials());
+                project.setCredentials(null);
+            }
+
+            // Créer les nouvelles credentials si nécessaire
+            if (request.getAuthType() != Project.AuthType.NONE) {
+                createOrUpdateCredentials(project, request);
+            }
+        }
+        // 4. Mettre à jour les credentials existants si authType inchangé
+        else if (project.getAuthType() != Project.AuthType.NONE) {
+            createOrUpdateCredentials(project, request);
+        }
+
+        // 5. Sauvegarder
+        Project updated = projectRepository.save(project);
+        log.info("✅ Projet mis à jour avec succès");
+
+        return updated;
+    }
+
+    /**
+     * Créer ou mettre à jour les credentials
+     */
+    private void createOrUpdateCredentials(Project project, UpdateProjectRequest request) {
+        ApiCredentials credentials = project.getCredentials();
+
+        // Créer si n'existe pas
+        if (credentials == null) {
+            credentials = ApiCredentials.builder()
+                    .project(project)
+                    .build();
+        }
+
+        // Réinitialiser tous les champs
+        credentials.setBasicUsername(null);
+        credentials.setBasicPassword(null);
+        credentials.setApiKey(null);
+        credentials.setApiKeyHeader(null);
+        credentials.setApiKeyLocation(null);
+        credentials.setBearerToken(null);
+
+        // Remplir selon le type
+        switch (project.getAuthType()) {
+            case BASIC:
+                if (request.getAuthUsername() == null || request.getAuthPassword() == null) {
+                    throw new RuntimeException("Username et password requis pour BASIC auth");
+                }
+                credentials.setBasicUsername(request.getAuthUsername());
+                credentials.setBasicPassword(request.getAuthPassword());
+                log.info("🔐 Credentials BASIC configurés");
+                break;
+
+            case APIKEY:
+                if (request.getApiKey() == null || request.getApiKeyHeader() == null) {
+                    throw new RuntimeException("API Key et header requis pour APIKEY auth");
+                }
+                credentials.setApiKey(request.getApiKey());
+                credentials.setApiKeyHeader(request.getApiKeyHeader());
+                credentials.setApiKeyLocation(
+                        request.getApiKeyLocation() != null
+                                ? ApiCredentials.ApiKeyLocation.valueOf(request.getApiKeyLocation())
+                                : ApiCredentials.ApiKeyLocation.HEADER
+                );
+                log.info("🔐 Credentials APIKEY configurés");
+                break;
+
+            case BEARER:
+                if (request.getBearerToken() == null) {
+                    throw new RuntimeException("Bearer token requis pour BEARER auth");
+                }
+                credentials.setBearerToken(request.getBearerToken());
+                log.info("🔐 Credentials BEARER configurés");
+                break;
+        }
+
+        credentialsRepository.save(credentials);
+        project.setCredentials(credentials);
+    }
+
+    // ==========================================
+    // DELETE PROJECT CASCADE
+    // ==========================================
+
+    /**
+     * ⭐ Supprimer un projet et TOUT ce qui est lié
+     *
+     * Ordre de suppression :
+     * 1. Exécutions (ProjectExecution + TestExecution)
+     * 2. Tests générés
+     * 3. Endpoints scannés
+     * 4. Partages (SharedAccess)
+     * 5. Credentials
+     * 6. Fichier documentation (si local)
+     * 7. Projet
+     */
+    @Transactional
+    public String deleteProjectCascade(UUID projectId) {
+        log.info("🗑️ Suppression en cascade du projet {}", projectId);
+
+        // Vérifier que le projet existe
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        int deletedExecutions = 0;
+        int deletedTests = 0;
+        int deletedEndpoints = 0;
+        int deletedShares = 0;
+
+        // ==========================================
+        // ÉTAPE 1 : Supprimer les exécutions
+        // ==========================================
+        log.info("🗑️ [1/7] Suppression des exécutions...");
+        try {
+            executionServiceClient.deleteExecutionsByProjectId(projectId);
+            deletedExecutions = 1; // On ne connaît pas le nombre exact
+            log.info("✅ Exécutions supprimées");
+        } catch (FeignException e) {
+            log.warn("⚠️ Impossible de supprimer les exécutions : {}", e.getMessage());
+            // Continuer même si échec
+        }
+
+        // ==========================================
+        // ÉTAPE 2 : Supprimer les tests générés
+        // ==========================================
+        log.info("🗑️ [2/7] Suppression des tests générés...");
+        try {
+            testServiceClient.deleteTestsByProjectId(projectId);
+            deletedTests = 1;
+            log.info("✅ Tests supprimés");
+        } catch (FeignException e) {
+            log.warn("⚠️ Impossible de supprimer les tests : {}", e.getMessage());
+        }
+
+        // ==========================================
+        // ÉTAPE 3 : Supprimer les endpoints
+        // ==========================================
+        log.info("🗑️ [3/7] Suppression des endpoints...");
+        try {
+            endpointServiceClient.deleteEndpointsByProjectId(projectId);
+            deletedEndpoints = 1;
+            log.info("✅ Endpoints supprimés");
+        } catch (FeignException e) {
+            log.warn("⚠️ Impossible de supprimer les endpoints : {}", e.getMessage());
+        }
+
+        // ==========================================
+        // ÉTAPE 4 : Supprimer les partages
+        // ==========================================
+        log.info("🗑️ [4/7] Suppression des partages...");
+        try {
+            deletedShares = sharedAccessRepository.deleteByProjectId(projectId);
+            log.info("✅ {} partages supprimés", deletedShares);
+        } catch (Exception e) {
+            log.warn("⚠️ Impossible de supprimer les partages : {}", e.getMessage());
+        }
+
+        // ==========================================
+        // ÉTAPE 5 : Supprimer les credentials
+        // ==========================================
+        log.info("🗑️ [5/7] Suppression des credentials...");
+        if (project.getCredentials() != null) {
+            try {
+                credentialsRepository.delete(project.getCredentials());
+                log.info("✅ Credentials supprimés");
+            } catch (Exception e) {
+                log.warn("⚠️ Impossible de supprimer les credentials : {}", e.getMessage());
+            }
+        }
+
+        // ==========================================
+        // ÉTAPE 6 : Supprimer le fichier documentation
+        // ==========================================
+        log.info("🗑️ [6/7] Suppression du fichier documentation...");
+        String docUrl = project.getDocUrl();
+        if (docUrl != null && !docUrl.startsWith("http")) {
+            // C'est un fichier local
+            try {
+                fileStorageService.delete(docUrl);
+                log.info("✅ Fichier documentation supprimé");
+            } catch (Exception e) {
+                log.warn("⚠️ Impossible de supprimer le fichier : {}", e.getMessage());
+            }
+        }
+
+        // ==========================================
+        // ÉTAPE 7 : Supprimer le projet
+        // ==========================================
+        log.info("🗑️ [7/7] Suppression du projet...");
+        projectRepository.delete(project);
+        log.info("✅ Projet supprimé");
+
+        // ==========================================
+        // RÉSUMÉ
+        // ==========================================
+        String summary = String.format(
+                "Projet '%s' supprimé avec succès ! " +
+                        "Supprimé : %d exécution(s), %d test(s), %d endpoint(s), %d partage(s)",
+                project.getName(),
+                deletedExecutions > 0 ? 1 : 0,
+                deletedTests > 0 ? 1 : 0,
+                deletedEndpoints > 0 ? 1 : 0,
+                deletedShares
+        );
+
+        log.info("🎉 " + summary);
+        return summary;
     }
 }

@@ -174,7 +174,6 @@ public class EndpointService {
         log.info("🗑️ Suppression de tous les endpoints du projet {}", projectId);
 
         endpointRepository.deleteByProjectId(projectId);
-        testClient.deleteTestsByProjectId(projectId);
         log.info("✅ Endpoints supprimés avec succès");
     }
 

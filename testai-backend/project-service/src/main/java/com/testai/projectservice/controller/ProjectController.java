@@ -92,11 +92,6 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getProjectsByDocMode(docMode));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProject(@PathVariable UUID id) {
-        String msg = projectService.deleteProjectById(id);
-        return ResponseEntity.ok(msg);
-    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Project>> getProjectsByUserId(@PathVariable UUID userId) {
@@ -230,6 +225,59 @@ public class ProjectController {
         String newAccessLevel = request.get("accessLevel");
         SharedAccessDTO updated = sharedAccessService.updateAccessLevel(sharedAccessId, newAccessLevel);
         return ResponseEntity.ok(updated);
+    }
+    /**
+     * ⭐ Mettre à jour un projet
+     * PUT /api/projects/{projectId}
+     */
+    @PutMapping("/{projectId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<?> updateProject(
+            @PathVariable UUID projectId,
+            @RequestBody UpdateProjectRequest request
+    ) {
+        log.info("✏️ Mise à jour du projet {}", projectId);
+        try {
+            Project updated = projectService.updateProject(projectId, request);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la mise à jour : {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * ⭐ Supprimer un projet en cascade
+     * DELETE /api/projects/{projectId}
+     *
+     * Supprime :
+     * - Les endpoints
+     * - Les tests
+     * - Les exécutions
+     * - Les credentials
+     * - Les partages
+     * - Le projet
+     */
+    @DeleteMapping("/{projectId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<?> deleteProject(@PathVariable UUID projectId) {
+        log.info("🗑️ Suppression du projet {}", projectId);
+        try {
+            String message = projectService.deleteProjectCascade(projectId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", message
+            ));
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la suppression : {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
     }
 
 
