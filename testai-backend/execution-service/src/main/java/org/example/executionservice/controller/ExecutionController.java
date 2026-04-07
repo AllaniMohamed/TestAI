@@ -6,9 +6,13 @@ import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.repository.ProjectExecutionRepository;
 import org.example.executionservice.repository.TestExecutionRepository;
 import org.example.executionservice.service.ProjectExecutionService;
+import org.example.executionservice.service.SingleReportService;
 import org.example.executionservice.service.TestExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +30,7 @@ public class ExecutionController {
     private final ProjectExecutionService projectExecutionService;
     private final TestExecutionRepository testExecutionRepository;
     private final ProjectExecutionRepository projectExecutionRepository;
+    private final SingleReportService singleReportService;
 
     // ==========================================
     // EXÉCUTION D'UN SEUL TEST
@@ -177,6 +182,21 @@ public class ExecutionController {
                     "success", "false",
                     "message", e.getMessage()
             ));
+        }
+    }
+
+    @GetMapping("/report/{projectId}/{endpointId}")
+    public ResponseEntity<?> generateSingleEndpointReport(@PathVariable UUID projectId, @PathVariable UUID endpointId){
+        try{
+            byte[] pdf = singleReportService.reportSingleEndpoint(projectId, endpointId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Endpoint-report.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
