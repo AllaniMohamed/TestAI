@@ -12,10 +12,10 @@ random.seed(42)
 # ─────────────────────────────────────────────────────────
 
 NAME_GENERATORS = {
-    "id":           lambda p: random.randint(1, 9999),
-    "petid":        lambda p: random.randint(1, 999),
-    "orderid":      lambda p: random.randint(1, 100),
-    "userid":       lambda p: random.randint(1, 5000),
+    "id":           lambda p: random.randint(1, 10),
+    "petid":        lambda p: random.randint(1, 10),
+    "orderid":      lambda p: random.randint(1, 10),
+    "userid":       lambda p: random.randint(1, 10),
     "username":     lambda p: fake.user_name(),
     "email":        lambda p: fake.email(),
     "password":     lambda p: fake.password(length=12),
@@ -66,9 +66,27 @@ NAME_GENERATORS = {
     "lon":          lambda p: round(random.uniform(-180, 180), 6),
 }
 
+def get_param_schema(param):
+    """
+    Normalize parameter structure so we can support both:
+    - flat params: {"type": "...", "enum": [...], ...}
+    - OpenAPI style: {"schema": {"type": "...", "enum": [...], ...}}
+    """
+    schema = param.get("schema")
+    if isinstance(schema, dict):
+        merged = dict(schema)
+        # preserve top-level name/required if present
+        if "name" in param:
+            merged["name"] = param["name"]
+        if "required" in param:
+            merged["required"] = param["required"]
+        return merged
+    return param
 
 def generate_valid_value(param):
     """Generate a realistic valid value based on param name, type, enum, and constraints."""
+    param = get_param_schema(param)
+
     name = param.get("name", "").lower().replace("-", "").replace("_", "")
     ptype = param.get("type", "string")
     enum = param.get("enum")
@@ -76,40 +94,68 @@ def generate_valid_value(param):
     minimum = param.get("minimum")
     maximum = param.get("maximum")
 
-    if enum:
+    # Direct enum
+    if enum and isinstance(enum, list) and len(enum) > 0:
         return random.choice(enum)
 
-    if items and isinstance(items, list) and len(items) > 0:
+    # Array items enum (OpenAPI usually uses items as dict)
+    if isinstance(items, dict):
+        if items.get("enum") and isinstance(items["enum"], list) and len(items["enum"]) > 0:
+            return random.choice(items["enum"])
+        item_type = items.get("type", "string")
+        if item_type == "integer":
+            return random.randint(1, 10)
+        return fake.word()
+
+    # Backward compatibility if items is unexpectedly a list
+    if isinstance(items, list) and len(items) > 0:
         item_schema = items[0]
-        if item_schema.get("enum"):
+        if item_schema.get("enum") and isinstance(item_schema["enum"], list) and len(item_schema["enum"]) > 0:
             return random.choice(item_schema["enum"])
         item_type = item_schema.get("type", "string")
         if item_type == "integer":
-            return random.randint(1, 100)
+            return random.randint(1, 10)
         return fake.word()
 
     for pattern, gen_fn in NAME_GENERATORS.items():
         if pattern in name:
             val = gen_fn(param)
             if ptype == "integer" and isinstance(val, str):
-                return random.randint(1, 9999)
+                return random.randint(1, 10) if "id" in name else random.randint(1, 9999)
             if ptype == "string" and isinstance(val, (int, float)):
                 return str(val)
             return val
 
     if ptype == "integer":
+        # For generic ID-like names, keep positive values realistic
+        if "id" in name:
+            return random.randint(1, 10)
+
         lo = minimum if minimum is not None else 1
         hi = maximum if maximum is not None else 9999
-        return random.randint(int(lo), int(hi))
+
+        lo = int(lo)
+        hi = int(hi)
+
+        # keep within valid range but cap default positive values
+        if minimum is None and maximum is None:
+            hi = 10
+
+        if lo > hi:
+            lo, hi = hi, lo
+
+        return random.randint(lo, hi)
+
     elif ptype == "number":
         lo = minimum if minimum is not None else 0.01
         hi = maximum if maximum is not None else 9999.99
         return round(random.uniform(float(lo), float(hi)), 2)
+
     elif ptype == "boolean":
         return random.choice([True, False])
+
     else:
         return fake.word()
-
 
 def generate_wrong_type_value(param):
     """Generate a value of the WRONG type for the param."""
@@ -128,16 +174,22 @@ def generate_wrong_type_value(param):
 
 def generate_validation_value(param):
     """Generate an invalid value that violates enum, format, or range constraints."""
+    param = get_param_schema(param)
+
     enum = param.get("enum")
     items = param.get("items")
     ptype = param.get("type", "string")
     minimum = param.get("minimum")
     maximum = param.get("maximum")
 
-    if enum:
+    if enum and isinstance(enum, list) and len(enum) > 0:
         return "INVALID_ENUM_VALUE_" + fake.lexify("???")
 
-    if items and isinstance(items, list) and len(items) > 0:
+    if isinstance(items, dict):
+        if items.get("enum") and isinstance(items["enum"], list) and len(items["enum"]) > 0:
+            return "INVALID_ENUM_" + fake.lexify("???")
+
+    if isinstance(items, list) and len(items) > 0:
         if items[0].get("enum"):
             return "INVALID_ENUM_" + fake.lexify("???")
 
@@ -162,9 +214,10 @@ def generate_validation_value(param):
 
     return "<script>alert('xss')</script>"
 
-
 def generate_boundary_value(param):
     """Generate boundary/edge-case values."""
+    param = get_param_schema(param)
+
     ptype = param.get("type", "string")
     minimum = param.get("minimum")
     maximum = param.get("maximum")
@@ -196,20 +249,25 @@ def generate_boundary_value(param):
         return random.choice(choices)
 
     elif ptype == "string":
-        choices = [
-            "",
-            " ",
-            "a" * (max_length + 10 if max_length else 10000),
-        ]
-        if min_length and min_length > 1:
+        choices = ["", " "]
+
+        # invalid upper boundary: exactly one char above maxLength
+        if max_length is not None:
+            choices.append("a" * (max_length + 1))
+        else:
+            # fallback when no explicit maxLength exists
+            choices.append("a" * 256)
+
+        # invalid lower boundary: one char below minLength
+        if min_length is not None and min_length > 0:
             choices.append("a" * (min_length - 1))
+
         return random.choice(choices)
 
     elif ptype == "boolean":
         return random.choice([None, "", 0, 1, "true", "false"])
 
     return None
-
 
 # ─────────────────────────────────────────────────────────
 # STATUS CODE RESOLUTION
@@ -246,7 +304,7 @@ def resolve_expected_status(category, method, has_required_path, has_required_qu
     if category == "WRONG_TYPE":
         # If path params have wrong types, the route itself likely 404s
         if has_required_path:
-            return 400
+            return 404
         return 400
 
     if category == "MISSING_FIELDS":
