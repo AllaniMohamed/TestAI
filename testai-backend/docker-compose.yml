@@ -432,7 +432,18 @@ services:
     networks:
       - testai-network
     restart: unless-stopped
-
+  api-test-books:
+      build:
+        context: ./api_test_books
+        dockerfile: Dockerfile
+      container_name: testai-api-test-books
+      environment:
+        FLASK_ENV: production
+      ports:
+        - "5001:5001"   
+      networks:
+        - testai-network
+      restart: unless-stopped
 
   # ==========================================
   # API GATEWAY
