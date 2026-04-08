@@ -11,4 +11,6 @@ public class ProjectDTO {
     private String projectUrl; // Base URL de l'API
     private String authType; // "NONE", "BASIC", "APIKEY", "BEARER"
     private ApiCredentialsDTO credentials;
+    private String docMode;
+    private String description;
 }

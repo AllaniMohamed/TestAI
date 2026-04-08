@@ -18,6 +18,10 @@ public class FormattedTestDTO {
     private Boolean requiresAuth;
 
     private List<TestExecution> tests;
+    private String docMode;
+    private String description;
+    private String statusCodes;
+    private String httpMethod;
 
     @Data
     public static class EndpointDetails{
@@ -25,6 +29,8 @@ public class FormattedTestDTO {
         private String requestBodySchema;
         private String responseBodySchema;
         private Boolean requiresAuth;
+        private String statusCodes;
+        private String httpMethod;
     }
 
     public EndpointDetails getEndpoint() {
@@ -33,6 +39,8 @@ public class FormattedTestDTO {
         ep.setRequestBodySchema(this.requestBodySchema);
         ep.setResponseBodySchema(this.responseBodySchema);
         ep.setRequiresAuth(this.requiresAuth);
+        ep.setStatusCodes(this.statusCodes);
+        ep.setHttpMethod(this.httpMethod);
         return ep;
     }
 
@@ -41,6 +49,8 @@ public class FormattedTestDTO {
         this.requestBodySchema = ep.getRequestBodySchema();
         this.responseBodySchema = ep.getResponseBodySchema();
         this.requiresAuth = ep.getRequiresAuth();
+        this.statusCodes = ep.getStatusCodes();
+        this.httpMethod = ep.getMethod();
     }
 
     @Data
@@ -49,6 +59,8 @@ public class FormattedTestDTO {
         private String projectUrl;
         private String authType;
         private ApiCredentialsDTO credentials;
+        private String docMode;
+        private String description;
     }
 
     public ProjectDetails getProject() {
@@ -57,6 +69,8 @@ public class FormattedTestDTO {
         project.setProjectUrl(this.projectUrl);
         project.setAuthType(this.authType);
         project.setCredentials(this.credentials);
+        project.setDocMode(this.docMode);
+        project.setDescription(this.description);
         return project;
     }
 
@@ -65,5 +79,7 @@ public class FormattedTestDTO {
         this.projectUrl = project.getProjectUrl();
         this.authType = project.getAuthType();
         this.credentials = project.getCredentials();
+        this.docMode = project.getDocMode();
+        this.description = project.getDescription();
     }
 }

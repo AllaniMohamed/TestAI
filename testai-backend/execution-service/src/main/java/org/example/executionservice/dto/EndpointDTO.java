@@ -12,4 +12,5 @@ public class EndpointDTO {
     private String requestBodySchema; // JSON Schema
     private String responseBodySchema; // JSON Schema
     private Boolean requiresAuth;
+    private  String statusCodes;
 }
