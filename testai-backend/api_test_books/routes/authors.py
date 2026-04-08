@@ -25,6 +25,36 @@ author_input = api.model('AuthorInput', {
     'biography': fields.String(example='Écrivain français du XIXe siècle.')
 })
 
+def validate_author_data(data, partial=False):
+    """
+    partial=False for POST (required fields enforced)
+    partial=True for PUT (only validate provided fields)
+    """
+    if not data:
+        api.abort(400, "Request body must be a valid JSON object")
+
+    required_fields = ['first_name', 'last_name']
+
+    if not partial:
+        for field in required_fields:
+            if field not in data:
+                api.abort(400, f"'{field}' is required")
+
+    string_fields = ['first_name', 'last_name', 'nationality', 'biography']
+
+    for field in string_fields:
+        if field in data and data[field] is not None:
+            if not isinstance(data[field], str):
+                api.abort(400, f"'{field}' must be a string")
+
+    if 'birth_date' in data and data['birth_date'] is not None:
+        if not isinstance(data['birth_date'], str):
+            api.abort(400, "'birth_date' must be a string in format YYYY-MM-DD")
+        try:
+            datetime.strptime(data['birth_date'], '%Y-%m-%d')
+        except ValueError:
+            api.abort(400, "'birth_date' must be in format YYYY-MM-DD")
+
 @api.route('/')
 class AuthorList(Resource):
     @api.doc('list_authors')
@@ -40,7 +70,7 @@ class AuthorList(Resource):
     def post(self):
         """Créer un nouvel auteur"""
         data = request.json
-        
+        validate_author_data(data, partial=False)
         author = Author(
             first_name=data['first_name'],
             last_name=data['last_name'],
@@ -71,7 +101,7 @@ class AuthorResource(Resource):
         """Mettre à jour un auteur"""
         author = Author.query.get_or_404(id)
         data = request.json
-        
+        validate_author_data(data, partial=True)
         author.first_name = data.get('first_name', author.first_name)
         author.last_name = data.get('last_name', author.last_name)
         
