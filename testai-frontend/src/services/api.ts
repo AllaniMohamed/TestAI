@@ -289,7 +289,7 @@ export const userService = {
     api.delete(`/user-service/api/users/${userId}/avatar`),
 
   getAvatarUrl: (fileName: string): string =>
-  `${API_BASE_URL}/user-service/api/users/avatars/${fileName}`,
+    `${API_BASE_URL}/user-service/api/users/avatars/${fileName}`,
 };
 
 // Project Service
@@ -380,13 +380,20 @@ export const testService = {
   getTestsByProjectId: (projectId: string): Promise<AxiosResponse<Test[]>> =>
     api.get(`/test-service/api/tests/${projectId}`),
 
-  getTestsByProjectIdAndEndpointId: (projectId: string, endpointId: string): Promise<AxiosResponse<Test[]>> =>
+  getTestsByProjectIdAndEndpointId: (
+    projectId: string,
+    endpointId: string,
+  ): Promise<AxiosResponse<Test[]>> =>
     api.get(`/test-service/api/tests/${projectId}/${endpointId}`),
 
-  generate: (endpoints: Partial<Endpoint[]>): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
-    api.post("/test-service/api/tests/generate", endpoints as EndpointDTO[], {timeout: 300000}),
+  generate: (
+    endpoints: Partial<Endpoint[]>,
+  ): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
+    api.post("/test-service/api/tests/generate", endpoints as EndpointDTO[], {
+      timeout: 300000,
+    }),
 
-  update: (test: Partial<Test>): Promise<AxiosResponse<string>> => 
+  update: (test: Partial<Test>): Promise<AxiosResponse<string>> =>
     api.put(`/test-service/api/tests/update`, test),
 
   getHeaders: (): Promise<AxiosResponse<Record<string, string>>> =>
@@ -395,13 +402,20 @@ export const testService = {
   resetHeaders: (): Promise<AxiosResponse<Record<string, string>>> =>
     api.get(`/test-service/api/tests/reset_headers`),
 
-  setHeaders: (headers: Record<string, string>): Promise<AxiosResponse<Record<string, string>>> =>
+  setHeaders: (
+    headers: Record<string, string>,
+  ): Promise<AxiosResponse<Record<string, string>>> =>
     api.post(`/test-service/api/tests/headers`, headers),
 
-  deleteTestByProjectIdAndEndpointId: (projectId: string, endpointId: string): Promise<AxiosResponse<Record<string, string>>> =>
+  deleteTestByProjectIdAndEndpointId: (
+    projectId: string,
+    endpointId: string,
+  ): Promise<AxiosResponse<Record<string, string>>> =>
     api.delete(`/test-service/api/tests/${projectId}/${endpointId}`),
-  
-  deleteTestsByProjectId: (projectId: string): Promise<AxiosResponse<Record<string, string>>> =>
+
+  deleteTestsByProjectId: (
+    projectId: string,
+  ): Promise<AxiosResponse<Record<string, string>>> =>
     api.delete(`/test-service/api/tests/project/${projectId}`),
 };
 
@@ -499,7 +513,7 @@ export interface ProjectExecution {
   completedAt?: string;
   executedBy: string;
   executionContext: string;
-  
+
   // Stats par type de test
   positiveTests?: number;
   positivePassedTests?: number;
@@ -559,42 +573,56 @@ export interface TestExecution {
   executionId: string;
 }
 
-export type TestType = "POSITIVE" | "WRONG_TYPE" | "MISSING_FIELDS" | "VALIDATION" | "BOUNDARY" | "AUTH";
+export type TestType =
+  | "POSITIVE"
+  | "WRONG_TYPE"
+  | "MISSING_FIELDS"
+  | "VALIDATION"
+  | "BOUNDARY"
+  | "AUTH";
 export type TestStatus = "SUCCESS" | "FAILED" | "ERROR";
 
 export const executionService = {
   // ==========================================
   // EXÉCUTION
   // ==========================================
-  
+
   /**
    * Lancer l'exécution de tous les tests d'un projet
    */
-  startExecution: (request: ExecuteProjectRequest): Promise<AxiosResponse<StartExecutionResponse>> =>
+  startExecution: (
+    request: ExecuteProjectRequest,
+  ): Promise<AxiosResponse<StartExecutionResponse>> =>
     api.post("/execution-service/api/executions/execute-project", request),
 
   // ==========================================
   // RÉCUPÉRATION HISTORIQUE
   // ==========================================
-  
+
   /**
    * ⭐ Récupérer toutes les ProjectExecution d'un projet
    * Retourne: ProjectExecution[] (ordonné par date décroissante)
    */
-  getProjectExecutions: (projectId: string): Promise<AxiosResponse<ProjectExecution[]>> =>
+  getProjectExecutions: (
+    projectId: string,
+  ): Promise<AxiosResponse<ProjectExecution[]>> =>
     api.get(`/execution-service/api/executions/project/${projectId}`),
 
   /**
    * Récupérer UNE ProjectExecution par son ID
    */
-  getProjectExecutionById: (executionId: string): Promise<AxiosResponse<ProjectExecution>> =>
+  getProjectExecutionById: (
+    executionId: string,
+  ): Promise<AxiosResponse<ProjectExecution>> =>
     api.get(`/execution-service/api/executions/${executionId}`),
 
   /**
    * ⭐ Récupérer tous les TestExecution d'une ProjectExecution
    * Retourne: TestExecution[]
    */
-  getTestExecutionsByExecutionId: (executionId: string): Promise<AxiosResponse<TestExecution[]>> =>
+  getTestExecutionsByExecutionId: (
+    executionId: string,
+  ): Promise<AxiosResponse<TestExecution[]>> =>
     api.get(`/execution-service/api/executions/${executionId}/test-executions`),
 
   /**
@@ -606,9 +634,144 @@ export const executionService = {
   /**
    * Récupérer le statut d'une exécution
    */
-  getExecutionStatus: (executionId: string): Promise<AxiosResponse<ProjectExecutionResponse>> =>
+  getExecutionStatus: (
+    executionId: string,
+  ): Promise<AxiosResponse<ProjectExecutionResponse>> =>
     api.get(`/execution-service/api/executions/${executionId}/status`),
 };
+
+// ==========================================
+// API RUNNER SERVICE ⭐
+// ==========================================
+
+export interface ExecuteApiRequestDTO {
+  method: string; // GET, POST, PUT, DELETE, PATCH
+  url: string; // URL complète
+  headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  pathVariables?: Record<string, string>;
+  authType?: string; // NONE, BEARER, BASIC, API_KEY
+  authConfig?: Record<string, string>;
+  requestBody?: string; // JSON body
+  saveAfterExecution?: boolean;
+  requestName?: string;
+  requestDescription?: string;
+}
+
+export interface ApiResponseDTO {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  body: string;
+  responseTimeMs: number;
+  size: string;
+  success: boolean;
+  errorMessage?: string;
+}
+
+export interface SavedApiRequestDTO {
+  id?: string;
+  userId?: string;
+  name: string;
+  description?: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  pathVariables?: Record<string, string>;
+  authType?: string;
+  authConfig?: Record<string, string>;
+  requestBody?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastExecutedAt?: string;
+  executionCount?: number;
+}
+
+export const apiRunnerService = {
+  // Exécuter une requête HTTP
+  executeRequest: (
+    request: ExecuteApiRequestDTO,
+  ): Promise<AxiosResponse<ApiResponseDTO>> =>
+    api.post("/execution-service/api/executions/api-runner/execute", request),
+
+  // Créer une nouvelle requête
+  createRequest: (
+    request: SavedApiRequestDTO,
+  ): Promise<AxiosResponse<SavedApiRequestDTO>> =>
+    api.post("/execution-service/api/executions/api-runner/requests", request),
+
+  // Lister mes requêtes
+  getUserRequests: (
+    orderBy: string = "created",
+  ): Promise<AxiosResponse<SavedApiRequestDTO[]>> =>
+    api.get(
+      `/execution-service/api/executions/api-runner/requests?orderBy=${orderBy}`,
+    ),
+
+  // Récupérer une requête par ID
+  getRequestById: (
+    requestId: string,
+  ): Promise<AxiosResponse<SavedApiRequestDTO>> =>
+    api.get(
+      `/execution-service/api/executions/api-runner/requests/${requestId}`,
+    ),
+
+  // Modifier une requête
+  updateRequest: (
+    requestId: string,
+    request: SavedApiRequestDTO,
+  ): Promise<AxiosResponse<SavedApiRequestDTO>> =>
+    api.put(
+      `/execution-service/api/executions/api-runner/requests/${requestId}`,
+      request,
+    ),
+
+  // Supprimer une requête
+  deleteRequest: (
+    requestId: string,
+  ): Promise<AxiosResponse<Record<string, string>>> =>
+    api.delete(
+      `/execution-service/api/executions/api-runner/requests/${requestId}`,
+    ),
+
+  // Exécuter une requête sauvegardée
+  executeSavedRequest: (
+    requestId: string,
+  ): Promise<AxiosResponse<ApiResponseDTO>> =>
+    api.post(
+      `/execution-service/api/executions/api-runner/requests/${requestId}/execute`,
+    ),
+
+  // Supprimer tout l'historique
+  deleteAllRequests: (): Promise<AxiosResponse<Record<string, string>>> =>
+    api.delete("/execution-service/api/executions/api-runner/requests"),
+};
+// INTERCEPTEUR REQUEST (Ajouter JWT Token et X-User-Id)
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // ⭐ Ajout du header X-User-Id requis par execution-service
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.id) {
+          config.headers["X-User-Id"] = user.id;
+        }
+      }
+    } catch (e) {
+      console.warn("Impossible de récupérer l'ID utilisateur pour X-User-Id", e);
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 // ==========================================
 // TYPES ⭐
 // ==========================================
@@ -628,6 +791,9 @@ export type {
   SharedAccess,
   SharedProject,
   InvitationInfo,
+  ExecuteApiRequestDTO,
+  ApiResponseDTO,
+  SavedApiRequestDTO,
 };
 export interface RegisterWithInvitationRequest {
   email: string;
