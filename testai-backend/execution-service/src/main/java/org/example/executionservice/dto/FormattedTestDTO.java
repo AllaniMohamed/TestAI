@@ -12,7 +12,7 @@ public class FormattedTestDTO {
     private String authType;
     private ApiCredentialsDTO credentials;
 
-    private String endpointPath; // "GET /api/....."
+    private String endpointPath; // "/api/....."
     private String requestBodySchema;
     private String responseBodySchema;
     private Boolean requiresAuth;
@@ -45,12 +45,17 @@ public class FormattedTestDTO {
     }
 
     public void setEndpoint(EndpointDTO ep){
-        this.endpointPath = ep.getMethod() + " " + ep.getPath();
+        this.endpointPath = ep.getPath();
         this.requestBodySchema = ep.getRequestBodySchema();
         this.responseBodySchema = ep.getResponseBodySchema();
         this.requiresAuth = ep.getRequiresAuth();
         this.statusCodes = ep.getStatusCodes();
         this.httpMethod = ep.getMethod();
+    }
+
+    public String getEndpointCategory(){
+        String temp = this.endpointPath.substring(1);
+        return temp.substring(0,temp.indexOf("/"));
     }
 
     @Data

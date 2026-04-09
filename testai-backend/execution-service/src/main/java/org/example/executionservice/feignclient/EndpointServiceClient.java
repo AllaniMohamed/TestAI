@@ -18,4 +18,6 @@ public interface EndpointServiceClient {
     EndpointDTO getEndpointById(@PathVariable UUID endpointId);
     @GetMapping("/project/{projectId}")
     List<EndpointDTO> getEndpointsByProjectId(@PathVariable UUID projectId);
+    @GetMapping("/project/{projectId}/tag/{tag}")
+    List<EndpointDTO> getEndpointsByProjectIdAndTag(@PathVariable UUID projectId, @PathVariable String tag);
 }

@@ -5,9 +5,7 @@ import org.example.executionservice.entity.ProjectExecution;
 import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.repository.ProjectExecutionRepository;
 import org.example.executionservice.repository.TestExecutionRepository;
-import org.example.executionservice.service.ProjectExecutionService;
-import org.example.executionservice.service.SingleReportService;
-import org.example.executionservice.service.TestExecutionService;
+import org.example.executionservice.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ContentDisposition;
@@ -31,6 +29,8 @@ public class ExecutionController {
     private final TestExecutionRepository testExecutionRepository;
     private final ProjectExecutionRepository projectExecutionRepository;
     private final SingleReportService singleReportService;
+    private final TagsReportService tagsReportService;
+    private final TotalReportService totalReportService;
 
     // ==========================================
     // EXÉCUTION D'UN SEUL TEST
@@ -192,7 +192,37 @@ public class ExecutionController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                    ContentDisposition.attachment().filename("Endpoint-report.pdf").build()
+                    ContentDisposition.attachment().filename("Endpoint-"+endpointId+"-report.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/report/{projectId}")
+    public ResponseEntity<?> generateProjectReport(@PathVariable UUID projectId){
+        try{
+            byte[] pdf = totalReportService.reportTagsReport(projectId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Project-"+projectId+"-report.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/report/{projectId}/tag/{tag}")
+    public ResponseEntity<?> generateTagReport(@PathVariable UUID projectId, @PathVariable String tag){
+        try{
+            byte[] pdf = tagsReportService.reportTagsReport(projectId, tag);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Category-"+tag+"-report.pdf").build()
             );
             return ResponseEntity.ok().headers(headers).body(pdf);
         } catch (Exception e) {
