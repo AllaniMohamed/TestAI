@@ -107,13 +107,15 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
       </div>
 
       {/* Desktop Logo */}
-      <Link
+       <Link
         to={isLoggedIn ? '/dashboard' : '/'}
         className="hidden md:flex items-center gap-2"
       >
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-          <span className="text-white font-bold text-xl">T</span>
-        </div>
+        <img 
+          src="../../assets/images/logoTestAi.png" 
+          alt="TestAI Logo" 
+          className="w-8 h-8 object-contain"
+        />
         <span className="text-xl font-bold text-gray-900 tracking-tight">TestAI</span>
       </Link>
 

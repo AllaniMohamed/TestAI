@@ -74,11 +74,11 @@ const ProjectSharesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-surface">
         <Navbar />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-8 max-w-7xl mx-auto w-full">
+          <main className="flex-1 ml-64 p-8 max-w-7xl mx-auto w-full">
             <div className="flex items-center justify-center h-96">
               <ArrowPathIcon className="w-12 h-12 text-primary animate-spin" />
             </div>
@@ -90,13 +90,13 @@ const ProjectSharesPage: React.FC = () => {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-surface">
         <Navbar />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-8 max-w-7xl mx-auto w-full">
+          <main className="flex-1 ml-64 p-8 max-w-7xl mx-auto w-full">
             <Card className="p-8 text-center">
-              <p className="text-red-600">{error || 'Projet non trouvé'}</p>
+              <p className="text-error">{error || 'Projet non trouvé'}</p>
               <Button onClick={() => navigate(-1)} className="mt-4">
                 Retour
               </Button>
@@ -112,19 +112,19 @@ const ProjectSharesPage: React.FC = () => {
   const revokedShares = shares.filter(s => s.status === 'REVOKED');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+        <main className="flex-1 ml-64 p-6 md:p-10 max-w-7xl mx-auto w-full">
           {/* Header */}
           <div className="mb-8 flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate(-1)} icon={<ArrowLeftIcon className="w-5 h-5" />}>
               Retour
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestion des accès</h1>
-              <p className="text-gray-500">Projet : {project.name}</p>
+              <h1 className="text-3xl font-headline font-bold text-on-surface">Gestion des accès</h1>
+              <p className="text-on-surface-variant">Projet : {project.name}</p>
             </div>
           </div>
 
@@ -139,12 +139,12 @@ const ProjectSharesPage: React.FC = () => {
                 </h2>
                 <div className="space-y-4">
                   {pendingShares.map(share => (
-                    <div key={share.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                    <div key={share.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
                       <div className="flex items-center gap-4">
-                        <EnvelopeIcon className="w-5 h-5 text-gray-400" />
+                        <EnvelopeIcon className="w-5 h-5 text-on-surface-variant" />
                         <div>
-                          <p className="font-medium">{share.userEmail}</p>
-                          <p className="text-sm text-gray-500">Invité le {new Date(share.invitedAt).toLocaleDateString('fr-FR')}</p>
+                          <p className="font-medium text-on-surface">{share.userEmail}</p>
+                          <p className="text-sm text-on-surface-variant">Invité le {new Date(share.invitedAt).toLocaleDateString('fr-FR')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -168,13 +168,13 @@ const ProjectSharesPage: React.FC = () => {
                 </h2>
                 <div className="space-y-4">
                   {activeShares.map(share => (
-                    <div key={share.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                    <div key={share.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
                       <div className="flex items-center gap-4">
-                        <UserIcon className="w-5 h-5 text-gray-400" />
+                        <UserIcon className="w-5 h-5 text-on-surface-variant" />
                         <div>
-                          <p className="font-medium">{share.userName || share.userEmail}</p>
-                          <p className="text-sm text-gray-500">{share.userEmail}</p>
-                          <p className="text-xs text-gray-400">Accepté le {new Date(share.activatedAt!).toLocaleDateString('fr-FR')}</p>
+                          <p className="font-medium text-on-surface">{share.userName || share.userEmail}</p>
+                          <p className="text-sm text-on-surface-variant">{share.userEmail}</p>
+                          <p className="text-xs text-on-surface-variant">Accepté le {new Date(share.activatedAt!).toLocaleDateString('fr-FR')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ const ProjectSharesPage: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-500 border-red-200 hover:bg-red-50"
+                          className="text-error border-error/20 hover:bg-error/10"
                           onClick={() => handleRevoke(share.id)}
                           icon={<TrashIcon className="w-4 h-4" />}
                         >
@@ -209,18 +209,18 @@ const ProjectSharesPage: React.FC = () => {
             {revokedShares.length > 0 && (
               <Card className="p-6">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <XCircleIcon className="w-5 h-5 text-gray-400" />
+                  <XCircleIcon className="w-5 h-5 text-on-surface-variant" />
                   Accès révoqués ({revokedShares.length})
                 </h2>
                 <div className="space-y-4">
                   {revokedShares.map(share => (
-                    <div key={share.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg opacity-60">
+                    <div key={share.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg opacity-60">
                       <div className="flex items-center gap-4">
-                        <EnvelopeIcon className="w-5 h-5 text-gray-400" />
+                        <EnvelopeIcon className="w-5 h-5 text-on-surface-variant" />
                         <div>
-                          <p className="font-medium">{share.userEmail}</p>
-                          <p className="text-sm text-gray-500">
-                            Révocqué le {share.revokedAt ? new Date(share.revokedAt).toLocaleDateString('fr-FR') : ''}
+                          <p className="font-medium text-on-surface">{share.userEmail}</p>
+                          <p className="text-sm text-on-surface-variant">
+                            Révoqué le {share.revokedAt ? new Date(share.revokedAt).toLocaleDateString('fr-FR') : ''}
                           </p>
                         </div>
                       </div>
@@ -234,9 +234,9 @@ const ProjectSharesPage: React.FC = () => {
             {/* Aucun partage */}
             {shares.length === 0 && (
               <Card className="p-12 text-center">
-                <ShareIcon className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun partage</h3>
-                <p className="text-slate-500">Ce projet n'a pas encore été partagé avec des développeurs.</p>
+                <ShareIcon className="w-16 h-16 mx-auto mb-4 text-on-surface-variant/30" />
+                <h3 className="text-xl font-headline font-bold text-on-surface mb-2">Aucun partage</h3>
+                <p className="text-on-surface-variant">Ce projet n'a pas encore été partagé avec des développeurs.</p>
               </Card>
             )}
           </div>

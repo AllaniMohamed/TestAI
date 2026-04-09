@@ -326,6 +326,12 @@ public class ProjectExecutionService {
                     .errorMessage(e.getMessage())
                     .executedBy(executedBy)
                     .executionContext(executionContext != null ? executionContext : "manual")
+                    .executionId(executionId)
+                    .requestUrl("ERROR")
+                    .responseStatusCode(0)
+                    .responseTimeMs(0L)
+                    .statusCodeMatch(false)
+                    .schemaValidationPassed(false)
                     .build();
         }
     }
