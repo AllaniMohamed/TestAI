@@ -1989,7 +1989,7 @@ const ServiceDetailsPage: React.FC = () => {
               SETTINGS TAB (UPDATED)
           ════════════════════════════════════════════════════════════ */}
           {activeTab === "settings" && (
-            <div className="max-w-2xl space-y-6">
+            <div className="max-w-2xl mx-auto space-y-6 ">
               <Card title="Project Information">
                 <form onSubmit={handleUpdateProject} className="space-y-4">
                   {/* Name */}
@@ -2027,38 +2027,55 @@ const ServiceDetailsPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Project URL */}
-                  <div>
-                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                      Project URL
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.projectUrl}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, projectUrl: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-white"
-                      disabled={!canEdit}
-                    />
-                  </div>
+                   {/* Project URL */}
+      <div>
+        <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+          Project URL
+        </label>
+        <input
+          type="text"
+          value={editForm.projectUrl}
+          onChange={(e) => setEditForm({ ...editForm, projectUrl: e.target.value })}
+          className={`w-full px-3 py-2 border rounded-lg text-sm ${
+            !canEdit || endpoints.length > 0
+              ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
+              : 'bg-white border-outline-variant/30'
+          }`}
+          disabled={!canEdit || endpoints.length > 0}
+        />
+        {endpoints.length > 0 && (
+          <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+            <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+            URL locked – endpoints already exist. Delete endpoints first to modify.
+          </p>
+        )}
+      </div>
 
-                  {/* Documentation URL (Swagger) */}
-                  <div>
-                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                      Documentation URL (Swagger/OpenAPI)
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.docUrl}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, docUrl: e.target.value })
-                      }
-                      placeholder="https://api.example.com/swagger.json"
-                      className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-white"
-                      disabled={!canEdit}
-                    />
-                  </div>
+      {/* Documentation URL (Swagger) */}
+      <div>
+        <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+          Documentation URL (Swagger/OpenAPI)
+        </label>
+        <input
+          type="text"
+          value={editForm.docUrl}
+          onChange={(e) => setEditForm({ ...editForm, docUrl: e.target.value })}
+          placeholder="https://api.example.com/swagger.json"
+          className={`w-full px-3 py-2 border rounded-lg text-sm ${
+            !canEdit || endpoints.length > 0
+              ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
+              : 'bg-white border-outline-variant/30'
+          }`}
+          disabled={!canEdit || endpoints.length > 0}
+        />
+        {endpoints.length > 0 && (
+          <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+            <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+            URL locked – endpoints already exist. Delete endpoints first to modify.
+          </p>
+        )}
+      </div>
+
 
                   {/* Authentication Type */}
                   <div>
