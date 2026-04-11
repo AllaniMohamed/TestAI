@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -286,6 +287,45 @@ public class ProjectController {
     // ========================================
 
     private UUID getUserIdFromAuth(Authentication authentication) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String email = jwt.getClaimAsString("email");
+        String token = "Bearer " + jwt.getTokenValue();
+        UserDTO user = userServiceClient.getUserByEmail(email, token);
+        return user.getId();
+    }
+    /**
+     * ⭐ Activer un projet
+     */
+    @PostMapping("/{projectId}/activate")
+    public ResponseEntity<Project> activateProject(@PathVariable UUID projectId) {
+        UUID userId = getCurrentUserId();
+        Project activated = projectService.activateProject(projectId, userId);
+        return ResponseEntity.ok(activated);
+    }
+
+    /**
+     * ⭐ Désactiver un projet
+     */
+    @PostMapping("/{projectId}/deactivate")
+    public ResponseEntity<Project> deactivateProject(@PathVariable UUID projectId) {
+        UUID userId = getCurrentUserId();
+        Project deactivated = projectService.deactivateProject(projectId, userId);
+        return ResponseEntity.ok(deactivated);
+    }
+
+    /**
+     * ⭐ Toggle activation (activer/désactiver)
+     */
+    @PostMapping("/{projectId}/toggle-activation")
+    public ResponseEntity<Project> toggleActivation(@PathVariable UUID projectId) {
+        UUID userId = getCurrentUserId();
+        Project toggled = projectService.toggleProjectActivation(projectId, userId);
+        return ResponseEntity.ok(toggled);
+    }
+
+    // ⭐ Helper pour récupérer l'userId depuis le JWT
+    private UUID getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String email = jwt.getClaimAsString("email");
         String token = "Bearer " + jwt.getTokenValue();

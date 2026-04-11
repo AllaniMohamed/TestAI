@@ -23,7 +23,7 @@ const VerifyPhonePage: React.FC = () => {
   const [error, setError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
-  const email = location.state?.email || localStorage.getItem('pendingEmail') || '';
+  const email = location.state?.email || sessionStorage.getItem('pendingEmail') || '';
 
   const handleVerifyPhone = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ const VerifyPhonePage: React.FC = () => {
   };
 
   const handleModalOk = () => {
-    localStorage.removeItem('pendingEmail');
+    sessionStorage.removeItem('pendingEmail');
     navigate('/login', { 
       state: { message: 'Compte activé ! Vous pouvez vous connecter.' } 
     });

@@ -110,9 +110,9 @@ class AuthService {
 
     // Stocker les tokens
     if (response.data.accessToken) {
-      localStorage.setItem("accessToken", response.data.accessToken);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      sessionStorage.setItem("accessToken", response.data.accessToken);
+      sessionStorage.setItem("refreshToken", response.data.refreshToken);
+      sessionStorage.setItem("user", JSON.stringify(response.data.user));
     }
 
     return response.data;
@@ -148,15 +148,15 @@ class AuthService {
    * Rafraîchir le token
    */
   async refreshToken() {
-    const refreshToken = localStorage.getItem("refreshToken");
+    const refreshToken = sessionStorage.getItem("refreshToken");
     if (!refreshToken) throw new Error("No refresh token");
 
     const response = await axios.post<AuthResponse>(`${API_URL}/auth/refresh`, {
       refreshToken,
     });
 
-    localStorage.setItem("accessToken", response.data.accessToken);
-    localStorage.setItem("refreshToken", response.data.refreshToken);
+    sessionStorage.setItem("accessToken", response.data.accessToken);
+    sessionStorage.setItem("refreshToken", response.data.refreshToken);
 
     return response.data;
   }
@@ -165,16 +165,16 @@ class AuthService {
    * Déconnexion
    */
   logout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("user");
   }
 
   /**
    * Récupérer l'utilisateur connecté
    */
   getCurrentUser() {
-    const userStr = localStorage.getItem("user");
+    const userStr = sessionStorage.getItem("user");
     if (userStr) {
       return JSON.parse(userStr);
     }
@@ -185,14 +185,14 @@ class AuthService {
    * Vérifier si l'utilisateur est connecté
    */
   isAuthenticated() {
-    return !!localStorage.getItem("accessToken");
+    return !!sessionStorage.getItem("accessToken");
   }
 
   /**
    * Récupérer le token
    */
   getToken() {
-    return localStorage.getItem("accessToken");
+    return sessionStorage.getItem("accessToken");
   }
 
   /**

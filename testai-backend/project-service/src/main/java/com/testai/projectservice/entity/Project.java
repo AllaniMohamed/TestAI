@@ -2,7 +2,10 @@ package com.testai.projectservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -39,6 +42,20 @@ public class Project {
     @Enumerated(EnumType.STRING)
     private AuthType authType;
 
+    // ⭐ NOUVEAU : Activation/Désactivation
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
+    // ⭐ NOUVEAU : Dates d'activation/désactivation
+    private LocalDateTime activatedAt;
+    private LocalDateTime deactivatedAt;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 
     // ========== RELATION AVEC CREDENTIALS ==========
     @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -48,6 +65,7 @@ public class Project {
     public enum DocsMode {
         SWAGGER, MANUAL
     }
+
     public enum AuthType {
         NONE, BASIC, APIKEY, BEARER
     }

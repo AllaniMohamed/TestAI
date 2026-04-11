@@ -43,7 +43,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const userStr = localStorage.getItem("user");
+  const userStr = sessionStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
   const userRole: string = user?.role ?? "MANAGER";
   const isManager = userRole === "MANAGER";

@@ -302,9 +302,9 @@ curl -X POST http://localhost:8081/api/auth/resend-email-verification \
 ### **Côté Frontend (exemple)**
 
 ```javascript
-// Supprimer le token du localStorage
-localStorage.removeItem('accessToken');
-localStorage.removeItem('refreshToken');
+// Supprimer le token du sessionStorage
+sessionStorage.removeItem('accessToken');
+sessionStorage.removeItem('refreshToken');
 
 // Rediriger vers la page de login
 window.location.href = '/login';

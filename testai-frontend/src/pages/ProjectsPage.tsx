@@ -21,15 +21,16 @@ interface SharedProject {
   projectUrl: string;
   managerEmail: string;
   managerName?: string;
-  accessLevel: 'READ_ONLY' | 'READ_WRITE';
+  accessLevel: "READ_ONLY" | "READ_WRITE";
   sharedAt: string;
 }
 
 interface ExtendedService extends Service {
   managerEmail?: string;
   managerName?: string;
-  accessLevel?: 'READ_ONLY' | 'READ_WRITE';
+  accessLevel?: "READ_ONLY" | "READ_WRITE";
   sharedAt?: string;
+  isActive?: boolean; // ⭐ NOUVEAU
 }
 
 const ProjectsPage: React.FC = () => {
@@ -41,7 +42,7 @@ const ProjectsPage: React.FC = () => {
   const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
+    const userStr = sessionStorage.getItem("user");
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -55,76 +56,87 @@ const ProjectsPage: React.FC = () => {
 
   useEffect(() => {
     if (!userRole || !userId) return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        let mappedServices: ExtendedService[] = [];
-
-        if (userRole === "MANAGER") {
-          const response = await projectService.getAllProjects();
-          let allProjects = response.data;
-          if (!Array.isArray(allProjects)) {
-            console.error("Données invalides depuis getAllProjects :", allProjects);
-            allProjects = [];
-            setError("Format de données invalide. Contactez l'administrateur.");
-          }
-          const userProjects = allProjects.filter(p => p.userId === userId);
-          mappedServices = userProjects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            url: p.projectUrl,
-            status: "active",
-            endpointsCount: 0,
-            authType: p.authType || "",
-          }));
-        } else if (userRole === "DEVELOPER") {
-          const response = await sharedAccessService.getSharedProjects();
-          let sharedProjects = response.data;
-          if (!Array.isArray(sharedProjects)) {
-            console.error("Données invalides depuis getSharedProjects :", sharedProjects);
-            sharedProjects = [];
-            setError("Format de données invalide. Contactez l'administrateur.");
-          }
-          mappedServices = sharedProjects.map((sp) => ({
-            id: sp.projectId,
-            name: sp.projectName,
-            description: sp.projectDescription,
-            url: sp.projectUrl,
-            status: "active",
-            endpointsCount: 0,
-            authType: "",
-            managerEmail: sp.managerEmail,
-            managerName: sp.managerName,
-            accessLevel: sp.accessLevel,
-            sharedAt: sp.sharedAt,
-          }));
-        }
-
-        setServices(mappedServices);
-      } catch (err) {
-        console.error("Failed to fetch projects:", err);
-        setError("Impossible de charger les projets. Veuillez réessayer.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [userRole, userId]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      let mappedServices: ExtendedService[] = [];
+
+      if (userRole === "MANAGER") {
+        const response = await projectService.getAllProjects();
+        let allProjects = response.data;
+        if (!Array.isArray(allProjects)) {
+          console.error("Données invalides depuis getAllProjects :", allProjects);
+          allProjects = [];
+          setError("Format de données invalide. Contactez l'administrateur.");
+        }
+        const userProjects = allProjects.filter((p) => p.userId === userId);
+        mappedServices = userProjects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          url: p.projectUrl,
+          status: "active",
+          endpointsCount: 0,
+          authType: p.authType || "",
+          isActive: p.isActive ?? true, // ⭐ NOUVEAU
+        }));
+      } else if (userRole === "DEVELOPER") {
+        const response = await sharedAccessService.getSharedProjects();
+        let sharedProjects = response.data;
+        if (!Array.isArray(sharedProjects)) {
+          console.error("Données invalides depuis getSharedProjects :", sharedProjects);
+          sharedProjects = [];
+          setError("Format de données invalide. Contactez l'administrateur.");
+        }
+        mappedServices = sharedProjects.map((sp) => ({
+          id: sp.projectId,
+          name: sp.projectName,
+          description: sp.projectDescription,
+          url: sp.projectUrl,
+          status: "active",
+          endpointsCount: 0,
+          authType: "",
+          managerEmail: sp.managerEmail,
+          managerName: sp.managerName,
+          accessLevel: sp.accessLevel,
+          sharedAt: sp.sharedAt,
+          isActive: true, // ⭐ Déjà filtré côté backend
+        }));
+      }
+
+      setServices(mappedServices);
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+      setError("Impossible de charger les projets. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ⭐ Fonction pour toggle l'activation
+  const handleToggleActivation = async (projectId: string) => {
+    try {
+      await projectService.toggleProjectActivation(projectId);
+      // Recharger les données
+      await fetchData();
+    } catch (error) {
+      console.error("Erreur lors du toggle:", error);
+      alert("Impossible de modifier le statut du projet");
+    }
+  };
 
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Avatars factices pour le design (à adapter)
-  const teamAvatars = [
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuAaQDOtgoUE5oJjSaUranN-cWiFuD2-YSACNtadzRpyZFbkK7KeYSBRgacIBn5a2ysd8FQekXTi_lgVZkpuxKhB8zEVsmBL_XYHu0wEsojiafw9GSmHKycQ70P7CIwejp34IjdksYXUSmFc9CqERLG3FUoCQLHFxsFELfJ6hsgAjmnk8bux-qifv8l4GdkCDOz9REnEqlMZ_s8tXQKUDth77y4E5YM6Na9fH1_QHMQ9ouajVZqTCotD8yGFPRnteDQyChIAimY9L3c",
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuC5HWLweeYB434k8YLzlA7O-qtZY8ojeH56a6rUi_Pz7C6vbI7a_CbNncKqBpqmW0VkyZ6Nb63Y_jJH0smInG4p0S4zSmr-ndjA0CoKXy0E0PnQ1E1vaOjURhisZYgW34AX8918cB3HmmhfkSc5-5sPz_zPfhUcXq5I2rNb9SC6iM31t58hkHeO1-de4TsjzY8uy8iyIgdAPk9RBuApOPiCNQGWqiFG0R7XMwKGTib9DKhtNGzGtbRcl2R6jwkgMai_A-ue6rvlx_c",
-  ];
+  // ⭐ Séparer projets actifs et désactivés (MANAGER uniquement)
+  const activeProjects = filteredServices.filter((s) => s.isActive !== false);
+  const inactiveProjects = filteredServices.filter((s) => s.isActive === false);
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
@@ -146,9 +158,7 @@ const ProjectsPage: React.FC = () => {
             </div>
             {userRole === "MANAGER" && (
               <Link to="/add-service">
-                <Button icon={<PlusIcon className="w-5 h-5" />}>
-                  Nouveau projet
-                </Button>
+                <Button icon={<PlusIcon className="w-5 h-5" />}>Nouveau projet</Button>
               </Link>
             )}
           </div>
@@ -167,7 +177,7 @@ const ProjectsPage: React.FC = () => {
             />
           </div>
 
-          {/* Grille des projets */}
+          {/* Contenu */}
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -199,15 +209,52 @@ const ProjectsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredServices.map((service) => (
-                <ProjectCard
-                  key={service.id}
-                  service={service}
-                  userRole={userRole}
-                  teamAvatars={teamAvatars}
-                />
-              ))}
+            <div className="space-y-12">
+              {/* ⭐ SECTION 1 : PROJETS ACTIFS */}
+              {activeProjects.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Projets actifs
+                    <Badge variant="success" className="ml-2">
+                      {activeProjects.length}
+                    </Badge>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activeProjects.map((service) => (
+                      <ProjectCard
+                        key={service.id}
+                        service={service}
+                        userRole={userRole}
+                        onToggleActivation={handleToggleActivation}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ⭐ SECTION 2 : PROJETS DÉSACTIVÉS (MANAGER uniquement) */}
+              {userRole === "MANAGER" && inactiveProjects.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold text-on-surface-variant mb-6 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                    Projets désactivés
+                    <Badge variant="default" className="ml-2">
+                      {inactiveProjects.length}
+                    </Badge>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {inactiveProjects.map((service) => (
+                      <ProjectCard
+                        key={service.id}
+                        service={service}
+                        userRole={userRole}
+                        onToggleActivation={handleToggleActivation}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -216,11 +263,12 @@ const ProjectsPage: React.FC = () => {
   );
 };
 
+// ⭐ COMPOSANT CARD MODIFIÉ
 const ProjectCard: React.FC<{
   service: ExtendedService;
   userRole: string;
-  teamAvatars: string[];
-}> = ({ service, userRole, teamAvatars }) => {
+  onToggleActivation: (projectId: string) => void;
+}> = ({ service, userRole, onToggleActivation }) => {
   const linkState = {
     managerEmail: service.managerEmail,
     managerName: service.managerName,
@@ -228,29 +276,52 @@ const ProjectCard: React.FC<{
     sharedAt: service.sharedAt,
   };
 
+  const isActive = service.isActive !== false;
+
   return (
-    <div className="group relative bg-surface-container-lowest p-1 rounded-2xl overflow-hidden transition-all hover:shadow-2xl hover:shadow-primary/5">
+    <div
+      className={`group relative bg-surface-container-lowest p-1 rounded-2xl overflow-hidden transition-all hover:shadow-2xl hover:shadow-primary/5 ${
+        !isActive ? "opacity-60" : ""
+      }`}
+    >
       <div className="bg-surface p-5 rounded-xl">
         <div className="flex justify-between items-start mb-6">
-          <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center">
-            <ServerStackIcon className="w-6 h-6 text-primary" />
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              isActive ? "bg-primary/5" : "bg-slate-200"
+            }`}
+          >
+            <ServerStackIcon
+              className={`w-6 h-6 ${isActive ? "text-primary" : "text-slate-500"}`}
+            />
           </div>
-          <div className="flex -space-x-2">
-            {teamAvatars.slice(0, 3).map((src, idx) => (
-              <img
-                key={idx}
-                className="w-8 h-8 rounded-full border-2 border-surface object-cover"
-                src={src}
-                alt="Team member"
+
+          {/* ⭐ TOGGLE ACTIVATION (MANAGER uniquement) */}
+          {userRole === "MANAGER" && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleActivation(service.id);
+              }}
+              className="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+              style={{
+                backgroundColor: isActive ? "#10b981" : "#cbd5e1",
+              }}
+            >
+              <span
+                className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full shadow ${
+                  isActive ? "translate-x-6" : "translate-x-1"
+                }`}
               />
-            ))}
-            <div className="w-8 h-8 rounded-full bg-surface-container-high border-2 border-surface flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
-              +4
-            </div>
-          </div>
+            </button>
+          )}
         </div>
+
         <h5 className="text-lg font-bold text-on-surface mb-1">{service.name}</h5>
-        <p className="text-xs text-on-surface-variant mb-4 line-clamp-1">{service.description}</p>
+        <p className="text-xs text-on-surface-variant mb-4 line-clamp-1">
+          {service.description}
+        </p>
+
         <div className="space-y-3">
           <div className="flex justify-between items-center text-xs">
             <span className="font-medium text-on-surface-variant">Couverture des tests</span>
@@ -260,14 +331,24 @@ const ProjectCard: React.FC<{
             <div className="h-full w-[88%] bg-primary rounded-full"></div>
           </div>
         </div>
+
         <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
-          <Badge variant={service.authType === "BEARER" ? "warning" : "default"}>
-            {service.authType === "BEARER"
-              ? "Bearer Auth"
-              : service.authType === "NONE"
-              ? "No Auth"
-              : "Auth"}
-          </Badge>
+          <div className="flex gap-2">
+            <Badge
+              variant={service.authType === "BEARER" ? "warning" : "default"}
+            >
+              {service.authType === "BEARER"
+                ? "Bearer Auth"
+                : service.authType === "NONE"
+                ? "No Auth"
+                : "Auth"}
+            </Badge>
+            {!isActive && (
+              <Badge variant="default" className="bg-slate-200 text-slate-700">
+                Désactivé
+              </Badge>
+            )}
+          </div>
           <Link to={`/service/${service.id}`} state={linkState}>
             <button className="text-primary hover:text-primary-container transition-colors">
               <ArrowRightIcon className="w-5 h-5" />

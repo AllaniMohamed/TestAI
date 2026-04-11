@@ -503,7 +503,7 @@ const ServiceDetailsPage: React.FC = () => {
 
   // ── Effets ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
+    const userStr = sessionStorage.getItem("user");
     if (userStr) {
       try { const u = JSON.parse(userStr); setUserRole(u.role || "MANAGER"); } catch {}
     }
@@ -538,7 +538,7 @@ const ServiceDetailsPage: React.FC = () => {
       setLoading(true); setError(null);
       const projectRes = await projectService.getProjectById(id!);
       setProject(projectRes.data);
-      const userStr = localStorage.getItem("user");
+      const userStr = sessionStorage.getItem("user");
       const currentUserId = userStr ? JSON.parse(userStr).id : null;
       setIsOwner(projectRes.data.userId === currentUserId);
       const endpointsRes = await projectService.getProjectEndpoints(id!);
@@ -653,7 +653,7 @@ const ServiceDetailsPage: React.FC = () => {
     currentExecutionIdRef.current = null;
 
     try {
-      const userStr = localStorage.getItem("user");
+      const userStr = sessionStorage.getItem("user");
       const userId = userStr ? JSON.parse(userStr).id : null;
 
       addLog("info", `🚀 Démarrage de l'exécution du projet "${project.name}"`);

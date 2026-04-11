@@ -232,6 +232,7 @@ public class SharedAccessService {
 
     /**
      * Lister tous les projets partagés avec un développeur
+     * ⭐ FILTRÉ : Ne retourne que les projets ACTIFS
      */
     public List<SharedProjectDTO> getSharedProjects(UUID userId) {
         List<SharedAccess> shares = sharedAccessRepository.findByUserIdAndStatus(
@@ -243,20 +244,25 @@ public class SharedAccessService {
                     Project project = projectRepository.findById(sa.getProjectId())
                             .orElseThrow(() -> new RuntimeException("Project not found"));
 
+                    // ⭐ FILTRER : Ignorer les projets désactivés
+                    if (Boolean.FALSE.equals(project.getIsActive())) {
+                        return null;
+                    }
+
                     SharedProjectDTO dto = new SharedProjectDTO();
                     dto.setProjectId(project.getId());
                     dto.setProjectName(project.getName());
                     dto.setProjectDescription(project.getDescription());
                     dto.setProjectUrl(project.getProjectUrl());
-                    dto.setManagerEmail(sa.getSharedByEmail());  // ⭐ Email du manager stocké
+                    dto.setManagerEmail(sa.getSharedByEmail());
                     dto.setAccessLevel(sa.getAccessLevel().toString());
                     dto.setSharedAt(sa.getInvitedAt());
 
                     return dto;
                 })
+                .filter(dto -> dto != null)  // ⭐ Retirer les null (projets désactivés)
                 .collect(Collectors.toList());
     }
-
     /**
      * Révoquer un partage
      */

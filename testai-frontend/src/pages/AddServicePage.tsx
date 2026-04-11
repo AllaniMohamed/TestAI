@@ -71,14 +71,14 @@ const AddServicePage: React.FC = () => {
     setError(null);
 
     try {
-      const userStr = localStorage.getItem("user");
+      const userStr = sessionStorage.getItem("user");
       let userId: string | null = null;
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
           userId = user.id;
         } catch (e) {
-          console.error("Failed to parse user from localStorage", e);
+          console.error("Failed to parse user from sessionStorage", e);
         }
       }
       if (!userId) {

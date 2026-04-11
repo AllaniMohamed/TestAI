@@ -18,10 +18,10 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   const [user, setUser] = useState<any>(null);
   const [avatarBlobUrl, setAvatarBlobUrl] = useState<string | null>(null);
 
-  // Récupérer l'utilisateur depuis localStorage
+  // Récupérer l'utilisateur depuis sessionStorage
   useEffect(() => {
     const updateUserFromStorage = () => {
-      const userStr = localStorage.getItem('user');
+      const userStr = sessionStorage.getItem('user');
       if (userStr) {
         try {
           const userData = JSON.parse(userStr);
@@ -52,7 +52,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
       }
 
       try {
-        const token = localStorage.getItem('accessToken');
+        const token = sessionStorage.getItem('accessToken');
         const response = await fetch(user.avatar, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -82,9 +82,9 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   }, [user?.avatar]);
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
     navigate('/');
   };
 

@@ -32,7 +32,7 @@ const ProfilePage: React.FC = () => {
 
   const loadUserProfile = async () => {
     try {
-      const userStr = localStorage.getItem("user");
+      const userStr = sessionStorage.getItem("user");
       if (!userStr) throw new Error("Utilisateur non connecté");
       const userData = JSON.parse(userStr);
       const userId = userData.id;
@@ -58,7 +58,7 @@ const ProfilePage: React.FC = () => {
 
   const fetchAvatarWithToken = async (avatarUrl: string) => {
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = sessionStorage.getItem("accessToken");
       const response = await fetch(avatarUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });

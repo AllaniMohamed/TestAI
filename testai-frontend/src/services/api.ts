@@ -174,7 +174,7 @@ interface GeneratedTestStatus {
 // ==========================================
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = sessionStorage.getItem("accessToken");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -199,8 +199,8 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           console.error("Authentification expirée");
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
+          sessionStorage.removeItem("accessToken");
+          sessionStorage.removeItem("refreshToken");
           window.location.href = "/login";
           break;
 
@@ -248,8 +248,8 @@ export const authService = {
     api.post("/user-service/api/auth/register-invitation", data),
 
   logout: (): void => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
     window.location.href = "/login";
   },
 
@@ -337,6 +337,20 @@ export const projectService = {
     projectId: string,
   ): Promise<AxiosResponse<{ count: number }>> =>
     api.get(`/project-service/api/projects/${projectId}/endpoints/count`),
+
+  // ⭐ Activer un projet
+  activateProject: (projectId: string): Promise<AxiosResponse<Project>> =>
+    api.post(`/project-service/api/projects/${projectId}/activate`),
+
+  // ⭐ Désactiver un projet
+  deactivateProject: (projectId: string): Promise<AxiosResponse<Project>> =>
+    api.post(`/project-service/api/projects/${projectId}/deactivate`),
+
+  // ⭐ Toggle activation (activer/désactiver)
+  toggleProjectActivation: (
+    projectId: string,
+  ): Promise<AxiosResponse<Project>> =>
+    api.post(`/project-service/api/projects/${projectId}/toggle-activation`),
 };
 
 // Endpoint Service
@@ -750,14 +764,14 @@ export const apiRunnerService = {
 // INTERCEPTEUR REQUEST (Ajouter JWT Token et X-User-Id)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = sessionStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     // ⭐ Ajout du header X-User-Id requis par execution-service
     try {
-      const userStr = localStorage.getItem("user");
+      const userStr = sessionStorage.getItem("user");
       if (userStr) {
         const user = JSON.parse(userStr);
         if (user.id) {
@@ -765,12 +779,15 @@ api.interceptors.request.use(
         }
       }
     } catch (e) {
-      console.warn("Impossible de récupérer l'ID utilisateur pour X-User-Id", e);
+      console.warn(
+        "Impossible de récupérer l'ID utilisateur pour X-User-Id",
+        e,
+      );
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 // ==========================================
 // TYPES ⭐

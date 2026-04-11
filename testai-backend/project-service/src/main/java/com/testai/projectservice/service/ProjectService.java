@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -513,5 +514,92 @@ public class ProjectService {
 
         log.info("🎉 " + summary);
         return summary;
+    }
+    // ==========================================
+// ACTIVATION / DÉSACTIVATION
+// ==========================================
+
+    /**
+     * ⭐ Activer un projet
+     */
+    @Transactional
+    public Project activateProject(UUID projectId, UUID userId) {
+        log.info("✅ Activation du projet {}", projectId);
+
+        // 1. Récupérer le projet
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        // 2. Vérifier que l'utilisateur est le propriétaire
+        if (!project.getUserId().equals(userId)) {
+            throw new RuntimeException("Seul le propriétaire peut activer/désactiver le projet");
+        }
+
+        // 3. Vérifier si déjà actif
+        if (Boolean.TRUE.equals(project.getIsActive())) {
+            log.info("⚠️ Le projet est déjà actif");
+            return project;
+        }
+
+        // 4. Activer
+        project.setIsActive(true);
+        project.setActivatedAt(LocalDateTime.now());
+        project.setDeactivatedAt(null);
+
+        Project activated = projectRepository.save(project);
+        log.info("✅ Projet activé avec succès");
+
+        return activated;
+    }
+
+    /**
+     * ⭐ Désactiver un projet
+     */
+    @Transactional
+    public Project deactivateProject(UUID projectId, UUID userId) {
+        log.info("🔒 Désactivation du projet {}", projectId);
+
+        // 1. Récupérer le projet
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        // 2. Vérifier que l'utilisateur est le propriétaire
+        if (!project.getUserId().equals(userId)) {
+            throw new RuntimeException("Seul le propriétaire peut activer/désactiver le projet");
+        }
+
+        // 3. Vérifier si déjà désactivé
+        if (Boolean.FALSE.equals(project.getIsActive())) {
+            log.info("⚠️ Le projet est déjà désactivé");
+            return project;
+        }
+
+        // 4. Désactiver
+        project.setIsActive(false);
+        project.setDeactivatedAt(LocalDateTime.now());
+
+        Project deactivated = projectRepository.save(project);
+        log.info("🔒 Projet désactivé avec succès");
+
+        return deactivated;
+    }
+
+    /**
+     * ⭐ Toggle activation (activer si désactivé, désactiver si activé)
+     */
+    @Transactional
+    public Project toggleProjectActivation(UUID projectId, UUID userId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        if (!project.getUserId().equals(userId)) {
+            throw new RuntimeException("Seul le propriétaire peut activer/désactiver le projet");
+        }
+
+        if (Boolean.TRUE.equals(project.getIsActive())) {
+            return deactivateProject(projectId, userId);
+        } else {
+            return activateProject(projectId, userId);
+        }
     }
 }
