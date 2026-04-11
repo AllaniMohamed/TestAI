@@ -53,18 +53,34 @@ interface User {
   role: string;
 }
 
+// src/services/api.ts
+
+interface ProjectCredentials {
+  id: string;
+  basicUsername?: string | null;
+  basicPassword?: string | null;
+  apiKey?: string | null;
+  apiKeyHeader?: string | null;
+  apiKeyLocation?: string | null;
+  bearerToken?: string | null;
+  encrypted?: boolean;
+}
+
 interface Project {
   id: string;
+  userId: string;
   name: string;
   description: string;
   projectUrl: string;
   docMode: string;
-  docSubmitMode: string;
   docUrl?: string;
   authType: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  isActive?: boolean;
+  activatedAt?: string | null;
+  deactivatedAt?: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  credentials?: ProjectCredentials;
 }
 
 interface Endpoint {
@@ -316,7 +332,7 @@ export const projectService = {
 
   updateProject: (
     projectId: string,
-    projectData: Partial<Project>,
+    projectData: Partial<UpdateProjectRequest>,
   ): Promise<AxiosResponse<Project>> =>
     api.put(`/project-service/api/projects/${projectId}`, projectData),
 
@@ -811,6 +827,7 @@ export type {
   ExecuteApiRequestDTO,
   ApiResponseDTO,
   SavedApiRequestDTO,
+  ProjectCredentials,
 };
 export interface RegisterWithInvitationRequest {
   email: string;
@@ -825,5 +842,20 @@ export interface ActivateInvitationResponse {
   email: string;
   invitationToken: string;
   projectName: string;
+}
+
+// types
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  projectUrl?: string;
+  docUrl?: string;
+  authType?: string;
+  authUsername?: string;
+  authPassword?: string;
+  apiKey?: string;
+  apiKeyHeader?: string;
+  apiKeyLocation?: string;
+  bearerToken?: string;
 }
 export default api;
