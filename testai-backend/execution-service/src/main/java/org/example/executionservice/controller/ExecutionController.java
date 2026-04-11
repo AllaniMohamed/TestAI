@@ -192,7 +192,22 @@ public class ExecutionController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                    ContentDisposition.attachment().filename("Endpoint-"+endpointId+"-report.pdf").build()
+                    ContentDisposition.attachment().filename("Endpoint-"+endpointId+"-report-full.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/report/{projectId}/{endpointId}/simple")
+    public ResponseEntity<?> generateSimpleSingleEndpointReport(@PathVariable UUID projectId, @PathVariable UUID endpointId){
+        try{
+            byte[] pdf = singleReportService.reportSingleEndpointSimple(projectId, endpointId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Endpoint-"+endpointId+"-report-simple.pdf").build()
             );
             return ResponseEntity.ok().headers(headers).body(pdf);
         } catch (Exception e) {
@@ -238,7 +253,22 @@ public class ExecutionController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                    ContentDisposition.attachment().filename("Category-"+tag+"-report.pdf").build()
+                    ContentDisposition.attachment().filename("Category-"+tag+"-report-full.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/report/{projectId}/tag/{tag}/simple")
+    public ResponseEntity<?> generateSimpleTagReport(@PathVariable UUID projectId, @PathVariable String tag){
+        try{
+            byte[] pdf = tagsReportService.reportTagsReportSimple(projectId, tag);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Category-"+tag+"-report-simple.pdf").build()
             );
             return ResponseEntity.ok().headers(headers).body(pdf);
         } catch (Exception e) {

@@ -3,6 +3,7 @@ package org.example.executionservice.service;
 import org.example.executionservice.dto.EndpointDTO;
 import org.example.executionservice.dto.FormattedTestDTO;
 import org.example.executionservice.dto.ProjectDTO;
+import org.example.executionservice.dto.SimpleTestDTO;
 import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.feignclient.EndpointServiceClient;
 import org.example.executionservice.feignclient.ProjectServiceClient;
@@ -54,7 +55,7 @@ public class SingleReportService {
             // =========================
             // TITRE PRINCIPAL
             // =========================
-            Paragraph title = new Paragraph("SINGLE ENDPOINT TEST REPORT", pdfFonts.titleFont);
+            Paragraph title = new Paragraph("SINGLE ENDPOINT TEST FULL REPORT", pdfFonts.titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(15f);
             document.add(title);
@@ -109,7 +110,79 @@ public class SingleReportService {
             return out.toByteArray();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate single endpoint PDF report", e);
+            throw new RuntimeException("Failed to generate single endpoint PDF full report\n"+ e);
+        }
+    }
+
+    public byte[] reportSingleEndpointSimple(UUID projectId, UUID endpointId) {
+        FormattedTestDTO data = getSingleEndpoint(projectId, endpointId);
+
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A4, 30, 30, 40, 35);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
+            writer.setPageEvent(new FooterPageEvent());
+            document.open();
+
+            // =========================
+            // TITRE PRINCIPAL
+            // =========================
+            Paragraph title = new Paragraph("SINGLE ENDPOINT TEST SIMPLE REPORT", pdfFonts.titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(15f);
+            document.add(title);
+
+            // Sous-titre avec path
+            Paragraph subtitle = new Paragraph(
+                    safe(data.getHttpMethod()) + " " + safe(data.getEndpointPath()),
+                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfColors.HEADER_BG)
+            );
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            subtitle.setSpacingAfter(20f);
+            document.add(subtitle);
+
+            // =========================
+            // I. PROJECT INFORMATION (TABLEAU)
+            // =========================
+            addSectionHeader(document, "I. PROJECT INFORMATION", pdfFonts.sectionFont);
+            addProjectTable(document, data, pdfFonts.labelFont, pdfFonts.valueFont);
+
+            document.add(Chunk.NEWLINE);
+
+            // =========================
+            // II. ENDPOINT DETAILS (TABLEAU)
+            // =========================
+            addSectionHeader(document, "II. ENDPOINT DETAILS", pdfFonts.sectionFont);
+            addEndpointTable(document, data, pdfFonts.labelFont, pdfFonts.valueFont);
+
+            // Schémas en code blocks compacts
+            addSchemaBlock(document, "Request Schema:", data.getRequestBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
+            addSchemaBlock(document, "Response Schema:", data.getResponseBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
+
+            document.add(Chunk.NEWLINE);
+
+            // =========================
+            // III. TEST EXECUTIONS (TABLEAUX COMPACTS)
+            // =========================
+            addSectionHeader(document, "III. TEST EXECUTIONS (" + data.getTests().size() + ")", pdfFonts.sectionFont);
+            String[] headers = new String[] {"Test Type", "Executed At", "Response Time", "Status Code Match", "Schema Match", "Test Status", "Error"};
+            if (data.getTests() == null || data.getTests().isEmpty()) {
+                Paragraph noTests = new Paragraph("No executed tests found for this endpoint.", pdfFonts.valueFont);
+                noTests.setSpacingBefore(10f);
+                noTests.setAlignment(Element.ALIGN_CENTER);
+                document.add(noTests);
+            } else {
+                ArrayList<SimpleTestDTO> simpleTestDTOList = new ArrayList<>();
+                for (TestExecution test : data.getTests()) {
+                    simpleTestDTOList.add(new SimpleTestDTO(test));
+                }
+                addSimpleTestsTable(document, headers, simpleTestDTOList, pdfFonts.valueFont);
+            }
+            document.close();
+            return out.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate single endpoint PDF full report\n"+ e);
         }
     }
 }

@@ -6,6 +6,7 @@ import org.example.executionservice.dto.EndpointDTO;
 import org.example.executionservice.dto.FormattedTestDTO;
 import org.example.executionservice.dto.FormattedTestDTO.EndpointDetails;
 import org.example.executionservice.dto.ProjectDTO;
+import org.example.executionservice.dto.SimpleTestDTO;
 import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.feignclient.EndpointServiceClient;
 import org.example.executionservice.feignclient.ProjectServiceClient;
@@ -75,7 +76,7 @@ public class TagsReportService {
             // =========================
             // TITRE PRINCIPAL
             // =========================
-            Paragraph title = new Paragraph("ENDPOINTS CATEGORY TEST REPORT", pdfFonts.titleFont);
+            Paragraph title = new Paragraph("ENDPOINTS CATEGORY TEST FULL REPORT", pdfFonts.titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(15f);
             document.add(title);
@@ -129,7 +130,76 @@ public class TagsReportService {
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate category endpoints PDF report", e);
+            throw new RuntimeException("Failed to generate category endpoints PDF full report\n" + e);
+        }
+    }
+
+    public byte[] reportTagsReportSimple(UUID projectId, String tag){
+        ArrayList<FormattedTestDTO> data = getProjectEndpointsByTags(projectId, tag);
+
+        try{
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A4, 30, 30, 40, 35);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
+            writer.setPageEvent(new FooterPageEvent());
+            document.open();
+
+            // =========================
+            // TITRE PRINCIPAL
+            // =========================
+            Paragraph title = new Paragraph("ENDPOINTS CATEGORY TEST SIMPLE REPORT", pdfFonts.titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(15f);
+            document.add(title);
+
+            // Sous-titre avec path
+            Paragraph subtitle = new Paragraph(
+                    safe("/" + tag + " Category"),
+                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfColors.HEADER_BG)
+            );
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            subtitle.setSpacingAfter(20f);
+            document.add(subtitle);
+
+            // =========================
+            // I. PROJECT INFORMATION (TABLEAU)
+            // =========================
+            addSectionHeader(document, "I. PROJECT INFORMATION", pdfFonts.sectionFont);
+            addProjectTable(document, data.get(0), pdfFonts.labelFont, pdfFonts.valueFont);
+
+            document.add(Chunk.NEWLINE);
+
+            String[] headers = new String[] {"Test Type", "Executed At", "Response Time", "Status Code Match", "Schema Match", "Test Status", "Error"};
+            addSectionHeader(document, "II. ENDPOINTS AND TESTS", pdfFonts.sectionFont);
+            Map<EndpointDetails, ArrayList<FormattedTestDTO>> map =
+                    data.stream()
+                            .collect(Collectors.groupingBy(
+                                    FormattedTestDTO::getEndpoint,
+                                    Collectors.toCollection(ArrayList::new)
+                            ));
+            int index = 1;
+            for(Map.Entry<EndpointDetails, ArrayList<FormattedTestDTO>> entry: map.entrySet()){
+                EndpointDetails endpoint = entry.getKey();
+                ArrayList<FormattedTestDTO> tests = entry.getValue();
+
+                addSubSectionHeader(document, index+". "+endpoint.getHttpMethod()+" "+endpoint.getEndpointPath(), pdfFonts.subSectionFont);
+                addEndpointTable(document, tests.get(0), pdfFonts.labelFont, pdfFonts.valueFont);
+                document.add(Chunk.NEWLINE);
+                ArrayList<SimpleTestDTO> simpleTestDTOList = new ArrayList<>();
+                for(FormattedTestDTO t: tests){
+                    for(TestExecution testExecution: t.getTests()){
+                        simpleTestDTOList.add(new SimpleTestDTO(testExecution));
+                    }
+                }
+                addSimpleTestsTable(document, headers, simpleTestDTOList, pdfFonts.valueFont);
+                document.add(Chunk.NEWLINE);
+                index++;
+            }
+
+            document.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate category endpoints PDF simple report\n"+ e);
         }
     }
 }

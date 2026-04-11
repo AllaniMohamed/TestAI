@@ -379,16 +379,16 @@ public class pdfFunctions {
         }
     }
 
-    public static void addProjectSimpleTestsTable(Document document, String[] headers, ArrayList<SimpleTestDTO> tests, Font valueFont){
+    public static void addSimpleTestsTable(Document document, String[] headers, ArrayList<SimpleTestDTO> tests, Font valueFont){
         PdfPTable table = new PdfPTable(headers.length);
         table.setWidthPercentage(100);
         float[] widths = new float[headers.length];
-        Arrays.fill(widths, 12.5f);
+        Arrays.fill(widths, 100f/headers.length);
         table.setWidths(widths);
         table.setSpacingAfter(5f);
         addSimpleTableHeader(table, headers);
         for(SimpleTestDTO simpleTestDTO: tests){
-            String[] values = simpleTestDTO.toStringTable();
+            String[] values = simpleTestDTO.isSimple() ? simpleTestDTO.toStringTable() : simpleTestDTO.toFullStringTable();
             addSimpleTableRow(table, values, valueFont);
         }
         document.add(table);

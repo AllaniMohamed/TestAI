@@ -53,9 +53,12 @@ public class FormattedTestDTO {
         this.httpMethod = ep.getMethod();
     }
 
-    public String getEndpointCategory(){
-        String temp = this.endpointPath.substring(1);
-        return temp.substring(0,temp.indexOf("/"));
+    public String getEndpointCategory() {
+        if (this.endpointPath == null || this.endpointPath.isBlank()) return "N/A";
+        String temp = this.endpointPath.startsWith("/") ? this.endpointPath.substring(1) : this.endpointPath;
+        int idx = temp.indexOf("/");
+        String category = (idx == -1) ? temp : temp.substring(0, idx);
+        return category.isBlank() ? "N/A" : category;
     }
 
     @Data
