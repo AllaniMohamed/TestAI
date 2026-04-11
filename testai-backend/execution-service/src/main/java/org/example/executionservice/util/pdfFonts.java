@@ -4,8 +4,8 @@ import com.lowagie.text.Font;
 
 import java.awt.*;
 
-public class pdfCommonFonts {
-    public static final Font titleFont = new Font(Font.HELVETICA, 20, Font.BOLD, pdfCommonColors.SECTION_BG);
+public class pdfFonts {
+    public static final Font titleFont = new Font(Font.HELVETICA, 20, Font.BOLD, pdfColors.SECTION_BG);
     public static final Font sectionFont = new Font(Font.HELVETICA, 14, Font.BOLD, Color.WHITE);
     public static final Font subSectionFont = new Font(Font.HELVETICA, 12, Font.BOLD, Color.WHITE);
     public static final Font labelFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.BLACK);

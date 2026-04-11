@@ -203,14 +203,30 @@ public class ExecutionController {
     @GetMapping("/report/{projectId}")
     public ResponseEntity<?> generateProjectReport(@PathVariable UUID projectId){
         try{
-            byte[] pdf = totalReportService.reportTagsReport(projectId);
+            byte[] pdf = totalReportService.reportTotalReport(projectId);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                    ContentDisposition.attachment().filename("Project-"+projectId+"-report.pdf").build()
+                    ContentDisposition.attachment().filename("Project-"+projectId+"-report-full.pdf").build()
             );
             return ResponseEntity.ok().headers(headers).body(pdf);
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/report/{projectId}/simple")
+    public ResponseEntity<?> generateSimpleProjectReport(@PathVariable UUID projectId){
+        try{
+            byte[] pdf = totalReportService.reportTotalReportSimple(projectId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment().filename("Project-"+projectId+"-report-simple.pdf").build()
+            );
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        }
+        catch (Exception e){
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

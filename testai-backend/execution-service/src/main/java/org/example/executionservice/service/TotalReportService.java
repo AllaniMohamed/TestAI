@@ -2,16 +2,16 @@ package org.example.executionservice.service;
 
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfWriter;
-import org.example.executionservice.dto.EndpointDTO;
-import org.example.executionservice.dto.FormattedTestDTO;
+import org.example.executionservice.dto.*;
 import org.example.executionservice.dto.FormattedTestDTO.EndpointDetails;
-import org.example.executionservice.dto.ProjectDTO;
+import org.example.executionservice.entity.ProjectExecution;
 import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.feignclient.EndpointServiceClient;
 import org.example.executionservice.feignclient.ProjectServiceClient;
+import org.example.executionservice.repository.ProjectExecutionRepository;
 import org.example.executionservice.repository.TestExecutionRepository;
-import org.example.executionservice.util.pdfCommonColors;
-import org.example.executionservice.util.pdfCommonFonts;
+import org.example.executionservice.util.pdfColors;
+import org.example.executionservice.util.pdfFonts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.example.executionservice.util.pdfFunctions.*;
+import static org.example.executionservice.util.pdfUtils.*;
 
 @Service
 public class TotalReportService {
@@ -33,24 +34,8 @@ public class TotalReportService {
     private EndpointServiceClient endpointServiceClient;
     @Autowired
     private TestExecutionRepository testExecutionRepository;
-
-    private static class romanNumber {
-        private final static TreeMap<Integer, String> map = new TreeMap<Integer, String>();
-        static {
-            map.put(10, "X");
-            map.put(9, "IX");
-            map.put(5, "V");
-            map.put(4, "IV");
-            map.put(1, "I");
-        }
-        public static String toRoman(int number) {
-            int l =  map.floorKey(number);
-            if ( number == l ) {
-                return map.get(number);
-            }
-            return map.get(l) + toRoman(number-l);
-        }
-    }
+    @Autowired
+    private ProjectExecutionRepository projectExecutionRepository;
 
     private ArrayList<FormattedTestDTO> getProjectEndpoints(UUID projectId){
         ProjectDTO project = projectServiceClient.getProjectById(projectId);
@@ -76,7 +61,7 @@ public class TotalReportService {
         return formattedList;
     }
 
-    public byte[] reportTagsReport(UUID projectId){
+    public byte[] reportTotalReport(UUID projectId){
         ArrayList<FormattedTestDTO> data = getProjectEndpoints(projectId);
 
         try{
@@ -89,7 +74,7 @@ public class TotalReportService {
             // =========================
             // TITRE PRINCIPAL
             // =========================
-            Paragraph title = new Paragraph("PROJECT TEST REPORT", pdfCommonFonts.titleFont);
+            Paragraph title = new Paragraph("PROJECT TEST FULL REPORT", pdfFonts.titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(15f);
             document.add(title);
@@ -97,7 +82,7 @@ public class TotalReportService {
             // Sous-titre avec path
             Paragraph subtitle = new Paragraph(
                     safe(data.get(0).getProjectName()),
-                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfCommonColors.HEADER_BG)
+                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfColors.HEADER_BG)
             );
             subtitle.setAlignment(Element.ALIGN_CENTER);
             subtitle.setSpacingAfter(20f);
@@ -106,8 +91,8 @@ public class TotalReportService {
             // =========================
             // I. PROJECT INFORMATION (TABLEAU)
             // =========================
-            addSectionHeader(document, "I. PROJECT INFORMATION", pdfCommonFonts.sectionFont);
-            addProjectTable(document, data.get(0), pdfCommonFonts.labelFont, pdfCommonFonts.valueFont);
+            addSectionHeader(document, "I. PROJECT INFORMATION", pdfFonts.sectionFont);
+            addProjectTable(document, data.get(0), pdfFonts.labelFont, pdfFonts.valueFont);
 
             document.add(Chunk.NEWLINE);
 
@@ -124,22 +109,22 @@ public class TotalReportService {
             for(Map.Entry<String, Map<EndpointDetails, ArrayList<FormattedTestDTO>>> entry: mapByCategoryThenEndpoint.entrySet()) {
                 String category = entry.getKey();
                 Map<EndpointDetails, ArrayList<FormattedTestDTO>> endpoints = entry.getValue();
-                addSectionHeader(document, romanNumber.toRoman(categoryIndex)+". Category /"+category, pdfCommonFonts.sectionFont);
+                addSectionHeader(document, toRoman(categoryIndex)+". Category /"+category, pdfFonts.sectionFont);
                 int index = 1;
                 for (Map.Entry<EndpointDetails, ArrayList<FormattedTestDTO>> ep : endpoints.entrySet()) {
                     EndpointDetails endpoint = ep.getKey();
                     ArrayList<FormattedTestDTO> tests = ep.getValue();
-                    addSubSectionHeader(document, index + ". " + endpoint.getHttpMethod() + " " + endpoint.getEndpointPath(), pdfCommonFonts.subSectionFont);
-                    addEndpointTable(document, tests.get(0), pdfCommonFonts.labelFont, pdfCommonFonts.valueFont);
+                    addSubSectionHeader(document, index + ". " + endpoint.getHttpMethod() + " " + endpoint.getEndpointPath(), pdfFonts.subSectionFont);
+                    addEndpointTable(document, tests.get(0), pdfFonts.labelFont, pdfFonts.valueFont);
                     // Schémas en code blocks compacts
-                    addSchemaBlock(document, "Request Schema:", endpoint.getRequestBodySchema(), pdfCommonFonts.labelFont, pdfCommonFonts.codeFont);
-                    addSchemaBlock(document, "Response Schema:", endpoint.getResponseBodySchema(), pdfCommonFonts.labelFont, pdfCommonFonts.codeFont);
+                    addSchemaBlock(document, "Request Schema:", endpoint.getRequestBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
+                    addSchemaBlock(document, "Response Schema:", endpoint.getResponseBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
                     document.add(Chunk.NEWLINE);
 
                     for (FormattedTestDTO t : tests) {
                         int subIndex = 1;
                         for (TestExecution testExecution : t.getTests()) {
-                            addTestExecutionTableBlock(document, testExecution, subIndex++, pdfCommonFonts.labelFont, pdfCommonFonts.valueFont, pdfCommonFonts.smallFont, pdfCommonFonts.codeFont);
+                            addTestExecutionTableBlock(document, testExecution, subIndex++, pdfFonts.labelFont, pdfFonts.valueFont, pdfFonts.smallFont, pdfFonts.codeFont);
                         }
                     }
                     document.add(Chunk.NEWLINE);
@@ -151,7 +136,97 @@ public class TotalReportService {
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate category endpoints PDF report", e);
+            throw new RuntimeException("Failed to generate full project PDF report", e);
+        }
+    }
+
+    public byte[] reportTotalReportSimple(UUID projectId){
+        ArrayList<FormattedTestDTO> data = getProjectEndpoints(projectId);
+        try{
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A4, 30, 30, 40, 35);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
+            writer.setPageEvent(new FooterPageEvent());
+            document.open();
+
+            // =========================
+            // TITRE PRINCIPAL
+            // =========================
+            Paragraph title = new Paragraph("PROJECT TEST SIMPLE REPORT", pdfFonts.titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(15f);
+            document.add(title);
+
+            // Sous-titre avec path
+            Paragraph subtitle = new Paragraph(
+                    safe(data.get(0).getProjectName()),
+                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfColors.HEADER_BG)
+            );
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            subtitle.setSpacingAfter(20f);
+            document.add(subtitle);
+
+            // =========================
+            // I. PROJECT INFORMATION (TABLEAU)
+            // =========================
+            addSectionHeader(document, "I. PROJECT INFORMATION", pdfFonts.sectionFont);
+            addProjectTable(document, data.get(0), pdfFonts.labelFont, pdfFonts.valueFont);
+
+            document.add(Chunk.NEWLINE);
+
+            // =========================
+            // II. PROJECT STATS (TABLEAU)
+            // =========================
+            int chapter = 2;
+
+            ArrayList<ProjectExecution> projectExecutionList = (ArrayList<ProjectExecution>) projectExecutionRepository.findByProjectIdOrderByExecutedAtDesc(projectId);
+            if(!projectExecutionList.isEmpty()){
+                addSectionHeader(document, toRoman(chapter) + ". PROJECT STATS", pdfFonts.sectionFont);
+                addProjectStatsTable(document, new ProjectStatsDTO(projectExecutionList), pdfFonts.labelFont, pdfFonts.valueFont);
+                chapter++;
+                document.add(Chunk.NEWLINE);
+            }
+
+            // =========================
+            // III. PROJECT STATS (TABLEAU)
+            // =========================
+            addSectionHeader(document, toRoman(chapter) + ". TEST EXECUTIONS", pdfFonts.sectionFont);
+
+            String[] headers = new String[] {"Endpoint", "Test Type", "Executed At", "Response Time", "Status Code Match", "Schema Match", "Test Status", "Error"};
+            Map<String, Map<EndpointDetails, ArrayList<FormattedTestDTO>>> mapByCategoryThenEndpoint =
+                    data.stream()
+                            .collect(Collectors.groupingBy(
+                                    FormattedTestDTO::getEndpointCategory,
+                                    Collectors.groupingBy(
+                                            FormattedTestDTO::getEndpoint,
+                                            Collectors.toCollection(ArrayList::new)
+                                    )
+                            ));
+            int categoryIndex = 1;
+            for(Map.Entry<String, Map<EndpointDetails, ArrayList<FormattedTestDTO>>> entry: mapByCategoryThenEndpoint.entrySet()) {
+                String category = entry.getKey();
+                Map<EndpointDetails, ArrayList<FormattedTestDTO>> endpoints = entry.getValue();
+                addSubSectionHeader(document, categoryIndex+". Category /"+category, pdfFonts.sectionFont);
+                ArrayList<SimpleTestDTO> simpleTestDTOList = new ArrayList<>();
+                for (Map.Entry<EndpointDetails, ArrayList<FormattedTestDTO>> ep : endpoints.entrySet()) {
+                    EndpointDetails endpoint = ep.getKey();
+                    ArrayList<FormattedTestDTO> tests = ep.getValue();
+                    String epPath = endpoint.getHttpMethod() + " " + endpoint.getEndpointPath();
+                    for (FormattedTestDTO t : tests) {
+                        for (TestExecution testExecution : t.getTests()) {
+                            simpleTestDTOList.add(new SimpleTestDTO(epPath, testExecution));
+                        }
+                    }
+                }
+                addProjectSimpleTestsTable(document, headers, simpleTestDTOList, pdfFonts.valueFont);
+                document.add(Chunk.NEWLINE);
+                categoryIndex++;
+            }
+            document.add(Chunk.NEWLINE);
+            return out.toByteArray();
+        }
+        catch (Exception e){
+            throw new RuntimeException("Failed to generate simple project PDF report", e);
         }
     }
 }

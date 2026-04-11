@@ -54,7 +54,7 @@ public class SingleReportService {
             // =========================
             // TITRE PRINCIPAL
             // =========================
-            Paragraph title = new Paragraph("SINGLE ENDPOINT TEST REPORT", pdfCommonFonts.titleFont);
+            Paragraph title = new Paragraph("SINGLE ENDPOINT TEST REPORT", pdfFonts.titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(15f);
             document.add(title);
@@ -62,7 +62,7 @@ public class SingleReportService {
             // Sous-titre avec path
             Paragraph subtitle = new Paragraph(
                     safe(data.getHttpMethod()) + " " + safe(data.getEndpointPath()),
-                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfCommonColors.HEADER_BG)
+                    new Font(Font.HELVETICA, 11, Font.BOLD, pdfColors.HEADER_BG)
             );
             subtitle.setAlignment(Element.ALIGN_CENTER);
             subtitle.setSpacingAfter(20f);
@@ -71,37 +71,37 @@ public class SingleReportService {
             // =========================
             // I. PROJECT INFORMATION (TABLEAU)
             // =========================
-            addSectionHeader(document, "I. PROJECT INFORMATION", pdfCommonFonts.sectionFont);
-            addProjectTable(document, data, pdfCommonFonts.labelFont, pdfCommonFonts.valueFont);
+            addSectionHeader(document, "I. PROJECT INFORMATION", pdfFonts.sectionFont);
+            addProjectTable(document, data, pdfFonts.labelFont, pdfFonts.valueFont);
 
             document.add(Chunk.NEWLINE);
 
             // =========================
             // II. ENDPOINT DETAILS (TABLEAU)
             // =========================
-            addSectionHeader(document, "II. ENDPOINT DETAILS", pdfCommonFonts.sectionFont);
-            addEndpointTable(document, data, pdfCommonFonts.labelFont, pdfCommonFonts.valueFont);
+            addSectionHeader(document, "II. ENDPOINT DETAILS", pdfFonts.sectionFont);
+            addEndpointTable(document, data, pdfFonts.labelFont, pdfFonts.valueFont);
 
             // Schémas en code blocks compacts
-            addSchemaBlock(document, "Request Schema:", data.getRequestBodySchema(), pdfCommonFonts.labelFont, pdfCommonFonts.codeFont);
-            addSchemaBlock(document, "Response Schema:", data.getResponseBodySchema(), pdfCommonFonts.labelFont, pdfCommonFonts.codeFont);
+            addSchemaBlock(document, "Request Schema:", data.getRequestBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
+            addSchemaBlock(document, "Response Schema:", data.getResponseBodySchema(), pdfFonts.labelFont, pdfFonts.codeFont);
 
             document.add(Chunk.NEWLINE);
 
             // =========================
             // III. TEST EXECUTIONS (TABLEAUX COMPACTS)
             // =========================
-            addSectionHeader(document, "III. TEST EXECUTIONS (" + data.getTests().size() + ")", pdfCommonFonts.sectionFont);
+            addSectionHeader(document, "III. TEST EXECUTIONS (" + data.getTests().size() + ")", pdfFonts.sectionFont);
 
             if (data.getTests() == null || data.getTests().isEmpty()) {
-                Paragraph noTests = new Paragraph("No executed tests found for this endpoint.", pdfCommonFonts.valueFont);
+                Paragraph noTests = new Paragraph("No executed tests found for this endpoint.", pdfFonts.valueFont);
                 noTests.setSpacingBefore(10f);
                 noTests.setAlignment(Element.ALIGN_CENTER);
                 document.add(noTests);
             } else {
                 int index = 1;
                 for (TestExecution test : data.getTests()) {
-                    addTestExecutionTableBlock(document, test, index++, pdfCommonFonts.labelFont, pdfCommonFonts.valueFont, pdfCommonFonts.smallFont, pdfCommonFonts.codeFont);
+                    addTestExecutionTableBlock(document, test, index++, pdfFonts.labelFont, pdfFonts.valueFont, pdfFonts.smallFont, pdfFonts.codeFont);
                 }
             }
 

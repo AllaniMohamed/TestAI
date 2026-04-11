@@ -1,10 +1,8 @@
 package org.example.executionservice.util;
 
-import lombok.NoArgsConstructor;
-
 import java.awt.*;
 
-public class pdfCommonColors {
+public class pdfColors {
     // ==========================================
     // PALETTE DE COULEURS
     // ==========================================

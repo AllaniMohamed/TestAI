@@ -7,12 +7,19 @@ import com.lowagie.text.Font;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
 import org.example.executionservice.dto.FormattedTestDTO;
+import org.example.executionservice.dto.ProjectStatsDTO;
+import org.example.executionservice.dto.SimpleTestDTO;
 import org.example.executionservice.entity.TestExecution;
 
 import java.awt.*;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
+
+import static org.example.executionservice.util.pdfUtils.*;
 
 public class pdfFunctions {
     private static final ObjectMapper objectMapper = new ObjectMapper()
@@ -31,7 +38,7 @@ public class pdfFunctions {
         table.setSpacingAfter(8f);
 
         PdfPCell cell = new PdfPCell(new Phrase(title, font));
-        cell.setBackgroundColor(pdfCommonColors.SECTION_BG);
+        cell.setBackgroundColor(pdfColors.SECTION_BG);
         cell.setPadding(8f);
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setHorizontalAlignment(Element.ALIGN_LEFT);
@@ -47,7 +54,7 @@ public class pdfFunctions {
         table.setSpacingAfter(6f);
 
         PdfPCell cell = new PdfPCell(new Phrase(title, font));
-        cell.setBackgroundColor(pdfCommonColors.SUBSECTION_BG);
+        cell.setBackgroundColor(pdfColors.SUBSECTION_BG);
         cell.setPadding(6f);
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setHorizontalAlignment(Element.ALIGN_LEFT);
@@ -116,8 +123,8 @@ public class pdfFunctions {
 
         PdfPCell cell = new PdfPCell(new Phrase(safeJsonText(schema), codeFont));
         cell.setPadding(6f);
-        cell.setBackgroundColor(pdfCommonColors.CODE_BG);
-        cell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        cell.setBackgroundColor(pdfColors.CODE_BG);
+        cell.setBorderColor(pdfColors.BORDER_COLOR);
         cell.setBorderWidth(0.5f);
 
         table.addCell(cell);
@@ -143,7 +150,7 @@ public class pdfFunctions {
 
         PdfPCell wrapperCell = new PdfPCell();
         wrapperCell.setPadding(0f);
-        wrapperCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        wrapperCell.setBorderColor(pdfColors.BORDER_COLOR);
         wrapperCell.setBorderWidth(1f);
 
         // =========================
@@ -157,10 +164,10 @@ public class pdfFunctions {
                 "Test #" + index + " - " + safe(test.getTestType() != null ? test.getTestType().name() : "N/A"),
                 new Font(Font.HELVETICA, 10, Font.BOLD, Color.BLACK)
         ));
-        titleCell.setBackgroundColor(pdfCommonColors.ROW_EVEN);
+        titleCell.setBackgroundColor(pdfColors.ROW_EVEN);
         titleCell.setPadding(6f);
         titleCell.setBorder(com.lowagie.text.Rectangle.BOTTOM);
-        titleCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        titleCell.setBorderColor(pdfColors.BORDER_COLOR);
         titleCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
 
         PdfPCell statusCell = new PdfPCell(new Phrase(
@@ -170,7 +177,7 @@ public class pdfFunctions {
         statusCell.setBackgroundColor(getStatusColor(test));
         statusCell.setPadding(6f);
         statusCell.setBorder(Rectangle.BOTTOM);
-        statusCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        statusCell.setBorderColor(pdfColors.BORDER_COLOR);
         statusCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         statusCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
 
@@ -215,9 +222,9 @@ public class pdfFunctions {
         urlTable.setSpacingBefore(5f);
 
         PdfPCell urlCell = new PdfPCell(new Phrase("Request URL: " + safe(test.getRequestUrl()), smallFont));
-        urlCell.setBackgroundColor(pdfCommonColors.CODE_BG);
+        urlCell.setBackgroundColor(pdfColors.CODE_BG);
         urlCell.setPadding(4f);
-        urlCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        urlCell.setBorderColor(pdfColors.BORDER_COLOR);
         urlCell.setBorderWidth(0.5f);
 
         urlTable.addCell(urlCell);
@@ -234,10 +241,10 @@ public class pdfFunctions {
         // Colonne REQUEST
         PdfPCell requestCol = new PdfPCell();
         requestCol.setPadding(5f);
-        requestCol.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        requestCol.setBorderColor(pdfColors.BORDER_COLOR);
         requestCol.setBorderWidth(0.5f);
 
-        Paragraph reqTitle = new Paragraph("REQUEST", new Font(Font.HELVETICA, 8, Font.BOLD, pdfCommonColors.HEADER_BG));
+        Paragraph reqTitle = new Paragraph("REQUEST", new Font(Font.HELVETICA, 8, Font.BOLD, pdfColors.HEADER_BG));
         reqTitle.setSpacingAfter(3f);
         requestCol.addElement(reqTitle);
 
@@ -247,10 +254,10 @@ public class pdfFunctions {
         // Colonne RESPONSE
         PdfPCell responseCol = new PdfPCell();
         responseCol.setPadding(5f);
-        responseCol.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        responseCol.setBorderColor(pdfColors.BORDER_COLOR);
         responseCol.setBorderWidth(0.5f);
 
-        Paragraph resTitle = new Paragraph("RESPONSE", new Font(Font.HELVETICA, 8, Font.BOLD, pdfCommonColors.SUCCESS_COLOR));
+        Paragraph resTitle = new Paragraph("RESPONSE", new Font(Font.HELVETICA, 8, Font.BOLD, pdfColors.SUCCESS_COLOR));
         resTitle.setSpacingAfter(3f);
         responseCol.addElement(resTitle);
 
@@ -272,10 +279,10 @@ public class pdfFunctions {
             PdfPCell errorCell = new PdfPCell();
             errorCell.setBackgroundColor(new Color(255, 243, 243));
             errorCell.setPadding(5f);
-            errorCell.setBorderColor(pdfCommonColors.FAILED_COLOR);
+            errorCell.setBorderColor(pdfColors.FAILED_COLOR);
             errorCell.setBorderWidth(1f);
 
-            Paragraph errorTitle = new Paragraph("ERRORS", new Font(Font.HELVETICA, 8, Font.BOLD, pdfCommonColors.FAILED_COLOR));
+            Paragraph errorTitle = new Paragraph("ERRORS", new Font(Font.HELVETICA, 8, Font.BOLD, pdfColors.FAILED_COLOR));
             errorTitle.setSpacingAfter(3f);
             errorCell.addElement(errorTitle);
 
@@ -305,15 +312,15 @@ public class pdfFunctions {
      * Ajouter en-tête de tableau
      */
     public static void addTableHeader(PdfPTable table, String col1, String col2) {
-        Font headerFont = new Font(Font.HELVETICA, 9, Font.BOLD, pdfCommonColors.HEADER_TEXT);
+        Font headerFont = new Font(Font.HELVETICA, 9, Font.BOLD, pdfColors.HEADER_TEXT);
 
         PdfPCell cell1 = new PdfPCell(new Phrase(col1, headerFont));
-        cell1.setBackgroundColor(pdfCommonColors.HEADER_BG);
+        cell1.setBackgroundColor(pdfColors.HEADER_BG);
         cell1.setPadding(6f);
         cell1.setBorder(Rectangle.NO_BORDER);
 
         PdfPCell cell2 = new PdfPCell(new Phrase(col2, headerFont));
-        cell2.setBackgroundColor(pdfCommonColors.HEADER_BG);
+        cell2.setBackgroundColor(pdfColors.HEADER_BG);
         cell2.setPadding(6f);
         cell2.setBorder(Rectangle.NO_BORDER);
 
@@ -325,22 +332,84 @@ public class pdfFunctions {
      * Ajouter ligne de tableau avec alternance de couleur
      */
     public static void addTableRow(PdfPTable table, String label, String value, Font labelFont, Font valueFont, boolean isEven) {
-        Color bg = isEven ? pdfCommonColors.ROW_EVEN : pdfCommonColors.ROW_ODD;
+        Color bg = isEven ? pdfColors.ROW_EVEN : pdfColors.ROW_ODD;
 
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setBackgroundColor(bg);
         labelCell.setPadding(5f);
-        labelCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        labelCell.setBorderColor(pdfColors.BORDER_COLOR);
         labelCell.setBorderWidth(0.5f);
 
         PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
         valueCell.setBackgroundColor(bg);
         valueCell.setPadding(5f);
-        valueCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        valueCell.setBorderColor(pdfColors.BORDER_COLOR);
         valueCell.setBorderWidth(0.5f);
 
         table.addCell(labelCell);
         table.addCell(valueCell);
+    }
+
+    /**
+     * Ajouter en-tête de tableau simple
+     */
+    public static void addSimpleTableHeader(PdfPTable table, String[] cols) {
+        Font headerFont = new Font(Font.HELVETICA, 9, Font.BOLD, pdfColors.HEADER_TEXT);
+        for (String col: cols){
+            PdfPCell cell1 = new PdfPCell(new Phrase(col, headerFont));
+            cell1.setBackgroundColor(pdfColors.HEADER_BG);
+            cell1.setPadding(6f);
+            cell1.setBorder(Rectangle.NO_BORDER);
+            table.addCell(cell1);
+        }
+    }
+
+    /**
+     * Ajouter ligne de tableau simple
+     */
+    public static void addSimpleTableRow(PdfPTable table, String[] values, Font valueFont) {
+        Color bg = pdfColors.ROW_ODD;
+        for(String val: values){
+            PdfPCell valueCell = new PdfPCell(new Phrase(val, valueFont));
+            valueCell.setBackgroundColor(bg);
+            valueCell.setPadding(5f);
+            valueCell.setBorderColor(pdfColors.BORDER_COLOR);
+            valueCell.setBorderWidth(0.5f);
+            table.addCell(valueCell);
+        }
+    }
+
+    public static void addProjectSimpleTestsTable(Document document, String[] headers, ArrayList<SimpleTestDTO> tests, Font valueFont){
+        PdfPTable table = new PdfPTable(headers.length);
+        table.setWidthPercentage(100);
+        float[] widths = new float[headers.length];
+        Arrays.fill(widths, 12.5f);
+        table.setWidths(widths);
+        table.setSpacingAfter(5f);
+        addSimpleTableHeader(table, headers);
+        for(SimpleTestDTO simpleTestDTO: tests){
+            String[] values = simpleTestDTO.toStringTable();
+            addSimpleTableRow(table, values, valueFont);
+        }
+        document.add(table);
+    }
+
+    public static void addProjectStatsTable(Document document, ProjectStatsDTO data, Font labelFont, Font valueFont)
+            throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{30f, 70f});
+        table.setSpacingAfter(5f);
+
+        // En-tête
+        addTableHeader(table, "Property", "Value");
+        Map<String, String> map = data.toMap();
+        // Données
+        for(Map.Entry<String,String> entry: map.entrySet()){
+            addTableRow(table, camelToPhrase(entry.getKey()), safe(entry.getValue()), labelFont, valueFont, true);
+        }
+
+        document.add(table);
     }
 
     /**
@@ -349,14 +418,14 @@ public class pdfFunctions {
     public static void addCompactRow(PdfPTable table, String label, String value, Font labelFont, Font valueFont) {
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setPadding(4f);
-        labelCell.setBackgroundColor(pdfCommonColors.ROW_EVEN);
-        labelCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        labelCell.setBackgroundColor(pdfColors.ROW_EVEN);
+        labelCell.setBorderColor(pdfColors.BORDER_COLOR);
         labelCell.setBorderWidth(0.5f);
 
         PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
         valueCell.setPadding(4f);
         valueCell.setBackgroundColor(Color.WHITE);
-        valueCell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        valueCell.setBorderColor(pdfColors.BORDER_COLOR);
         valueCell.setBorderWidth(0.5f);
 
         table.addCell(labelCell);
@@ -373,8 +442,8 @@ public class pdfFunctions {
 
         PdfPCell cell = new PdfPCell(p);
         cell.setPadding(5f);
-        cell.setBackgroundColor(pdfCommonColors.ROW_EVEN);
-        cell.setBorderColor(pdfCommonColors.BORDER_COLOR);
+        cell.setBackgroundColor(pdfColors.ROW_EVEN);
+        cell.setBorderColor(pdfColors.BORDER_COLOR);
         cell.setBorderWidth(0.5f);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
 
@@ -437,9 +506,9 @@ public class pdfFunctions {
     public static Color getStatusColor(TestExecution test) {
         if (test == null || test.getStatus() == null) return Color.DARK_GRAY;
         return switch (test.getStatus()) {
-            case SUCCESS -> pdfCommonColors.SUCCESS_COLOR;
-            case FAILED -> pdfCommonColors.FAILED_COLOR;
-            case ERROR -> pdfCommonColors.ERROR_COLOR;
+            case SUCCESS -> pdfColors.SUCCESS_COLOR;
+            case FAILED -> pdfColors.FAILED_COLOR;
+            case ERROR -> pdfColors.ERROR_COLOR;
         };
     }
 
