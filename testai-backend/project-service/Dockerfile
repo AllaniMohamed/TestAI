@@ -22,8 +22,7 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Create uploads directory
-RUN mkdir -p /app/uploads/projects-docs
+
 
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar

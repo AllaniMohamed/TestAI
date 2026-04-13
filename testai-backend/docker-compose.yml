@@ -444,7 +444,18 @@ services:
       networks:
         - testai-network
       restart: unless-stopped
-
+  blog-api:
+    build: ./blog_api_a_tester
+    container_name: testai-blog-api
+    ports:
+      - "9000:9000"
+    networks:
+      - testai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/articles"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   # ==========================================
   # API GATEWAY
   # ==========================================

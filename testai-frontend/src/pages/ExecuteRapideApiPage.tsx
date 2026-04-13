@@ -1,5 +1,5 @@
 // ExecuteRapideApiPage.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import Button from "../components/common/Button";
@@ -13,13 +13,11 @@ import {
   CogIcon,
   PlusIcon,
   FolderOpenIcon,
-  DocumentDuplicateIcon,
   ArrowPathIcon,
-  CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  KeyIcon,
-  LockClosedIcon,
+  DocumentDuplicateIcon,
+  ClipboardDocumentIcon,
 } from "@heroicons/react/24/outline";
 import {
   apiRunnerService,
@@ -38,23 +36,309 @@ interface KeyValuePair {
 
 type AuthType = "NONE" | "BEARER" | "BASIC" | "API_KEY";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant CodeEditor avec numéros de ligne
+// ─────────────────────────────────────────────────────────────────────────────
+const CodeEditor: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}> = ({ value, onChange, disabled, placeholder }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  const lineCount = value.split("\n").length;
+
+  const handleScroll = () => {
+    if (textareaRef.current && lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = e.currentTarget.selectionStart;
+      const end = e.currentTarget.selectionEnd;
+      const newValue = value.substring(0, start) + "  " + value.substring(end);
+      onChange(newValue);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart =
+            textareaRef.current.selectionEnd = start + 2;
+        }
+      }, 0);
+    }
+  };
+
+  return (
+    <div className="relative flex font-mono text-sm bg-[#0d1117] rounded-xl overflow-hidden border border-outline-variant/20">
+      <div
+        ref={lineNumbersRef}
+        className="py-4 pl-4 pr-2 text-right select-none bg-[#0d1117] text-gray-500 border-r border-gray-700 overflow-hidden"
+        style={{ minWidth: "3.5rem" }}
+      >
+        {Array.from({ length: lineCount }, (_, i) => (
+          <div key={i + 1} className="leading-6">
+            {i + 1}
+          </div>
+        ))}
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="w-full p-4 pl-3 bg-transparent text-gray-300 outline-none resize-none overflow-auto leading-6 font-mono text-sm"
+        style={{ minHeight: "240px", maxHeight: "500px", whiteSpace: "pre" }}
+        spellCheck={false}
+      />
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant JsonViewer amélioré (taille fixe, scroll horizontal/vertical)
+// ─────────────────────────────────────────────────────────────────────────────
+const JsonViewer: React.FC<{ data: any }> = ({ data }) => {
+  const normalizeData = (input: any): any => {
+    if (typeof input === "string") {
+      try {
+        const parsed = JSON.parse(input);
+        return typeof parsed === "string" ? normalizeData(parsed) : parsed;
+      } catch {
+        return input;
+      }
+    }
+    return input;
+  };
+
+  const normalized = normalizeData(data);
+
+  const formatJson = (obj: any): string => {
+    try {
+      return JSON.stringify(obj, null, 2);
+    } catch {
+      return String(obj);
+    }
+  };
+
+  const jsonString = formatJson(normalized);
+  const lines = jsonString.split("\n");
+
+  const highlightLine = (line: string): React.ReactNode => {
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+    const length = line.length;
+    let key = 0;
+
+    while (i < length) {
+      if (line[i] === " ") {
+        let j = i;
+        while (j < length && line[j] === " ") j++;
+        elements.push(<span key={key++}>{line.substring(i, j)}</span>);
+        i = j;
+        continue;
+      }
+
+      if ("{}[],:".includes(line[i])) {
+        elements.push(
+          <span key={key++} className="text-gray-400">
+            {line[i]}
+          </span>
+        );
+        i++;
+        continue;
+      }
+
+      if (line[i] === '"') {
+        let j = i + 1;
+        let escaped = false;
+        while (j < length) {
+          if (line[j] === "\\") {
+            escaped = !escaped;
+          } else if (line[j] === '"' && !escaped) {
+            break;
+          } else {
+            escaped = false;
+          }
+          j++;
+        }
+        const token = line.substring(i, j + 1);
+
+        let isKey = false;
+        let k = j + 1;
+        while (k < length && line[k] === " ") k++;
+        if (k < length && line[k] === ":") {
+          isKey = true;
+        }
+
+        elements.push(
+          <span
+            key={key++}
+            className={isKey ? "text-purple-400" : "text-green-400"}
+          >
+            {token}
+          </span>
+        );
+        i = j + 1;
+        continue;
+      }
+
+      const numberRegex = /^-?\d+(\.\d+)?([eE][+-]?\d+)?\b/;
+      const booleanNullRegex = /^(true|false|null)\b/;
+
+      if (numberRegex.test(line.slice(i))) {
+        const match = line.slice(i).match(numberRegex);
+        if (match) {
+          elements.push(
+            <span key={key++} className="text-orange-400">
+              {match[0]}
+            </span>
+          );
+          i += match[0].length;
+          continue;
+        }
+      } else if (booleanNullRegex.test(line.slice(i))) {
+        const match = line.slice(i).match(booleanNullRegex);
+        if (match) {
+          elements.push(
+            <span key={key++} className="text-blue-400">
+              {match[0]}
+            </span>
+          );
+          i += match[0].length;
+          continue;
+        }
+      }
+
+      elements.push(<span key={key++}>{line[i]}</span>);
+      i++;
+    }
+
+    return <>{elements}</>;
+  };
+
+  return (
+    <div className="w-full h-96 bg-[#0d1117] rounded-xl border border-outline-variant/20 overflow-auto font-mono text-sm">
+      <div className="flex">
+        {/* Numéros de ligne */}
+        <div className="py-4 pl-4 pr-2 text-right select-none bg-[#0d1117] text-gray-500 border-r border-gray-700">
+          {lines.map((_, i) => (
+            <div key={i + 1} className="leading-6">
+              {i + 1}
+            </div>
+          ))}
+        </div>
+        {/* Contenu coloré */}
+        <div className="p-4 pl-3 text-gray-300 leading-6">
+          {lines.map((line, i) => (
+            <div key={i} className="whitespace-pre">
+              {highlightLine(line)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KeyValueEditor
+// ─────────────────────────────────────────────────────────────────────────────
+const KeyValueEditor: React.FC<{
+  title: string;
+  pairs: { id: string; key: string; value: string; enabled: boolean }[];
+  onAdd: () => void;
+  onUpdate: (id: string, field: string, value: any) => void;
+  onRemove: (id: string) => void;
+}> = ({ title, pairs, onAdd, onUpdate, onRemove }) => (
+  <div className="bg-surface-container-lowest rounded-xl p-4 ring-1 ring-outline-variant/15 space-y-3">
+    <div className="flex justify-between items-center">
+      <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+        {title}
+      </span>
+      <button
+        onClick={onAdd}
+        className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+      >
+        <PlusIcon className="w-3 h-3" /> Add
+      </button>
+    </div>
+    <div className="space-y-2">
+      {pairs.map((pair) => (
+        <div key={pair.id} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={pair.enabled}
+            onChange={(e) => onUpdate(pair.id, "enabled", e.target.checked)}
+            className="rounded"
+          />
+          <input
+            type="text"
+            placeholder="Key"
+            value={pair.key}
+            onChange={(e) => onUpdate(pair.id, "key", e.target.value)}
+            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Value"
+            value={pair.value}
+            onChange={(e) => onUpdate(pair.id, "value", e.target.value)}
+            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
+          />
+          <button
+            onClick={() => onRemove(pair.id)}
+            className="text-on-surface-variant hover:text-red-500"
+          >
+            <TrashIcon className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const PlayIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653Z"
+    />
+  </svg>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant principal
+// ─────────────────────────────────────────────────────────────────────────────
 const ExecuteRapideApiPage: React.FC = () => {
-  // État de la requête
   const [method, setMethod] = useState<string>("GET");
   const [url, setUrl] = useState<string>("");
   const [requestBody, setRequestBody] = useState<string>("{}");
   const [contentType, setContentType] = useState<string>("application/json");
 
-  // Onglets
-  const [activeTab, setActiveTab] = useState<"params" | "authorization" | "headers" | "body" | "settings">("body");
+  const [activeTab, setActiveTab] = useState<
+    "params" | "authorization" | "headers" | "body" | "settings"
+  >("body");
 
-  // Headers et Query Params (tableaux éditables)
   const [headers, setHeaders] = useState<KeyValuePair[]>([
     { id: "1", key: "Content-Type", value: "application/json", enabled: true },
   ]);
   const [queryParams, setQueryParams] = useState<KeyValuePair[]>([]);
 
-  // Authentification
   const [authType, setAuthType] = useState<AuthType>("NONE");
   const [bearerToken, setBearerToken] = useState<string>("");
   const [basicUsername, setBasicUsername] = useState<string>("");
@@ -63,24 +347,22 @@ const ExecuteRapideApiPage: React.FC = () => {
   const [apiKeyValue, setApiKeyValue] = useState<string>("");
   const [apiKeyIn, setApiKeyIn] = useState<"header" | "query">("header");
 
-  // Réponse et état d'exécution
   const [response, setResponse] = useState<ApiResponseDTO | null>(null);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Historique
   const [history, setHistory] = useState<SavedApiRequestDTO[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
-  // UI
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveName, setSaveName] = useState<string>("");
   const [saveDescription, setSaveDescription] = useState<string>("");
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Charger l'historique au montage
-  // ──────────────────────────────────────────────────────────────────────────
+  // États pour les boutons de copie
+  const [bodyCopied, setBodyCopied] = useState<boolean>(false);
+  const [fullCopied, setFullCopied] = useState<boolean>(false);
+
   useEffect(() => {
     loadHistory();
   }, []);
@@ -91,29 +373,27 @@ const ExecuteRapideApiPage: React.FC = () => {
       const res = await apiRunnerService.getUserRequests("created");
       setHistory(res.data);
     } catch (err) {
-      console.error("Erreur chargement historique", err);
+      console.error("Error loading history", err);
     } finally {
       setLoadingHistory(false);
     }
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Construire l'objet ExecuteApiRequestDTO à partir de l'état
-  // ──────────────────────────────────────────────────────────────────────────
   const buildRequest = (): ExecuteApiRequestDTO => {
-    // Headers actifs
     const activeHeaders: Record<string, string> = {};
-    headers.filter(h => h.enabled && h.key.trim()).forEach(h => {
-      activeHeaders[h.key] = h.value;
-    });
+    headers
+      .filter((h) => h.enabled && h.key.trim())
+      .forEach((h) => {
+        activeHeaders[h.key] = h.value;
+      });
 
-    // Query params actifs
     const activeParams: Record<string, string> = {};
-    queryParams.filter(p => p.enabled && p.key.trim()).forEach(p => {
-      activeParams[p.key] = p.value;
-    });
+    queryParams
+      .filter((p) => p.enabled && p.key.trim())
+      .forEach((p) => {
+        activeParams[p.key] = p.value;
+      });
 
-    // Auth config
     let authConfig: Record<string, string> = {};
     if (authType === "BEARER") {
       authConfig = { token: bearerToken };
@@ -123,12 +403,17 @@ const ExecuteRapideApiPage: React.FC = () => {
       authConfig = { key: apiKeyName, value: apiKeyValue, in: apiKeyIn };
     }
 
-    // Construire l'URL avec query params (si présents)
     let finalUrl = url;
     if (Object.keys(activeParams).length > 0) {
-      const urlObj = new URL(url);
-      Object.entries(activeParams).forEach(([k, v]) => urlObj.searchParams.append(k, v));
-      finalUrl = urlObj.toString();
+      try {
+        const urlObj = new URL(url);
+        Object.entries(activeParams).forEach(([k, v]) =>
+          urlObj.searchParams.append(k, v),
+        );
+        finalUrl = urlObj.toString();
+      } catch {
+        // keep original
+      }
     }
 
     return {
@@ -138,14 +423,12 @@ const ExecuteRapideApiPage: React.FC = () => {
       queryParams: activeParams,
       authType,
       authConfig,
-      requestBody: method !== "GET" && method !== "DELETE" ? requestBody : undefined,
+      requestBody:
+        method !== "GET" && method !== "DELETE" ? requestBody : undefined,
       saveAfterExecution: false,
     };
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Exécuter la requête
-  // ──────────────────────────────────────────────────────────────────────────
   const handleExecute = async (savedRequestId?: string) => {
     setIsExecuting(true);
     setError(null);
@@ -159,34 +442,40 @@ const ExecuteRapideApiPage: React.FC = () => {
         res = await apiRunnerService.executeRequest(req);
       }
       setResponse(res.data);
-      // Recharger l'historique après exécution
       await loadHistory();
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Erreur d'exécution");
+      setError(err.response?.data?.message || err.message || "Execution error");
     } finally {
       setIsExecuting(false);
     }
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Sauvegarder la requête courante
-  // ──────────────────────────────────────────────────────────────────────────
   const handleSaveRequest = async () => {
     if (!saveName.trim()) {
-      alert("Veuillez donner un nom à la requête");
+      alert("Please enter a request name");
       return;
     }
 
     const activeHeaders: Record<string, string> = {};
-    headers.filter(h => h.enabled && h.key.trim()).forEach(h => { activeHeaders[h.key] = h.value; });
+    headers
+      .filter((h) => h.enabled && h.key.trim())
+      .forEach((h) => {
+        activeHeaders[h.key] = h.value;
+      });
 
     const activeParams: Record<string, string> = {};
-    queryParams.filter(p => p.enabled && p.key.trim()).forEach(p => { activeParams[p.key] = p.value; });
+    queryParams
+      .filter((p) => p.enabled && p.key.trim())
+      .forEach((p) => {
+        activeParams[p.key] = p.value;
+      });
 
     let authConfig: Record<string, string> = {};
     if (authType === "BEARER") authConfig = { token: bearerToken };
-    else if (authType === "BASIC") authConfig = { username: basicUsername, password: basicPassword };
-    else if (authType === "API_KEY") authConfig = { key: apiKeyName, value: apiKeyValue, in: apiKeyIn };
+    else if (authType === "BASIC")
+      authConfig = { username: basicUsername, password: basicPassword };
+    else if (authType === "API_KEY")
+      authConfig = { key: apiKeyName, value: apiKeyValue, in: apiKeyIn };
 
     const savedRequest: SavedApiRequestDTO = {
       name: saveName,
@@ -197,7 +486,8 @@ const ExecuteRapideApiPage: React.FC = () => {
       queryParams: activeParams,
       authType,
       authConfig,
-      requestBody: method !== "GET" && method !== "DELETE" ? requestBody : undefined,
+      requestBody:
+        method !== "GET" && method !== "DELETE" ? requestBody : undefined,
     };
 
     try {
@@ -206,37 +496,39 @@ const ExecuteRapideApiPage: React.FC = () => {
       setSaveName("");
       setSaveDescription("");
       await loadHistory();
-      // Optionnel : sélectionner la requête sauvegardée
       setSelectedRequestId(res.data.id || null);
     } catch (err: any) {
-      alert("Erreur lors de la sauvegarde : " + (err.response?.data?.message || err.message));
+      alert("Save error: " + (err.response?.data?.message || err.message));
     }
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Charger une requête depuis l'historique
-  // ──────────────────────────────────────────────────────────────────────────
   const loadRequestFromHistory = (req: SavedApiRequestDTO) => {
     setMethod(req.method);
     setUrl(req.url);
     setRequestBody(req.requestBody || "{}");
     setAuthType((req.authType as AuthType) || "NONE");
 
-    // Headers
-    const headerItems: KeyValuePair[] = Object.entries(req.headers || {}).map(([k, v], i) => ({
-      id: `h-${i}-${Date.now()}`,
-      key: k,
-      value: v,
-      enabled: true,
-    }));
-    // Assurer qu'il y a toujours Content-Type
-    if (!headerItems.some(h => h.key.toLowerCase() === "content-type")) {
-      headerItems.push({ id: `ct-${Date.now()}`, key: "Content-Type", value: "application/json", enabled: true });
+    const headerItems: KeyValuePair[] = Object.entries(req.headers || {}).map(
+      ([k, v], i) => ({
+        id: `h-${i}-${Date.now()}`,
+        key: k,
+        value: v,
+        enabled: true,
+      }),
+    );
+    if (!headerItems.some((h) => h.key.toLowerCase() === "content-type")) {
+      headerItems.push({
+        id: `ct-${Date.now()}`,
+        key: "Content-Type",
+        value: "application/json",
+        enabled: true,
+      });
     }
     setHeaders(headerItems);
 
-    // Query Params
-    const paramItems: KeyValuePair[] = Object.entries(req.queryParams || {}).map(([k, v], i) => ({
+    const paramItems: KeyValuePair[] = Object.entries(
+      req.queryParams || {},
+    ).map(([k, v], i) => ({
       id: `p-${i}-${Date.now()}`,
       key: k,
       value: v,
@@ -244,7 +536,6 @@ const ExecuteRapideApiPage: React.FC = () => {
     }));
     setQueryParams(paramItems);
 
-    // Auth config
     if (req.authType === "BEARER" && req.authConfig?.token) {
       setBearerToken(req.authConfig.token);
     } else if (req.authType === "BASIC") {
@@ -259,51 +550,100 @@ const ExecuteRapideApiPage: React.FC = () => {
     setSelectedRequestId(req.id || null);
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Supprimer une requête de l'historique
-  // ──────────────────────────────────────────────────────────────────────────
   const handleDeleteRequest = async (requestId: string) => {
-    if (!confirm("Supprimer cette requête de l'historique ?")) return;
+    if (!confirm("Delete this request from history?")) return;
     try {
       await apiRunnerService.deleteRequest(requestId);
       await loadHistory();
       if (selectedRequestId === requestId) setSelectedRequestId(null);
     } catch (err: any) {
-      alert("Erreur suppression : " + (err.response?.data?.message || err.message));
+      alert("Delete error: " + (err.response?.data?.message || err.message));
     }
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Helpers pour les tableaux (headers/params)
-  // ──────────────────────────────────────────────────────────────────────────
-  const addHeader = () => setHeaders([...headers, { id: `h-${Date.now()}`, key: "", value: "", enabled: true }]);
+  const addHeader = () =>
+    setHeaders([
+      ...headers,
+      { id: `h-${Date.now()}`, key: "", value: "", enabled: true },
+    ]);
   const updateHeader = (id: string, field: keyof KeyValuePair, value: any) => {
-    setHeaders(headers.map(h => h.id === id ? { ...h, [field]: value } : h));
+    setHeaders(
+      headers.map((h) => (h.id === id ? { ...h, [field]: value } : h)),
+    );
   };
-  const removeHeader = (id: string) => setHeaders(headers.filter(h => h.id !== id));
+  const removeHeader = (id: string) =>
+    setHeaders(headers.filter((h) => h.id !== id));
 
-  const addQueryParam = () => setQueryParams([...queryParams, { id: `p-${Date.now()}`, key: "", value: "", enabled: true }]);
-  const updateQueryParam = (id: string, field: keyof KeyValuePair, value: any) => {
-    setQueryParams(queryParams.map(p => p.id === id ? { ...p, [field]: value } : p));
+  const addQueryParam = () =>
+    setQueryParams([
+      ...queryParams,
+      { id: `p-${Date.now()}`, key: "", value: "", enabled: true },
+    ]);
+  const updateQueryParam = (
+    id: string,
+    field: keyof KeyValuePair,
+    value: any,
+  ) => {
+    setQueryParams(
+      queryParams.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+    );
   };
-  const removeQueryParam = (id: string) => setQueryParams(queryParams.filter(p => p.id !== id));
+  const removeQueryParam = (id: string) =>
+    setQueryParams(queryParams.filter((p) => p.id !== id));
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Rendu
-  // ──────────────────────────────────────────────────────────────────────────
+  // Fonctions de copie avec feedback temporaire
+  const copyResponseBody = () => {
+    if (!response) return;
+    let textToCopy: string;
+    try {
+      const parsed = JSON.parse(response.body);
+      textToCopy = JSON.stringify(parsed, null, 2);
+    } catch {
+      textToCopy = response.body;
+    }
+    navigator.clipboard.writeText(textToCopy);
+    setBodyCopied(true);
+    setTimeout(() => setBodyCopied(false), 2000);
+  };
+
+  const copyFullResponse = () => {
+    if (!response) return;
+    const full = `Status: ${response.status} ${response.statusText}
+Time: ${response.responseTimeMs} ms
+Size: ${response.size}
+Headers: ${JSON.stringify(response.headers, null, 2)}
+
+Body:
+${
+  (() => {
+    try {
+      const parsed = JSON.parse(response.body);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return response.body;
+    }
+  })()
+}`;
+    navigator.clipboard.writeText(full);
+    setFullCopied(true);
+    setTimeout(() => setFullCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
       <Navbar />
       <div className="flex pt-0">
         <Sidebar />
-        <main className="flex-1 ml-64 flex flex-col min-h-screen">
-          {/* Top bar */}
+<main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
           <header className="flex justify-between items-center px-8 w-full h-16 border-b border-primary/10 bg-surface">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-headline font-bold tracking-tight text-on-surface">
                 API Runner
               </h2>
-              <Badge variant="info" className="text-[10px] font-bold tracking-wider">
+              <Badge
+                variant="info"
+                className="text-[10px] font-bold tracking-wider"
+              >
                 v2.4.0-STABLE
               </Badge>
             </div>
@@ -311,7 +651,7 @@ const ExecuteRapideApiPage: React.FC = () => {
               <button
                 onClick={() => setShowSaveModal(true)}
                 className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1"
-                title="Sauvegarder cette requête"
+                title="Save this request"
               >
                 <FolderOpenIcon className="w-5 h-5" />
                 <span className="text-xs font-medium">Save</span>
@@ -325,11 +665,9 @@ const ExecuteRapideApiPage: React.FC = () => {
             </div>
           </header>
 
-          {/* Contenu principal */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Colonne gauche : Requête / Réponse */}
             <div className="flex-1 p-8 overflow-y-auto space-y-8">
-              {/* Barre de requête */}
+              {/* Request bar */}
               <div className="bg-surface-container-lowest p-1 rounded-xl shadow-sm ring-1 ring-outline-variant/15 flex items-center gap-2">
                 <div className="relative">
                   <select
@@ -359,16 +697,24 @@ const ExecuteRapideApiPage: React.FC = () => {
                   loading={isExecuting}
                   disabled={!url.trim()}
                   className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
-                  icon={!isExecuting ? <BoltIcon className="w-4 h-4" /> : undefined}
+                  icon={
+                    !isExecuting ? <BoltIcon className="w-4 h-4" /> : undefined
+                  }
                 >
                   {isExecuting ? "Sending..." : "Send"}
                 </Button>
               </div>
 
-              {/* Onglets */}
+              {/* Tabs */}
               <div className="space-y-4">
                 <div className="flex border-b border-outline-variant/10 gap-8">
-                  {["params", "authorization", "headers", "body", "settings"].map((tab) => (
+                  {[
+                    "params",
+                    "authorization",
+                    "headers",
+                    "body",
+                    "settings",
+                  ].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
@@ -383,7 +729,7 @@ const ExecuteRapideApiPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Onglet Params */}
+                {/* Params */}
                 {activeTab === "params" && (
                   <KeyValueEditor
                     title="Query Parameters"
@@ -394,14 +740,18 @@ const ExecuteRapideApiPage: React.FC = () => {
                   />
                 )}
 
-                {/* Onglet Authorization */}
+                {/* Authorization */}
                 {activeTab === "authorization" && (
                   <div className="bg-surface-container-lowest rounded-xl p-6 ring-1 ring-outline-variant/15 space-y-6">
                     <div>
-                      <label className="block text-sm font-semibold mb-2">Type</label>
+                      <label className="block text-sm font-semibold mb-2">
+                        Type
+                      </label>
                       <select
                         value={authType}
-                        onChange={(e) => setAuthType(e.target.value as AuthType)}
+                        onChange={(e) =>
+                          setAuthType(e.target.value as AuthType)
+                        }
                         className="w-full md:w-64 px-4 py-2 border border-outline-variant/30 rounded-lg text-sm"
                       >
                         <option value="NONE">No Auth</option>
@@ -413,7 +763,9 @@ const ExecuteRapideApiPage: React.FC = () => {
 
                     {authType === "BEARER" && (
                       <div>
-                        <label className="block text-sm font-medium mb-1">Token</label>
+                        <label className="block text-sm font-medium mb-1">
+                          Token
+                        </label>
                         <input
                           type="text"
                           value={bearerToken}
@@ -427,7 +779,9 @@ const ExecuteRapideApiPage: React.FC = () => {
                     {authType === "BASIC" && (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1">Username</label>
+                          <label className="block text-sm font-medium mb-1">
+                            Username
+                          </label>
                           <input
                             type="text"
                             value={basicUsername}
@@ -436,7 +790,9 @@ const ExecuteRapideApiPage: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1">Password</label>
+                          <label className="block text-sm font-medium mb-1">
+                            Password
+                          </label>
                           <input
                             type="password"
                             value={basicPassword}
@@ -451,7 +807,9 @@ const ExecuteRapideApiPage: React.FC = () => {
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-1">Key</label>
+                            <label className="block text-sm font-medium mb-1">
+                              Key
+                            </label>
                             <input
                               type="text"
                               value={apiKeyName}
@@ -461,7 +819,9 @@ const ExecuteRapideApiPage: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-1">Value</label>
+                            <label className="block text-sm font-medium mb-1">
+                              Value
+                            </label>
                             <input
                               type="text"
                               value={apiKeyValue}
@@ -471,10 +831,14 @@ const ExecuteRapideApiPage: React.FC = () => {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1">Add to</label>
+                          <label className="block text-sm font-medium mb-1">
+                            Add to
+                          </label>
                           <select
                             value={apiKeyIn}
-                            onChange={(e) => setApiKeyIn(e.target.value as "header" | "query")}
+                            onChange={(e) =>
+                              setApiKeyIn(e.target.value as "header" | "query")
+                            }
                             className="w-full md:w-48 px-4 py-2 border border-outline-variant/30 rounded-lg text-sm"
                           >
                             <option value="header">Header</option>
@@ -486,7 +850,7 @@ const ExecuteRapideApiPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Onglet Headers */}
+                {/* Headers */}
                 {activeTab === "headers" && (
                   <KeyValueEditor
                     title="Request Headers"
@@ -497,25 +861,39 @@ const ExecuteRapideApiPage: React.FC = () => {
                   />
                 )}
 
-                {/* Onglet Body */}
+                {/* Body */}
                 {activeTab === "body" && (
                   <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/15 overflow-hidden">
                     <div className="bg-surface-container-low px-4 py-2 flex justify-between items-center border-b border-outline-variant/10">
                       <span className="text-[10px] font-bold text-on-surface-variant tracking-widest uppercase">
-                        {method === "GET" || method === "DELETE" ? "Body (non applicable)" : "Request Body"}
+                        {method === "GET" || method === "DELETE"
+                          ? "Body (not applicable)"
+                          : "Request Body"}
                       </span>
                       <select
                         value={contentType}
                         onChange={(e) => {
                           setContentType(e.target.value);
-                          const existing = headers.find(h => h.key.toLowerCase() === "content-type");
+                          const existing = headers.find(
+                            (h) => h.key.toLowerCase() === "content-type",
+                          );
                           if (existing) {
                             updateHeader(existing.id, "value", e.target.value);
                           } else {
                             addHeader();
-                            const newId = headers.length > 0 ? headers[headers.length-1].id : "new";
-                            setTimeout(() => updateHeader(newId, "key", "Content-Type"), 0);
-                            setTimeout(() => updateHeader(newId, "value", e.target.value), 0);
+                            const newId =
+                              headers.length > 0
+                                ? headers[headers.length - 1].id
+                                : "new";
+                            setTimeout(
+                              () => updateHeader(newId, "key", "Content-Type"),
+                              0,
+                            );
+                            setTimeout(
+                              () =>
+                                updateHeader(newId, "value", e.target.value),
+                              0,
+                            );
                           }
                         }}
                         className="text-xs border border-outline-variant/30 rounded px-2 py-1"
@@ -526,76 +904,104 @@ const ExecuteRapideApiPage: React.FC = () => {
                         <option>application/x-www-form-urlencoded</option>
                       </select>
                     </div>
-                    <div className="p-6 font-mono text-sm leading-relaxed min-h-[240px] bg-[#0d1117] text-gray-300">
-                      <textarea
-                        value={requestBody}
-                        onChange={(e) => setRequestBody(e.target.value)}
-                        disabled={method === "GET" || method === "DELETE"}
-                        className="w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm"
-                        placeholder="{\n  \'key\': \'value\'\n}"
-                        spellCheck={false}
-                      />
-                    </div>
+                    <CodeEditor
+                      value={requestBody}
+                      onChange={setRequestBody}
+                      disabled={method === "GET" || method === "DELETE"}
+                      placeholder="{\n  'key': 'value'\n}"
+                    />
                   </div>
                 )}
 
-                {/* Onglet Settings */}
+                {/* Settings */}
                 {activeTab === "settings" && (
                   <div className="bg-surface-container-lowest rounded-xl p-6 ring-1 ring-outline-variant/15">
-                    <p className="text-sm text-on-surface-variant">Paramètres supplémentaires (timeout, follow redirects, etc.) - à venir</p>
+                    <p className="text-sm text-on-surface-variant">
+                      Additional settings (timeout, follow redirects, etc.) -
+                      coming soon
+                    </p>
                   </div>
                 )}
               </div>
 
-              {/* Section Réponse */}
+              {/* Response */}
               <div className="space-y-4">
-                <div className="flex justify-between items-end">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-bold tracking-tight text-on-surface-variant uppercase">
                     Response
                   </h3>
-                  {response && (
-                    <div className="flex gap-4 items-center">
-                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                        response.status >= 200 && response.status < 300
-                          ? "bg-green-100 text-green-800"
-                          : response.status >= 400
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          response.status >= 200 && response.status < 300 ? "bg-green-500" : "bg-red-500"
-                        }`}></span>
-                        {response.status} {response.statusText}
+                  <div className="flex items-center gap-2">
+                    {response && (
+                      <>
+                        <button
+                          onClick={copyResponseBody}
+                          className="px-2 py-1 text-xs font-medium rounded-md border border-outline-variant/30 bg-surface-container-lowest hover:bg-surface-container-low transition-colors flex items-center gap-1"
+                        >
+                          <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                          {bodyCopied ? "Copied!" : "Copy Body"}
+                        </button>
+                        <button
+                          onClick={copyFullResponse}
+                          className="px-2 py-1 text-xs font-medium rounded-md border border-outline-variant/30 bg-surface-container-lowest hover:bg-surface-container-low transition-colors flex items-center gap-1"
+                        >
+                          <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                          {fullCopied ? "Copied!" : "Copy Full"}
+                        </button>
+                      </>
+                    )}
+                    {response && (
+                      <>
+                        <div className="h-4 w-px bg-outline-variant/30 mx-1" />
+                        <div
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                            response.status >= 200 && response.status < 300
+                              ? "bg-green-100 text-green-800"
+                              : response.status >= 400
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              response.status >= 200 && response.status < 300
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                          ></span>
+                          {response.status} {response.statusText}
+                        </div>
+                        <div className="text-xs font-medium text-on-surface-variant">
+                          Time:{" "}
+                          <span className="text-on-surface font-bold">
+                            {response.responseTimeMs}ms
+                          </span>
+                        </div>
+                        <div className="text-xs font-medium text-on-surface-variant">
+                          Size:{" "}
+                          <span className="text-on-surface font-bold">
+                            {response.size}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {error && (
+                      <div className="text-red-500 text-sm flex items-center gap-1">
+                        <XCircleIcon className="w-4 h-4" /> {error}
                       </div>
-                      <div className="text-xs font-medium text-on-surface-variant">
-                        Time: <span className="text-on-surface font-bold">{response.responseTimeMs}ms</span>
-                      </div>
-                      <div className="text-xs font-medium text-on-surface-variant">
-                        Size: <span className="text-on-surface font-bold">{response.size}</span>
-                      </div>
-                    </div>
-                  )}
-                  {error && (
-                    <div className="text-red-500 text-sm flex items-center gap-1">
-                      <XCircleIcon className="w-4 h-4" /> {error}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 {response ? (
-                  <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/15 overflow-hidden">
-                    <div className="p-6 font-mono text-sm leading-relaxed bg-[#f8f9ff] text-on-surface border-l-4 border-emerald-500 max-h-96 overflow-auto">
-                      <pre className="whitespace-pre-wrap break-words">{response.body}</pre>
-                    </div>
-                  </div>
+                  <JsonViewer data={response.body} />
                 ) : (
                   <div className="bg-surface-container-lowest rounded-xl p-8 text-center text-on-surface-variant text-sm ring-1 ring-outline-variant/15">
-                    Cliquez sur "Send" pour exécuter la requête
+                    Click "Send" to execute the request
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Colonne droite : Historique */}
+            {/* History sidebar */}
             <aside className="w-80 bg-surface-container-low border-l border-outline-variant/10 p-6 flex flex-col gap-6 overflow-y-auto">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-black tracking-widest uppercase text-on-surface">
@@ -604,24 +1010,30 @@ const ExecuteRapideApiPage: React.FC = () => {
                 <button
                   onClick={loadHistory}
                   className="p-1 hover:bg-surface-container-high rounded"
-                  title="Rafraîchir"
+                  title="Refresh"
                 >
-                  <ArrowPathIcon className={`w-4 h-4 ${loadingHistory ? "animate-spin" : ""}`} />
+                  <ArrowPathIcon
+                    className={`w-4 h-4 ${loadingHistory ? "animate-spin" : ""}`}
+                  />
                 </button>
               </div>
               <div className="space-y-3">
                 {loadingHistory ? (
-                  <div className="text-center py-8 text-on-surface-variant">Chargement...</div>
+                  <div className="text-center py-8 text-on-surface-variant">
+                    Loading...
+                  </div>
                 ) : history.length === 0 ? (
                   <div className="text-center py-8 text-on-surface-variant text-sm">
-                    Aucune requête sauvegardée
+                    No saved requests
                   </div>
                 ) : (
                   history.map((item) => (
                     <div
                       key={item.id}
                       className={`p-3 bg-surface-container-lowest rounded-xl ring-1 ring-outline-variant/5 hover:ring-primary/20 transition-all cursor-pointer group ${
-                        selectedRequestId === item.id ? "ring-2 ring-primary" : ""
+                        selectedRequestId === item.id
+                          ? "ring-2 ring-primary"
+                          : ""
                       }`}
                       onClick={() => loadRequestFromHistory(item)}
                     >
@@ -632,8 +1044,8 @@ const ExecuteRapideApiPage: React.FC = () => {
                               item.method === "GET"
                                 ? "text-secondary"
                                 : item.method === "POST"
-                                ? "text-primary"
-                                : "text-amber-600"
+                                  ? "text-primary"
+                                  : "text-amber-600"
                             }`}
                           >
                             {item.method}
@@ -649,7 +1061,7 @@ const ExecuteRapideApiPage: React.FC = () => {
                               if (item.id) handleExecute(item.id);
                             }}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-primary/10 rounded"
-                            title="Exécuter"
+                            title="Execute"
                           >
                             <PlayIcon className="w-3 h-3" />
                           </button>
@@ -659,35 +1071,39 @@ const ExecuteRapideApiPage: React.FC = () => {
                               if (item.id) handleDeleteRequest(item.id);
                             }}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500"
-                            title="Supprimer"
+                            title="Delete"
                           >
                             <TrashIcon className="w-3 h-3" />
                           </button>
                         </div>
                       </div>
-                      <p className="text-xs font-mono truncate text-on-surface mb-2">{item.url}</p>
+                      <p className="text-xs font-mono truncate text-on-surface mb-2">
+                        {item.url}
+                      </p>
                       <div className="flex items-center gap-2 text-[10px] text-on-surface-variant">
                         <ClockIcon className="w-3 h-3" />
                         {item.lastExecutedAt
                           ? new Date(item.lastExecutedAt).toLocaleString()
-                          : "Jamais exécutée"}
+                          : "Never executed"}
                       </div>
                     </div>
                   ))
                 )}
               </div>
 
-              {/* Carte AI */}
+              {/* AI Card */}
               <div className="mt-auto p-4 bg-gradient-to-br from-inverse-surface to-[#131b2e] rounded-xl text-white">
                 <div className="flex items-center gap-2 mb-2">
                   <SparklesIcon className="w-5 h-5 text-primary-fixed" />
-                  <span className="text-[10px] font-black tracking-widest uppercase">Lab AI</span>
+                  <span className="text-[10px] font-black tracking-widest uppercase">
+                    Lab AI
+                  </span>
                 </div>
                 <p className="text-xs text-indigo-100/70 mb-3 leading-relaxed">
-                  Laissez l’IA écrire vos scripts de test à partir du schéma de cette requête.
+                  Let AI generate test scripts from this request schema.
                 </p>
                 <button className="w-full py-2 bg-primary-container text-white rounded-lg text-[10px] font-bold uppercase tracking-tighter hover:bg-primary transition-all">
-                  Générer des assertions
+                  Generate Assertions
                 </button>
               </div>
             </aside>
@@ -695,24 +1111,26 @@ const ExecuteRapideApiPage: React.FC = () => {
         </main>
       </div>
 
-      {/* Modal de sauvegarde */}
+      {/* Save Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-bold mb-4">Sauvegarder la requête</h3>
+            <h3 className="text-lg font-bold mb-4">Save Request</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nom</label>
+                <label className="block text-sm font-medium mb-1">Name</label>
                 <input
                   type="text"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="ex: Get user profile"
+                  placeholder="e.g., Get user profile"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Description (optionnel)</label>
+                <label className="block text-sm font-medium mb-1">
+                  Description (optional)
+                </label>
                 <textarea
                   value={saveDescription}
                   onChange={(e) => setSaveDescription(e.target.value)}
@@ -726,13 +1144,13 @@ const ExecuteRapideApiPage: React.FC = () => {
                 onClick={() => setShowSaveModal(false)}
                 className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
               >
-                Annuler
+                Cancel
               </button>
               <button
                 onClick={handleSaveRequest}
                 className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90"
               >
-                Sauvegarder
+                Save
               </button>
             </div>
           </div>
@@ -741,59 +1159,5 @@ const ExecuteRapideApiPage: React.FC = () => {
     </div>
   );
 };
-
-// Composant réutilisable pour les éditeurs clé-valeur (headers/params)
-const KeyValueEditor: React.FC<{
-  title: string;
-  pairs: { id: string; key: string; value: string; enabled: boolean }[];
-  onAdd: () => void;
-  onUpdate: (id: string, field: string, value: any) => void;
-  onRemove: (id: string) => void;
-}> = ({ title, pairs, onAdd, onUpdate, onRemove }) => (
-  <div className="bg-surface-container-lowest rounded-xl p-4 ring-1 ring-outline-variant/15 space-y-3">
-    <div className="flex justify-between items-center">
-      <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{title}</span>
-      <button onClick={onAdd} className="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-        <PlusIcon className="w-3 h-3" /> Ajouter
-      </button>
-    </div>
-    <div className="space-y-2">
-      {pairs.map((pair) => (
-        <div key={pair.id} className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={pair.enabled}
-            onChange={(e) => onUpdate(pair.id, "enabled", e.target.checked)}
-            className="rounded"
-          />
-          <input
-            type="text"
-            placeholder="Key"
-            value={pair.key}
-            onChange={(e) => onUpdate(pair.id, "key", e.target.value)}
-            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
-          />
-          <input
-            type="text"
-            placeholder="Value"
-            value={pair.value}
-            onChange={(e) => onUpdate(pair.id, "value", e.target.value)}
-            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
-          />
-          <button onClick={() => onRemove(pair.id)} className="text-on-surface-variant hover:text-red-500">
-            <TrashIcon className="w-4 h-4" />
-          </button>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-// Icône Play manquante (on peut utiliser BoltIcon ou en créer une)
-const PlayIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653Z" />
-  </svg>
-);
 
 export default ExecuteRapideApiPage;
