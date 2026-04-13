@@ -20,7 +20,9 @@ public class pdfUtils {
     }
 
     public static String camelToPhrase(String str) {
+        if (str == null || str.isEmpty()) return str;
         String result = str.replaceAll("([A-Z])", " $1");
-        return result.substring(0, 1).toUpperCase() + result.substring(1).trim();
+        if (result.length() < 1) return result;
+        return result.substring(0, 1).toUpperCase() + (result.length() > 1 ? result.substring(1).trim() : "");
     }
 }

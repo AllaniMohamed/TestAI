@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -136,7 +135,7 @@ public class TotalReportService {
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate full project PDF report", e);
+            throw new RuntimeException("Failed to generate project PDF full report\n" + e);
         }
     }
 
@@ -218,15 +217,15 @@ public class TotalReportService {
                         }
                     }
                 }
-                addProjectSimpleTestsTable(document, headers, simpleTestDTOList, pdfFonts.valueFont);
+                addSimpleTestsTable(document, headers, simpleTestDTOList, pdfFonts.valueFont);
                 document.add(Chunk.NEWLINE);
                 categoryIndex++;
             }
-            document.add(Chunk.NEWLINE);
+            document.close();
             return out.toByteArray();
         }
         catch (Exception e){
-            throw new RuntimeException("Failed to generate simple project PDF report", e);
+            throw new RuntimeException("Failed to generate project PDF simple report\n" + e);
         }
     }
 }

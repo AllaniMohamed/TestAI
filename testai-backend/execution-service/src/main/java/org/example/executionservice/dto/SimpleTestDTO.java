@@ -1,10 +1,9 @@
 package org.example.executionservice.dto;
 
-import lombok.Getter;
 import org.example.executionservice.entity.TestExecution;
 
 public class SimpleTestDTO {
-    private final String endpointPath;
+    private String endpointPath = "";
     private final String testType;
     private final String executedAt;
     private final String responseTime;
@@ -14,7 +13,11 @@ public class SimpleTestDTO {
     private String error = "";
 
     public SimpleTestDTO(String endpointPath, TestExecution testExecution){
+        this(testExecution);
         this.endpointPath = endpointPath;
+    }
+
+    public SimpleTestDTO(TestExecution testExecution){
         this.testType = testExecution.getTestType().name();
         this.executedAt = testExecution.getExecutedAt().toString();
         this.responseTime = testExecution.getResponseTimeMs() + " Ms";
@@ -24,9 +27,19 @@ public class SimpleTestDTO {
         this.error = testExecution.getErrorMessage();
     }
 
-    public String[] toStringTable(){
+    public String[] toFullStringTable(){
         return new String[]{this.endpointPath, this.testType, this.executedAt,
                 this.responseTime, this.statusCodeMatch, this.schemaMatch,
                 this.testStatus, this.error};
+    }
+
+    public String[] toStringTable(){
+        return new String[]{this.testType, this.executedAt,
+                this.responseTime, this.statusCodeMatch, this.schemaMatch,
+                this.testStatus, this.error};
+    }
+
+    public boolean isSimple(){
+        return this.endpointPath.isEmpty();
     }
 }

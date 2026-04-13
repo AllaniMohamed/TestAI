@@ -668,7 +668,62 @@ export const executionService = {
     executionId: string,
   ): Promise<AxiosResponse<ProjectExecutionResponse>> =>
     api.get(`/execution-service/api/executions/${executionId}/status`),
+
+  
+  // Report endpoints
+  getSingleEndpointReport: (
+    projectId: string,
+    endpointId: string,
+  ): Promise<AxiosResponse<Blob>> =>
+    api.get(
+      `/execution-service/api/executions/report/${projectId}/${endpointId}`,
+      { responseType: "blob" },
+    ),
+
+  getSimpleSingleEndpointReport: (
+    projectId: string,
+    endpointId: string,
+  ): Promise<AxiosResponse<Blob>> =>
+    api.get(
+      `/execution-service/api/executions/report/${projectId}/${endpointId}/simple`,
+      { responseType: "blob" },
+    ),
+
+  getProjectReport: (projectId: string): Promise<AxiosResponse<Blob>> =>
+    api.get(`/execution-service/api/executions/report/${projectId}`, {
+      responseType: "blob",
+    }),
+
+  getSimpleProjectReport: (projectId: string): Promise<AxiosResponse<Blob>> =>
+    api.get(
+      `/execution-service/api/executions/report/${projectId}/simple`,
+      {
+        responseType: "blob",
+      },
+    ),
+
+  getTagReport: (
+    projectId: string,
+    tag: string,
+  ): Promise<AxiosResponse<Blob>> =>
+    api.get(
+      `/execution-service/api/executions/report/${projectId}/tag/${tag}`,
+      { responseType: "blob" },
+    ),
+
+  getSimpleTagReport: (
+    projectId: string,
+    tag: string,
+  ): Promise<AxiosResponse<Blob>> =>
+    api.get(
+      `/execution-service/api/executions/report/${projectId}/tag/${tag}/simple`,
+      { responseType: "blob" },
+    ),
 };
+
+
+
+
 
 // ==========================================
 // API RUNNER SERVICE ⭐

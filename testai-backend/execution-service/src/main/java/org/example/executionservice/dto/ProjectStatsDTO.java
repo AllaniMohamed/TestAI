@@ -2,7 +2,7 @@ package org.example.executionservice.dto;
 
 import org.example.executionservice.entity.ProjectExecution;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,8 +12,8 @@ public class ProjectStatsDTO {
     private final Integer testsPassed;
     private final Integer testsFailed;
     private final Integer testsError;
-    private Double avgSuccessRate;
-    private Long avgDurationMs;
+    private Double avgSuccessRate = 0.0;
+    private Long avgDurationMs = 0L;
 
     // Statistiques par type
     private final Integer positiveTests;
@@ -57,7 +57,7 @@ public class ProjectStatsDTO {
     }
 
     public Map<String, String> toMap(){
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new LinkedHashMap<>();
         map.put("totalEndpoints", this.totalEndpoints.toString());
         map.put("totalTests", this.totalTests.toString());
         map.put("testsPassed", this.testsPassed.toString());
