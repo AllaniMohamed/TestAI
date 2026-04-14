@@ -719,6 +719,11 @@ export const executionService = {
       `/execution-service/api/executions/report/${projectId}/tag/${tag}/simple`,
       { responseType: "blob" },
     ),
+
+  getTestedEndpoints: (
+    projectId: string,
+  ): Promise<AxiosResponse<Endpoint[]>> =>
+    api.get(`/execution-service/api/executions/${projectId}/endpoints`),
 };
 
 

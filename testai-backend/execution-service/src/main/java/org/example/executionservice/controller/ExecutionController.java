@@ -3,6 +3,7 @@ package org.example.executionservice.controller;
 import org.example.executionservice.dto.*;
 import org.example.executionservice.entity.ProjectExecution;
 import org.example.executionservice.entity.TestExecution;
+import org.example.executionservice.feignclient.EndpointServiceClient;
 import org.example.executionservice.repository.ProjectExecutionRepository;
 import org.example.executionservice.repository.TestExecutionRepository;
 import org.example.executionservice.service.*;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public class ExecutionController {
     private final SingleReportService singleReportService;
     private final TagsReportService tagsReportService;
     private final TotalReportService totalReportService;
+    private final EndpointServiceClient endpointServiceClient;
 
     // ==========================================
     // EXÉCUTION D'UN SEUL TEST
@@ -276,4 +279,22 @@ public class ExecutionController {
         }
     }
 
+    @GetMapping("/{projectId}/endpoints")
+    public ResponseEntity<List<EndpointDTO>> getTestedEndpoints(@PathVariable UUID projectId){
+        List<UUID> uuids = testExecutionRepository.findDistinctEndpointIdByProjectId(projectId);
+        if(!uuids.isEmpty()){
+            List<EndpointDTO> endpointDTOList = new ArrayList<>();
+            for (UUID uuid : uuids){
+                try{
+                    endpointDTOList.add(endpointServiceClient.getEndpointById(uuid));
+                } catch (Exception e) {
+                    continue;
+                }
+            }
+            return ResponseEntity.ok(endpointDTOList);
+        }
+        else{
+            return ResponseEntity.badRequest().body(new ArrayList<>());
+        }
+    }
 }

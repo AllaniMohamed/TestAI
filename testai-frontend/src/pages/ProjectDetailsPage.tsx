@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { saveAs } from "file-saver";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import Card from "../components/common/Card";
@@ -13,12 +14,10 @@ import {
   executionService,
   type ProjectExecution,
   type TestExecution,
-  type StartExecutionResponse,
   type UpdateProjectRequest,
 } from "../services/api";
 import ShareProjectModal from "../components/modals/ShareProjectModal";
 import {
-  PencilSquareIcon,
   TrashIcon,
   PlayIcon,
   DocumentArrowDownIcon,
@@ -271,12 +270,11 @@ const GenerateButton: React.FC<{
       flex items-center justify-center gap-2 font-semibold border border-outline-variant/30 rounded-lg transition-all
       ${fullWidth ? "w-full" : ""}
       ${size === "sm" ? "px-3 py-2 text-sm" : "px-2.5 py-1.5 text-xs"}
-      ${
-        loading
-          ? "bg-primary/5 text-primary border-primary/20 cursor-wait"
-          : disabled
-            ? "opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant"
-            : "bg-white text-on-surface hover:bg-surface-container-low cursor-pointer"
+      ${loading
+        ? "bg-primary/5 text-primary border-primary/20 cursor-wait"
+        : disabled
+          ? "opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant"
+          : "bg-white text-on-surface hover:bg-surface-container-low cursor-pointer"
       }
     `}
   >
@@ -466,6 +464,7 @@ const ServiceDetailsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [endpointsCount, setEndpointsCount] = useState(0);
+  const [testedEndpoints, setTestedEndpoints] = useState<Endpoint[]>([]);
 
   // UI
   const [rescanning, setRescanning] = useState(false);
@@ -489,7 +488,7 @@ const ServiceDetailsPage: React.FC = () => {
     variant?: "danger" | "primary";
     confirmLabel?: string;
     onConfirm: () => void;
-  }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  }>({ open: false, title: "", message: "", onConfirm: () => { } });
 
   // Auth / role
   const [isOwner, setIsOwner] = useState(false);
@@ -596,7 +595,7 @@ const ServiceDetailsPage: React.FC = () => {
       try {
         const u = JSON.parse(userStr);
         setUserRole(u.role || "MANAGER");
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -647,6 +646,16 @@ const ServiceDetailsPage: React.FC = () => {
     setTests(res.data as Test[]);
   };
 
+  const refreshTestedEndpoints = async () => {
+    if (!id) return;
+    try {
+      const res = await executionService.getTestedEndpoints(id);
+      setTestedEndpoints(res.data as Endpoint[]);
+    } catch {
+      setTestedEndpoints([]);
+    }
+  };
+
   const loadProjectData = async () => {
     try {
       setLoading(true);
@@ -661,6 +670,7 @@ const ServiceDetailsPage: React.FC = () => {
       const countRes = await projectService.countProjectEndpoints(id!);
       setEndpointsCount(countRes.data.count || endpointsRes.data.length);
       await refreshTests();
+      await refreshTestedEndpoints();
     } catch (err: any) {
       setError(err.response?.data?.message || "Error loading data");
     } finally {
@@ -688,11 +698,53 @@ const ServiceDetailsPage: React.FC = () => {
 
   const loadTestExecutions = async (executionId: string) => {
     try {
+      refreshTestedEndpoints();
       const res =
         await executionService.getTestExecutionsByExecutionId(executionId);
       setTestExecutions(res.data);
     } catch {
       setTestExecutions([]);
+    }
+  };
+
+  const handleDownloadProjectReport = async (reportType: 'simple' | 'full') => {
+    if (!id) return;
+    try {
+      const res = reportType === 'simple'
+        ? await executionService.getSimpleProjectReport(id)
+        : await executionService.getProjectReport(id);
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${reportType}-report.pdf`);
+    } catch (err: any) {
+      addToast("error", err.response?.data?.message || "Error downloading project report.");
+    }
+  };
+
+  const handleDownloadEndpointReport = async (reportType: 'simple' | 'full', endpointId: string) => {
+    if (!id) return;
+    try {
+      const res = reportType === 'simple'
+        ? await executionService.getSimpleSingleEndpointReport(id, endpointId)
+        : await executionService.getSingleEndpointReport(id, endpointId);
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const ep = endpoints.find(e => e.id === endpointId);
+      const epName = ep ? ep.path.replaceAll("/", "_") : "endpoint";
+      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${epName}-${reportType}-report.pdf`);
+    } catch (err: any) {
+      addToast("error", err.response?.data?.message || "Error downloading endpoint report.");
+    }
+  };
+
+  const handleDownloadTagReport = async (reportType: 'simple' | 'full', tag: string) => {
+    if (!id) return;
+    try {
+      const res = reportType === 'simple'
+        ? await executionService.getSimpleTagReport(id, tag)
+        : await executionService.getTagReport(id, tag);
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${tag}-${reportType}-report.pdf`);
+    } catch (err: any) {
+      addToast("error", err.response?.data?.message || "Error downloading tag report.");
     }
   };
 
@@ -736,39 +788,39 @@ const ServiceDetailsPage: React.FC = () => {
 
   // ── Update project ─────────────────────────────────────────────────────────
   const handleUpdateProject = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!id) return;
-  setUpdating(true);
-  try {
-    const updateData: Partial<UpdateProjectRequest> = {
-      name: editForm.name,
-      description: editForm.description,
-      projectUrl: editForm.projectUrl,
-      docUrl: editForm.docUrl || undefined,
-      authType: editForm.authType,
-    };
+    e.preventDefault();
+    if (!id) return;
+    setUpdating(true);
+    try {
+      const updateData: Partial<UpdateProjectRequest> = {
+        name: editForm.name,
+        description: editForm.description,
+        projectUrl: editForm.projectUrl,
+        docUrl: editForm.docUrl || undefined,
+        authType: editForm.authType,
+      };
 
-    if (editForm.authType === "BASIC") {
-      updateData.authUsername = editForm.authUsername || undefined;
-      updateData.authPassword = editForm.authPassword || undefined;
-    } else if (editForm.authType === "API_KEY") {
-      updateData.apiKey = editForm.apiKey || undefined;
-      updateData.apiKeyHeader = editForm.apiKeyHeader || undefined;
-      updateData.apiKeyLocation = editForm.apiKeyLocation || undefined;
-    } else if (editForm.authType === "BEARER") {
-      updateData.bearerToken = editForm.bearerToken || undefined;
+      if (editForm.authType === "BASIC") {
+        updateData.authUsername = editForm.authUsername || undefined;
+        updateData.authPassword = editForm.authPassword || undefined;
+      } else if (editForm.authType === "API_KEY") {
+        updateData.apiKey = editForm.apiKey || undefined;
+        updateData.apiKeyHeader = editForm.apiKeyHeader || undefined;
+        updateData.apiKeyLocation = editForm.apiKeyLocation || undefined;
+      } else if (editForm.authType === "BEARER") {
+        updateData.bearerToken = editForm.bearerToken || undefined;
+      }
+
+      await projectService.updateProject(id, updateData);
+      const projectRes = await projectService.getProjectById(id);
+      setProject(projectRes.data);
+      addToast("success", "Project updated successfully.");
+    } catch (err: any) {
+      addToast("error", err.response?.data?.message || "Error updating project.");
+    } finally {
+      setUpdating(false);
     }
-
-    await projectService.updateProject(id, updateData);
-    const projectRes = await projectService.getProjectById(id);
-    setProject(projectRes.data);
-    addToast("success", "Project updated successfully.");
-  } catch (err: any) {
-    addToast("error", err.response?.data?.message || "Error updating project.");
-  } finally {
-    setUpdating(false);
-  }
-};
+  };
 
   // ── Generation ─────────────────────────────────────────────────────────────
   const doGenerate = async (endpointsToGenerate: Endpoint[], key: string) => {
@@ -961,6 +1013,15 @@ const ServiceDetailsPage: React.FC = () => {
     isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
 
   // ── Groupings ──────────────────────────────────────────────────────────────
+  function tagEndpointsByPath(endpoints: Endpoint[]): Record<string, Endpoint[]> {
+    return endpoints.reduce((groups, ep) => {
+      const tag = ep.path?.split("/")[1]?.trim() || "General";
+      if (!groups[tag]) groups[tag] = [];
+      groups[tag].push(ep);
+      return groups;
+    }, {} as Record<string, Endpoint[]>);
+  }
+
   const groupedEndpoints = endpoints.reduce(
     (g, ep) => {
       const tag = ep.tags?.split(",")[0]?.trim() || "General";
@@ -1002,7 +1063,7 @@ const ServiceDetailsPage: React.FC = () => {
       TEST_SECTIONS.forEach(({ key }) => {
         try {
           if ((test as any)[key]) totalTestsCount++;
-        } catch {}
+        } catch { }
       });
     });
   });
@@ -1562,10 +1623,9 @@ const ServiceDetailsPage: React.FC = () => {
                     onClick={handleExecuteAllProject}
                     disabled={isExecuting || endpointsWithTests.length === 0}
                     className={`flex items-center gap-3 px-8 py-4 rounded-xl text-base font-bold transition-all shadow-lg
-                      ${
-                        isExecuting || endpointsWithTests.length === 0
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"
+                      ${isExecuting || endpointsWithTests.length === 0
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"
                       }`}
                   >
                     {isExecuting ? (
@@ -1600,7 +1660,7 @@ const ServiceDetailsPage: React.FC = () => {
                         TEST_SECTIONS.forEach(({ key }) => {
                           try {
                             if ((test as any)[key]) testsCount++;
-                          } catch {}
+                          } catch { }
                         });
                       });
                       const methodColor =
@@ -1910,78 +1970,134 @@ const ServiceDetailsPage: React.FC = () => {
               REPORTS TAB
           ════════════════════════════════════════════════════════════ */}
           {activeTab === "reports" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card title="Results Distribution">
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={PIE_DATA}
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
+            <div className="space-y-8">
+              {/* First row: Two columns for the charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card title="Results Distribution">
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={PIE_DATA}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {PIE_DATA.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex justify-center gap-6 text-sm mt-2">
+                      {PIE_DATA.map((d) => (
+                        <div key={d.name} className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: d.color }}
+                          />
+                          <span>
+                            {d.name} ({d.value}%)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+                <Card
+                  title="Success History"
+                  footer={<div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      icon={<DocumentArrowDownIcon className="w-6 h-6" />}
+                      onClick={() => handleDownloadProjectReport('full')}
+                    >
+                      Full Project Report
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      icon={<DocumentArrowDownIcon className="w-6 h-6" />}
+                      onClick={() => handleDownloadProjectReport('simple')}
+                    >
+                      Simple Project Report
+                    </Button>
+                  </div>}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={[
+                          { name: "Mon", success: 90 },
+                          { name: "Tue", success: 92 },
+                          { name: "Wed", success: 85 },
+                          { name: "Thu", success: 95 },
+                          { name: "Fri", success: 98 },
+                        ]}
                       >
-                        {PIE_DATA.map((entry, i) => (
-                          <Cell key={i} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex justify-center gap-6 text-sm mt-2">
-                    {PIE_DATA.map((d) => (
-                      <div key={d.name} className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: d.color }}
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line
+                          type="monotone"
+                          dataKey="success"
+                          stroke="#6366f1"
+                          strokeWidth={2.5}
+                          dot={false}
                         />
-                        <span>
-                          {d.name} ({d.value}%)
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Second row: Full width for the endpoints list */}
+              <div className="space-y-3">
+                {Object.entries(tagEndpointsByPath(testedEndpoints)).map(([tag, eps]: [string, Endpoint[]]) => (
+                  <div key={tag} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-on-surface-variant">
+                        <NewspaperIcon className="w-4 h-4" />
+                        <h3 className="font-bold">{tag}</h3>
+                        <span className="text-xs font-mono">
+                          ({eps.length})
                         </span>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          icon={<DocumentArrowDownIcon className="w-4 h-4" />}
+                          variant="outline"
+                          onClick={() => handleDownloadTagReport("simple", tag)}
+                          className="font-normal text-xs"
+                        >
+                          Simple Category Report
+                        </Button>
+                        <Button
+                          variant="outline"
+                          icon={<DocumentArrowDownIcon className="w-4 h-4" />}
+                          onClick={() => handleDownloadTagReport("full", tag)}
+                          className="font-normal text-xs"
+                        >
+                          Full Category Report
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {eps.map((ep: Endpoint) => (
+                        <TestedEndpointAccordion
+                          key={ep.id}
+                          endpoint={ep}
+                          getReport={handleDownloadEndpointReport}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </Card>
-              <Card
-                title="Success History"
-                footer={
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    icon={<DocumentArrowDownIcon className="w-4 h-4" />}
-                  >
-                    Export PDF Report
-                  </Button>
-                }
-              >
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={[
-                        { name: "Mon", success: 90 },
-                        { name: "Tue", success: 92 },
-                        { name: "Wed", success: 85 },
-                        { name: "Thu", success: 95 },
-                        { name: "Fri", success: 98 },
-                      ]}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="success"
-                        stroke="#6366f1"
-                        strokeWidth={2.5}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2027,54 +2143,52 @@ const ServiceDetailsPage: React.FC = () => {
                     />
                   </div>
 
-                   {/* Project URL */}
-      <div>
-        <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-          Project URL
-        </label>
-        <input
-          type="text"
-          value={editForm.projectUrl}
-          onChange={(e) => setEditForm({ ...editForm, projectUrl: e.target.value })}
-          className={`w-full px-3 py-2 border rounded-lg text-sm ${
-            !canEdit || endpoints.length > 0
-              ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
-              : 'bg-white border-outline-variant/30'
-          }`}
-          disabled={!canEdit || endpoints.length > 0}
-        />
-        {endpoints.length > 0 && (
-          <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
-            <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-            URL locked – endpoints already exist. Delete endpoints first to modify.
-          </p>
-        )}
-      </div>
+                  {/* Project URL */}
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                      Project URL
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.projectUrl}
+                      onChange={(e) => setEditForm({ ...editForm, projectUrl: e.target.value })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${!canEdit || endpoints.length > 0
+                        ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
+                        : 'bg-white border-outline-variant/30'
+                        }`}
+                      disabled={!canEdit || endpoints.length > 0}
+                    />
+                    {endpoints.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                        <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                        URL locked – endpoints already exist. Delete endpoints first to modify.
+                      </p>
+                    )}
+                  </div>
 
-      {/* Documentation URL (Swagger) */}
-      <div>
-        <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-          Documentation URL (Swagger/OpenAPI)
-        </label>
-        <input
-          type="text"
-          value={editForm.docUrl}
-          onChange={(e) => setEditForm({ ...editForm, docUrl: e.target.value })}
-          placeholder="https://api.example.com/swagger.json"
-          className={`w-full px-3 py-2 border rounded-lg text-sm ${
-            !canEdit || endpoints.length > 0
-              ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
-              : 'bg-white border-outline-variant/30'
-          }`}
-          disabled={!canEdit || endpoints.length > 0}
-        />
-        {endpoints.length > 0 && (
-          <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
-            <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-            URL locked – endpoints already exist. Delete endpoints first to modify.
-          </p>
-        )}
-      </div>
+                  {/* Documentation URL (Swagger) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                      Documentation URL (Swagger/OpenAPI)
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.docUrl}
+                      onChange={(e) => setEditForm({ ...editForm, docUrl: e.target.value })}
+                      placeholder="https://api.example.com/swagger.json"
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${!canEdit || endpoints.length > 0
+                        ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
+                        : 'bg-white border-outline-variant/30'
+                        }`}
+                      disabled={!canEdit || endpoints.length > 0}
+                    />
+                    {endpoints.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                        <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                        URL locked – endpoints already exist. Delete endpoints first to modify.
+                      </p>
+                    )}
+                  </div>
 
 
                   {/* Authentication Type */}
@@ -2318,176 +2432,176 @@ const EndpointAccordion: React.FC<{
   hasTests,
   testCount,
 }) => {
-  const methodColor =
-    METHOD_COLORS[endpoint.method] ??
-    "bg-surface-container-high text-on-surface-variant";
-  let parameters: any[] = [];
-  let requestBodyParsed = null,
-    responseBodyParsed = null;
-  try {
-    if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
-  } catch {}
-  try {
-    if (endpoint.requestBody)
-      requestBodyParsed = JSON.parse(endpoint.requestBody);
-  } catch {}
-  try {
-    if (endpoint.responseBody)
-      responseBodyParsed = JSON.parse(endpoint.responseBody);
-  } catch {}
+    const methodColor =
+      METHOD_COLORS[endpoint.method] ??
+      "bg-surface-container-high text-on-surface-variant";
+    let parameters: any[] = [];
+    let requestBodyParsed = null,
+      responseBodyParsed = null;
+    try {
+      if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
+    } catch { }
+    try {
+      if (endpoint.requestBody)
+        requestBodyParsed = JSON.parse(endpoint.requestBody);
+    } catch { }
+    try {
+      if (endpoint.responseBody)
+        responseBodyParsed = JSON.parse(endpoint.responseBody);
+    } catch { }
 
-  return (
-    <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
-      >
-        <div className="flex items-center gap-4 flex-wrap">
-          <span
-            className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
-          >
-            {endpoint.method}
-          </span>
-          <div className="text-left">
-            <p className="font-mono text-sm text-on-surface">{endpoint.path}</p>
-            <p className="text-xs text-on-surface-variant">
-              {endpoint.description || "No description"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {hasTests && (
-            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-              {testCount} test{testCount > 1 ? "s" : ""}
+    return (
+      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
+        >
+          <div className="flex items-center gap-4 flex-wrap">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
+            >
+              {endpoint.method}
             </span>
-          )}
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-xs text-on-surface-variant">Active</span>
+            <div className="text-left">
+              <p className="font-mono text-sm text-on-surface">{endpoint.path}</p>
+              <p className="text-xs text-on-surface-variant">
+                {endpoint.description || "No description"}
+              </p>
+            </div>
           </div>
-          <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
-            {isExpanded ? "unfold_less" : "unfold_more"}
-          </span>
-        </div>
-      </button>
+          <div className="flex items-center gap-3">
+            {hasTests && (
+              <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                {testCount} test{testCount > 1 ? "s" : ""}
+              </span>
+            )}
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs text-on-surface-variant">Active</span>
+            </div>
+            <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
+              {isExpanded ? "unfold_less" : "unfold_more"}
+            </span>
+          </div>
+        </button>
 
-      {isExpanded && (
-        <div className="px-5 py-6 border-t border-outline-variant/10 space-y-6">
-          {parameters.length > 0 && (
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                <CodeBracketIcon className="w-4 h-4" /> Parameters
-              </h4>
-              <div className="overflow-x-auto border border-outline-variant/20 rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-surface-container-high text-[10px] text-on-surface-variant uppercase">
-                    <tr>
-                      {[
-                        "Name",
-                        "Location",
-                        "Required",
-                        "Type",
-                        "Description",
-                      ].map((h) => (
-                        <th key={h} className="px-4 py-2 text-left">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant/10">
-                    {parameters.map((p, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2 font-mono">
-                          {p.name ?? p.$ref ?? "?"}
-                        </td>
-                        <td className="px-4 py-2">{p.in ?? "-"}</td>
-                        <td className="px-4 py-2">
-                          {p.required ? "Yes" : "No"}
-                        </td>
-                        <td className="px-4 py-2">
-                          {p.type ?? p.schema?.type ?? "object"}
-                        </td>
-                        <td className="px-4 py-2 text-on-surface-variant">
-                          {p.description ?? "-"}
-                        </td>
+        {isExpanded && (
+          <div className="px-5 py-6 border-t border-outline-variant/10 space-y-6">
+            {parameters.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                  <CodeBracketIcon className="w-4 h-4" /> Parameters
+                </h4>
+                <div className="overflow-x-auto border border-outline-variant/20 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-surface-container-high text-[10px] text-on-surface-variant uppercase">
+                      <tr>
+                        {[
+                          "Name",
+                          "Location",
+                          "Required",
+                          "Type",
+                          "Description",
+                        ].map((h) => (
+                          <th key={h} className="px-4 py-2 text-left">
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {parameters.map((p, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-2 font-mono">
+                            {p.name ?? p.$ref ?? "?"}
+                          </td>
+                          <td className="px-4 py-2">{p.in ?? "-"}</td>
+                          <td className="px-4 py-2">
+                            {p.required ? "Yes" : "No"}
+                          </td>
+                          <td className="px-4 py-2">
+                            {p.type ?? p.schema?.type ?? "object"}
+                          </td>
+                          <td className="px-4 py-2 text-on-surface-variant">
+                            {p.description ?? "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {requestBodyParsed && (
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+                  Request Body
+                </h4>
+                <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
+                  {JSON.stringify(requestBodyParsed, null, 2)}
+                </pre>
+              </div>
+            )}
+            {responseBodyParsed && (
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+                  Response Body
+                </h4>
+                <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
+                  {JSON.stringify(responseBodyParsed, null, 2)}
+                </pre>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                  Status Codes
+                </h4>
+                <div className="flex flex-wrap gap-1">
+                  {endpoint.statusCodes?.split(",").map((code) => (
+                    <Badge
+                      key={code}
+                      variant={
+                        code.trim().startsWith("2")
+                          ? "success"
+                          : code.trim().startsWith("4")
+                            ? "warning"
+                            : "danger"
+                      }
+                    >
+                      {code.trim()}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                  Auth Required
+                </h4>
+                <Badge variant={endpoint.requiresAuth ? "warning" : "default"}>
+                  {endpoint.requiresAuth ? "Yes" : "No"}
+                </Badge>
               </div>
             </div>
-          )}
-          {requestBodyParsed && (
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                Request Body
-              </h4>
-              <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
-                {JSON.stringify(requestBodyParsed, null, 2)}
-              </pre>
-            </div>
-          )}
-          {responseBodyParsed && (
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                Response Body
-              </h4>
-              <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
-                {JSON.stringify(responseBodyParsed, null, 2)}
-              </pre>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
-                Status Codes
-              </h4>
-              <div className="flex flex-wrap gap-1">
-                {endpoint.statusCodes?.split(",").map((code) => (
-                  <Badge
-                    key={code}
-                    variant={
-                      code.trim().startsWith("2")
-                        ? "success"
-                        : code.trim().startsWith("4")
-                          ? "warning"
-                          : "danger"
-                    }
-                  >
-                    {code.trim()}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
-                Auth Required
-              </h4>
-              <Badge variant={endpoint.requiresAuth ? "warning" : "default"}>
-                {endpoint.requiresAuth ? "Yes" : "No"}
-              </Badge>
-            </div>
+            <GenerateButton
+              loading={generating}
+              onClick={onGenerate}
+              disabled={!canGenerateTests}
+              fullWidth
+              label={hasTests ? "Regenerate tests" : "Generate tests"}
+              icon={
+                hasTests ? (
+                  <ArrowPathIcon className="w-3.5 h-3.5" />
+                ) : (
+                  <SparklesIcon className="w-3.5 h-3.5" />
+                )
+              }
+            />
           </div>
-          <GenerateButton
-            loading={generating}
-            onClick={onGenerate}
-            disabled={!canGenerateTests}
-            fullWidth
-            label={hasTests ? "Regenerate tests" : "Generate tests"}
-            icon={
-              hasTests ? (
-                <ArrowPathIcon className="w-3.5 h-3.5" />
-              ) : (
-                <SparklesIcon className="w-3.5 h-3.5" />
-              )
-            }
-          />
-        </div>
-      )}
-    </div>
-  );
-};
+        )}
+      </div>
+    );
+  };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEST ACCORDION
@@ -2512,169 +2626,214 @@ const TestAccordion: React.FC<{
   refreshTests,
   addToast,
 }) => {
-  const method = test.endpointPath.split(" ")[0];
-  const methodColor =
-    METHOD_COLORS[method] ??
-    "bg-surface-container-high text-on-surface-variant";
-  const [editMode, setEditMode] = useState(false);
-  const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+    const method = test.endpointPath.split(" ")[0];
+    const methodColor =
+      METHOD_COLORS[method] ??
+      "bg-surface-container-high text-on-surface-variant";
+    const [editMode, setEditMode] = useState(false);
+    const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState(false);
 
-  const testDataParsed: Record<string, any> = {};
-  TEST_SECTIONS.forEach(({ key }) => {
-    try {
-      const v = (test as any)[key];
-      if (v) testDataParsed[key] = typeof v === "string" ? JSON.parse(v) : v;
-    } catch {}
-  });
-
-  const handleSave = async () => {
-    const parsedData: Record<string, any> = {};
-    for (const key in rawTestData) {
+    const testDataParsed: Record<string, any> = {};
+    TEST_SECTIONS.forEach(({ key }) => {
       try {
-        parsedData[key] = JSON.parse(rawTestData[key]);
-      } catch {
-        addToast(
-          "error",
-          `Invalid JSON in "${TEST_SECTIONS.find((s) => s.key === key)?.label ?? key}"`,
-        );
-        return;
+        const v = (test as any)[key];
+        if (v) testDataParsed[key] = typeof v === "string" ? JSON.parse(v) : v;
+      } catch { }
+    });
+
+    const handleSave = async () => {
+      const parsedData: Record<string, any> = {};
+      for (const key in rawTestData) {
+        try {
+          parsedData[key] = JSON.parse(rawTestData[key]);
+        } catch {
+          addToast(
+            "error",
+            `Invalid JSON in "${TEST_SECTIONS.find((s) => s.key === key)?.label ?? key}"`,
+          );
+          return;
+        }
       }
-    }
-    try {
-      setSaving(true);
-      await testService.update({ ...test, ...parsedData } as Test);
-      await refreshTests();
-      setRawTestData({});
-      setEditMode(false);
-      addToast("success", "Tests updated successfully.");
-    } catch {
-      addToast("error", "Error while saving.");
-    } finally {
-      setSaving(false);
-    }
+      try {
+        setSaving(true);
+        await testService.update({ ...test, ...parsedData } as Test);
+        await refreshTests();
+        setRawTestData({});
+        setEditMode(false);
+        addToast("success", "Tests updated successfully.");
+      } catch {
+        addToast("error", "Error while saving.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
+        >
+          <div className="flex items-center gap-4 flex-wrap">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
+            >
+              {method}
+            </span>
+            <p className="font-mono text-sm text-on-surface">
+              {test.endpointPath}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex gap-1">
+              {TEST_SECTIONS.filter(({ key }) => testDataParsed[key]).map(
+                ({ key, label }) => (
+                  <span
+                    key={key}
+                    className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant"
+                  >
+                    {label.split(" ").slice(1).join(" ") || label}
+                  </span>
+                ),
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs text-on-surface-variant">Active</span>
+            </div>
+            <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
+              {isExpanded ? "unfold_less" : "unfold_more"}
+            </span>
+          </div>
+        </button>
+
+        {isExpanded && (
+          <div className="px-5 py-6 border-t border-outline-variant/10 space-y-5">
+            {TEST_SECTIONS.map(({ key, label }) =>
+              testDataParsed[key] ? (
+                <div key={key}>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                    <CodeBracketIcon className="w-4 h-4" /> {label}
+                  </h4>
+                  {editMode ? (
+                    <textarea
+                      value={
+                        rawTestData[key] !== undefined
+                          ? rawTestData[key]
+                          : JSON.stringify(testDataParsed[key], null, 2)
+                      }
+                      rows={13}
+                      onChange={(e) =>
+                        setRawTestData((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                    />
+                  ) : (
+                    <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
+                      {JSON.stringify(testDataParsed[key], null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ) : null,
+            )}
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              {editMode ? (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-60"
+                >
+                  {saving ? (
+                    <>
+                      <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save"
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="py-2 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
+                >
+                  Edit test
+                </button>
+              )}
+              <GenerateButton
+                loading={generating}
+                onClick={onRegenerate}
+                disabled={!canRegenerateTests}
+                label="Regenerate"
+                size="xs"
+              />
+            </div>
+
+            {editMode && (
+              <button
+                onClick={() => {
+                  setEditMode(false);
+                  setRawTestData({});
+                }}
+                className="w-full py-1.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
-  return (
-    <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
-      >
-        <div className="flex items-center gap-4 flex-wrap">
-          <span
-            className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
-          >
-            {method}
-          </span>
-          <p className="font-mono text-sm text-on-surface">
-            {test.endpointPath}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex gap-1">
-            {TEST_SECTIONS.filter(({ key }) => testDataParsed[key]).map(
-              ({ key, label }) => (
-                <span
-                  key={key}
-                  className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant"
-                >
-                  {label.split(" ").slice(1).join(" ") || label}
-                </span>
-              ),
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-xs text-on-surface-variant">Active</span>
-          </div>
-          <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
-            {isExpanded ? "unfold_less" : "unfold_more"}
-          </span>
-        </div>
-      </button>
-
-      {isExpanded && (
-        <div className="px-5 py-6 border-t border-outline-variant/10 space-y-5">
-          {TEST_SECTIONS.map(({ key, label }) =>
-            testDataParsed[key] ? (
-              <div key={key}>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                  <CodeBracketIcon className="w-4 h-4" /> {label}
-                </h4>
-                {editMode ? (
-                  <textarea
-                    value={
-                      rawTestData[key] !== undefined
-                        ? rawTestData[key]
-                        : JSON.stringify(testDataParsed[key], null, 2)
-                    }
-                    rows={13}
-                    onChange={(e) =>
-                      setRawTestData((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                    className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                  />
-                ) : (
-                  <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
-                    {JSON.stringify(testDataParsed[key], null, 2)}
-                  </pre>
-                )}
-              </div>
-            ) : null,
-          )}
-
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            {editMode ? (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-60"
-              >
-                {saving ? (
-                  <>
-                    <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  "Save"
-                )}
-              </button>
-            ) : (
-              <button
-                onClick={() => setEditMode(true)}
-                className="py-2 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
-              >
-                Edit test
-              </button>
-            )}
-            <GenerateButton
-              loading={generating}
-              onClick={onRegenerate}
-              disabled={!canRegenerateTests}
-              label="Regenerate"
-              size="xs"
-            />
-          </div>
-
-          {editMode && (
-            <button
-              onClick={() => {
-                setEditMode(false);
-                setRawTestData({});
-              }}
-              className="w-full py-1.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors"
+const TestedEndpointAccordion: React.FC<{
+  endpoint: Endpoint;
+  getReport: (reportType: 'simple' | 'full', endpointId: string) => void;
+}> = ({
+  endpoint,
+  getReport
+}) => {
+    const methodColor =
+      METHOD_COLORS[endpoint.method] ??
+      "bg-surface-container-high text-on-surface-variant";
+    return (
+      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+        <div className="p-2 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center flex-shrink-0 ${methodColor}`}
             >
-              Cancel
-            </button>
-          )}
+              {endpoint.method}
+            </span>
+            <div className="text-left flex-1 min-w-0">
+              <p className="font-mono text-sm text-on-surface truncate">{endpoint.path}</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            icon={<DocumentArrowDownIcon className="w-5 h-5" />}
+            onClick={() => getReport('simple', endpoint.id)}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
+          >
+            <span className="text-xs text-on-surface-variant font-bold text-black font-medium">Simple Report</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            icon={<DocumentArrowDownIcon className="w-5 h-5" />}
+            onClick={() => getReport('full', endpoint.id)}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
+          >
+            <span className="text-xs text-on-surface-variant font-bold text-black font-medium">Full Report</span>
+          </Button>
         </div>
-      )}
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
 export default ServiceDetailsPage;

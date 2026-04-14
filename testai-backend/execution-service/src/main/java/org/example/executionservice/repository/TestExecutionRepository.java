@@ -3,6 +3,8 @@ package org.example.executionservice.repository;
 import jakarta.transaction.Transactional;
 import org.example.executionservice.entity.TestExecution;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,4 +34,7 @@ public interface TestExecutionRepository extends JpaRepository<TestExecution, UU
     List<TestExecution> findByExecutionIdOrderByExecutedAtDesc(UUID executionId);
     @Transactional
     int deleteByProjectId(UUID projectId);
+
+    @Query("SELECT DISTINCT t.endpointId FROM TestExecution t WHERE t.projectId = :projectId")
+    List<UUID> findDistinctEndpointIdByProjectId(@Param("projectId") UUID projectId);
 }
