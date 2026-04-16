@@ -723,7 +723,17 @@ export const executionService = {
   getTestedEndpoints: (
     projectId: string,
   ): Promise<AxiosResponse<Endpoint[]>> =>
-    api.get(`/execution-service/api/executions/${projectId}/endpoints`),
+    api.get(`/execution-service/api/executions/${projectId}/tested-endpoints`),
+
+  getProjectSuccessRate: (
+    projectId: string,
+  ): Promise<AxiosResponse<Record<string, number>>> =>
+    api.get(`/execution-service/api/stats/${projectId}/success-rate`),
+
+  getProjectSuccessRateHistory: (
+    projectId: string,
+  ): Promise<AxiosResponse<Record<string, any>>> =>
+    api.get(`/execution-service/api/stats/${projectId}/success-rate-history`),
 };
 
 

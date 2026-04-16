@@ -279,7 +279,7 @@ public class ExecutionController {
         }
     }
 
-    @GetMapping("/{projectId}/endpoints")
+    @GetMapping("/{projectId}/tested-endpoints")
     public ResponseEntity<List<EndpointDTO>> getTestedEndpoints(@PathVariable UUID projectId){
         List<UUID> uuids = testExecutionRepository.findDistinctEndpointIdByProjectId(projectId);
         if(!uuids.isEmpty()){

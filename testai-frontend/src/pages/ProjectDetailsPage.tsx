@@ -99,14 +99,15 @@ interface ExecutionLog {
   message: string;
 }
 
+interface ProjectReportStats{
+  name: string;
+  value: number;
+  color: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-
-const PIE_DATA = [
-  { name: "Passed", value: 85, color: "#22c55e" },
-  { name: "Failed", value: 15, color: "#ef4444" },
-];
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "bg-secondary-container text-on-secondary-container",
@@ -466,6 +467,11 @@ const ServiceDetailsPage: React.FC = () => {
   const [endpointsCount, setEndpointsCount] = useState(0);
   const [testedEndpoints, setTestedEndpoints] = useState<Endpoint[]>([]);
 
+  // Stats
+  const [successRate, setSuccessRate] = useState<Record<string, number>>({});
+  const [projectStats, setProjectStats] = useState<ProjectReportStats[]>([]);
+  const [projectChartData, setProjectChartData] = useState<Record<string, any>[]>([]);
+
   // UI
   const [rescanning, setRescanning] = useState(false);
   const [expandedEndpointId, setExpandedEndpointId] = useState<string | null>(
@@ -646,6 +652,12 @@ const ServiceDetailsPage: React.FC = () => {
     setTests(res.data as Test[]);
   };
 
+  const refreshStats = async () => {
+    await refreshTestedEndpoints();
+    await refreshSuccessRate();
+    await refreshProjectChartData();
+  };
+
   const refreshTestedEndpoints = async () => {
     if (!id) return;
     try {
@@ -653,6 +665,48 @@ const ServiceDetailsPage: React.FC = () => {
       setTestedEndpoints(res.data as Endpoint[]);
     } catch {
       setTestedEndpoints([]);
+    }
+  };
+
+  const refreshSuccessRate = async () => {
+    if (!id) return;
+    try {
+      const res = await executionService.getProjectSuccessRate(id);
+      setSuccessRate(res.data);
+      const PIE_DATA = [
+        { name: "Passed", value: Math.round((successRate.SUCCESS/successRate.TOTAL) * 100), color: "#22c55e" },
+        { name: "Failed", value: Math.round((successRate.FAILED/successRate.TOTAL) * 100), color: "#ef4444" },
+        { name: "Error", value: Math.round((successRate.ERROR/successRate.TOTAL) * 100), color: "#e69138" },
+      ];
+      setProjectStats(PIE_DATA);
+    } catch {
+      setSuccessRate({});
+    }
+  };
+
+  const refreshProjectChartData = async () => {
+    if (!id) return;
+    try {
+      const res = await executionService.getProjectSuccessRateHistory(id);
+      // res.data is a Map-like object: { "2024-01-15": 95.5, "2024-01-16": 87.3, ... }
+      
+      const formattedData = Object.entries(res.data).map(([dateString, successRate]) => {
+        // Parse the date and format as "mm-dd"
+        const date = new Date(dateString);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const formattedDate = `${month}-${day}`;
+        
+        return {
+          name: formattedDate,
+          success: Math.round(successRate as number)
+        };
+      });
+      
+      setProjectChartData(formattedData);
+    } catch (error) {
+      console.error('Failed to fetch project chart data:', error);
+      setProjectChartData([]);
     }
   };
 
@@ -670,7 +724,7 @@ const ServiceDetailsPage: React.FC = () => {
       const countRes = await projectService.countProjectEndpoints(id!);
       setEndpointsCount(countRes.data.count || endpointsRes.data.length);
       await refreshTests();
-      await refreshTestedEndpoints();
+      await refreshStats();
     } catch (err: any) {
       setError(err.response?.data?.message || "Error loading data");
     } finally {
@@ -698,7 +752,7 @@ const ServiceDetailsPage: React.FC = () => {
 
   const loadTestExecutions = async (executionId: string) => {
     try {
-      refreshTestedEndpoints();
+      refreshStats();
       const res =
         await executionService.getTestExecutionsByExecutionId(executionId);
       setTestExecutions(res.data);
@@ -1978,13 +2032,13 @@ const ServiceDetailsPage: React.FC = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={PIE_DATA}
+                          data={projectStats as Record<string, any>[]}
                           innerRadius={60}
                           outerRadius={80}
                           paddingAngle={5}
                           dataKey="value"
                         >
-                          {PIE_DATA.map((entry, i) => (
+                          {projectStats.map((entry, i) => (
                             <Cell key={i} fill={entry.color} />
                           ))}
                         </Pie>
@@ -1992,7 +2046,7 @@ const ServiceDetailsPage: React.FC = () => {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="flex justify-center gap-6 text-sm mt-2">
-                      {PIE_DATA.map((d) => (
+                      {projectStats.map((d) => (
                         <div key={d.name} className="flex items-center gap-2">
                           <div
                             className="w-3 h-3 rounded-full"
@@ -2030,13 +2084,7 @@ const ServiceDetailsPage: React.FC = () => {
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
-                        data={[
-                          { name: "Mon", success: 90 },
-                          { name: "Tue", success: 92 },
-                          { name: "Wed", success: 85 },
-                          { name: "Thu", success: 95 },
-                          { name: "Fri", success: 98 },
-                        ]}
+                        data={projectChartData as []}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />

@@ -1,6 +1,7 @@
 package org.example.executionservice.repository;
 
 import jakarta.transaction.Transactional;
+import org.example.executionservice.dto.TestStatisticsDTO;
 import org.example.executionservice.entity.TestExecution;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -37,4 +38,18 @@ public interface TestExecutionRepository extends JpaRepository<TestExecution, UU
 
     @Query("SELECT DISTINCT t.endpointId FROM TestExecution t WHERE t.projectId = :projectId")
     List<UUID> findDistinctEndpointIdByProjectId(@Param("projectId") UUID projectId);
+
+    @Query("SELECT t.status as status,COUNT(t) as count FROM TestExecution t WHERE t.projectId = :projectId GROUP BY t.status")
+    List<TestStatisticsDTO.TestStatusCount> findTestSuccessRate(@Param("projectId") UUID projectId);
+
+    @Query(value="SELECT " +
+            "    DATE(executed_at) as executed_at," +
+            "    COUNT(CASE WHEN status = 'SUCCESS' THEN 1 END) as success_count," +
+            "    COUNT(*) as total_count " +
+            "FROM test_executions " +
+            "WHERE project_id = :projectId " +
+            "  AND executed_at >= CURRENT_DATE - INTERVAL '7 days' " +
+            "GROUP BY DATE(executed_at) " +
+            "ORDER BY DATE(executed_at) DESC", nativeQuery = true)
+    List<TestStatisticsDTO.TestStatusHistory> findTestSuccessRateHistory(@Param("projectId") UUID projectId);
 }
