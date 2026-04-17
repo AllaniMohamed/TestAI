@@ -17,9 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -146,6 +144,20 @@ public class ProjectController {
                     "success", false,
                     "message", e.getMessage()
             ));
+        }
+    }
+
+    @GetMapping("/current-user/ids")
+    public ResponseEntity<Set<UUID>> getUserProjects(){
+        try{
+            UUID userId = getCurrentUserId();
+            List<UUID> list1 = projectService.getUserProjects(userId);
+            List<UUID> list2 = sharedAccessService.getUserProjects(userId);
+            Set<UUID> mergedSet = new HashSet<>(list1);
+            mergedSet.addAll(list2);
+            return ResponseEntity.ok(mergedSet);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new HashSet<>());
         }
     }
 

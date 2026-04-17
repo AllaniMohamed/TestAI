@@ -12,18 +12,45 @@ import {
   BugAntIcon
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { executionService } from '../services/api';
+import { useEffect } from 'react';
 
-const REPORTS_DATA = [
-  { date: '20 Nov', execs: 45, success: 98 },
-  { date: '21 Nov', execs: 52, success: 95 },
-  { date: '22 Nov', execs: 38, success: 88 },
-  { date: '23 Nov', execs: 65, success: 97 },
-  { date: '24 Nov', execs: 48, success: 94 },
-  { date: '25 Nov', execs: 70, success: 99 },
-];
+interface ReportData {
+  date: string;
+  execs: number;
+  success: number;
+}
+
+const formatReportData = (data) => {
+    return Object.entries(data).map(([date, stats]) => ({
+      date: new Date(date).toLocaleDateString('en-GB', { 
+        day: 'numeric', 
+        month: 'short' 
+      }),
+      execs: (stats as Record<string, number>).total,
+      success: (stats as Record<string, number>).success
+    }));
+  };
 
 const ReportsPage: React.FC = () => {
-  const [period, setPeriod] = useState('30d');
+  // const [period, setPeriod] = useState('30d');
+  const [globalStats, setGlobalStats] = useState<Record<string, number>>({});
+  const [reportData, setReportData] = useState<ReportData[]>([]);
+
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      try {
+        const response = await executionService.getUserProjectsGlobalStats();
+        setGlobalStats(response.data);
+        const rateResponse = await executionService.getUserProjectsGlobalTestsRate();
+        setReportData(formatReportData(rateResponse.data));
+      } catch (error) {
+        console.error("Erreur lors de la récupération des statistiques globales:", error);
+      }
+    };
+
+    fetchGlobalStats();
+  }, []);
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
@@ -38,20 +65,20 @@ const ReportsPage: React.FC = () => {
               <p className="text-on-surface-variant">Performances globales de vos APIs sur la période sélectionnée.</p>
             </div>
             <div className="flex gap-3">
-              <div className="flex bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-1">
+              {/* <div className="flex bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-1">
                 <PeriodBtn active={period === '7d'} onClick={() => setPeriod('7d')}>7j</PeriodBtn>
                 <PeriodBtn active={period === '30d'} onClick={() => setPeriod('30d')}>30j</PeriodBtn>
                 <PeriodBtn active={period === '90d'} onClick={() => setPeriod('90d')}>90j</PeriodBtn>
-              </div>
+              </div> */}
               <Button variant="outline" icon={<ArrowDownTrayIcon className="w-5 h-5" />}>Exporter</Button>
             </div>
           </div>
 
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-            <KPI icon={<ChartBarSquareIcon className="w-6 h-6" />} title="Total exécutions" value="2,450" change="+12%" />
-            <KPI icon={<ShieldCheckIcon className="w-6 h-6" />} title="Taux de réussite" value="96.8%" change="+0.4%" isGood />
-            <KPI icon={<BugAntIcon className="w-6 h-6" />} title="Bugs détectés" value="42" change="-5%" isGood />
+            <KPI icon={<ChartBarSquareIcon className="w-6 h-6" />} title="Total exécutions" value={globalStats.ALL?.toString() || '0'} />
+            <KPI icon={<ShieldCheckIcon className="w-6 h-6" />} title="Taux de réussite" value={globalStats.SUCCESS?.toFixed(1) + '%' || '0%'} />
+            <KPI icon={<BugAntIcon className="w-6 h-6" />} title="Bugs détectés" value={globalStats.BUGS?.toString() || '0'} />
           </div>
 
           {/* Charts */}
@@ -59,7 +86,7 @@ const ReportsPage: React.FC = () => {
             <Card title="Volume de tests quotidiens">
               <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={REPORTS_DATA}>
+                  <BarChart data={reportData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
                     <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
                     <YAxis tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
@@ -72,7 +99,7 @@ const ReportsPage: React.FC = () => {
             <Card title="Stabilité des services (%)">
                <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={REPORTS_DATA}>
+                  <LineChart data={reportData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
                     <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
                     <YAxis domain={[80, 100]} tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
@@ -142,13 +169,10 @@ const ReportsPage: React.FC = () => {
 };
 
 // Sous-composants (adaptés au thème)
-const KPI: React.FC<{ icon: React.ReactNode, title: string, value: string, change: string, isGood?: boolean }> = ({ icon, title, value, change, isGood }) => (
+const KPI: React.FC<{ icon: React.ReactNode, title: string, value: string }> = ({ icon, title, value }) => (
   <Card className="flex flex-col gap-2 border-l-4 border-l-primary">
     <div className="flex justify-between items-start">
       <div className="text-on-surface-variant">{icon}</div>
-      <span className={`text-xs font-bold px-2 py-1 rounded ${isGood ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
-        {change}
-      </span>
     </div>
     <p className="text-2xl font-bold text-on-surface">{value}</p>
     <p className="text-xs text-on-surface-variant font-bold uppercase tracking-tight">{title}</p>

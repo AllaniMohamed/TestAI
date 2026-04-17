@@ -734,6 +734,12 @@ export const executionService = {
     projectId: string,
   ): Promise<AxiosResponse<Record<string, any>>> =>
     api.get(`/execution-service/api/stats/${projectId}/success-rate-history`),
+
+  getUserProjectsGlobalStats: (): Promise<AxiosResponse<Record<string, number>>> =>
+    api.get(`/execution-service/api/stats/execution-global-stats`),
+
+  getUserProjectsGlobalTestsRate: (): Promise<AxiosResponse<Record<string, any>>> =>
+    api.get(`/execution-service/api/stats/global-tests-rate`),
 };
 
 

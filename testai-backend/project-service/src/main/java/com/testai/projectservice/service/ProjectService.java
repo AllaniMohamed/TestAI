@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -600,6 +601,14 @@ public class ProjectService {
             return deactivateProject(projectId, userId);
         } else {
             return activateProject(projectId, userId);
+        }
+    }
+    
+    public List<UUID> getUserProjects(UUID userId){
+        try{
+            return projectRepository.findUserProjects(userId);
+        } catch (Exception e) {
+            return new ArrayList<>();
         }
     }
 }

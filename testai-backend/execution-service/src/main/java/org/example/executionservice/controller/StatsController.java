@@ -53,4 +53,40 @@ public class StatsController {
             return ResponseEntity.badRequest().body(error);
         }
     }
+
+    @GetMapping("/execution-global-stats")
+    public ResponseEntity<Map<String,Long>> getUserProjectsGlobalStats(){
+        try {
+            Map<String, Long> stringLongMap = statisticService.getUserProjectsGlobalStats();
+            stringLongMap.put("SUCCESS", Math.round(((double)stringLongMap.get("SUCCESS") / stringLongMap.get("ALL"))*100));
+            stringLongMap.put("BUGS", stringLongMap.get("ALL") - stringLongMap.get("SUCCESS"));
+            return ResponseEntity.ok(stringLongMap);
+        } catch (Exception e) {
+            Map<String, Long> error = new HashMap<>();
+            error.put(e.toString(),0L);
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/global-tests-rate")
+    public ResponseEntity<Map<String, Map<String, Long>>> getUserProjectsGlobalTestsRate(){
+        try{
+            Map<String, Map<String, Long>> stringLongMap = new HashMap<>();
+            Map<LocalDate, Map<String, Long>> temp = statisticService.getUserProjectsTestsRate();
+            for(Map.Entry<LocalDate, Map<String, Long>> entry : temp.entrySet()){
+                String date = entry.getKey().toString();
+                Long total = entry.getValue().get("total");
+                Long success = entry.getValue().get("success");
+                Map<String, Long> stringLongMap1 = new HashMap<>();
+                stringLongMap1.put("total",total);
+                stringLongMap1.put("success", Math.round(((double)success/total)*100));
+                stringLongMap.put(date, stringLongMap1);
+            }
+            return ResponseEntity.ok(stringLongMap);
+        } catch (Exception e) {
+            Map<String, Map<String, Long>> error = new HashMap<>();
+            error.put(e.toString(), new HashMap<>());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
 }

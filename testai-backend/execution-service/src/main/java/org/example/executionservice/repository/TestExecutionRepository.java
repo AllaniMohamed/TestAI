@@ -52,4 +52,8 @@ public interface TestExecutionRepository extends JpaRepository<TestExecution, UU
             "GROUP BY DATE(executed_at) " +
             "ORDER BY DATE(executed_at) DESC", nativeQuery = true)
     List<TestStatisticsDTO.TestStatusHistory> findTestSuccessRateHistory(@Param("projectId") UUID projectId);
+
+    long countAllByProjectId(UUID projectId);
+
+    long countAllByProjectIdAndStatus(UUID projectId, TestExecution.TestStatus status);
 }
