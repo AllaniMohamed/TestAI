@@ -1,6 +1,7 @@
 package org.example.executionservice.service;
 
 import org.example.executionservice.dto.TestStatisticsDTO.*;
+import org.example.executionservice.entity.ProjectExecution;
 import org.example.executionservice.entity.TestExecution;
 import org.example.executionservice.feignclient.ProjectServiceClient;
 import org.example.executionservice.repository.ProjectExecutionRepository;
@@ -73,5 +74,21 @@ public class StatisticService {
             }
         }
         return totalStats;
+    }
+
+    public List<Map<String, String>> getProjectExecHistory(){
+        Set<UUID> projectIds = projectServiceClient.getUserProjects();
+        List<Map<String, String>> historyList = new ArrayList<>();
+        for (UUID uuid: projectIds){
+            ProjectExecution projectExecution = projectExecutionRepository.findByProjectIdOrderByExecutedAtDesc(uuid).get(0);
+            Map<String, String> history = new HashMap<>();
+            history.put("projectName", projectExecution.getProjectName());
+            history.put("passedTests", projectExecution.getTestsPassed().toString() + '/' + projectExecution.getTotalTests().toString());
+            history.put("duration", String.valueOf(projectExecution.getTotalDurationMs()/1000.0)+'s');
+            history.put("date", projectExecution.getExecutedAt().toString());
+            history.put("id",uuid.toString());
+            historyList.add(history);
+        }
+        return historyList;
     }
 }

@@ -8,9 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/stats")
@@ -87,6 +85,20 @@ public class StatsController {
             Map<String, Map<String, Long>> error = new HashMap<>();
             error.put(e.toString(), new HashMap<>());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/latest-project-execs")
+    public ResponseEntity<List<Map<String, String>>> getUserProjectsLatestExecs(){
+        try {
+            List<Map<String, String>> historyList = statisticService.getProjectExecHistory();
+            return ResponseEntity.ok(historyList);
+        } catch (Exception e) {
+            List<Map<String, String>> errors = new ArrayList<>();
+            Map<String, String> error = new HashMap<>();
+            error.put("ERROR",e.toString());
+            errors.add(error);
+            return ResponseEntity.badRequest().body(errors);
         }
     }
 }

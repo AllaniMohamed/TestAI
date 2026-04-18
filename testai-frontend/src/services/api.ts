@@ -603,6 +603,14 @@ export interface TestExecution {
   executionId: string;
 }
 
+export interface ProjectExecutionStats {
+  id: string;
+  date: string;
+  passedTests: string;
+  duration: string;
+  projectName: string;
+}
+
 export type TestType =
   | "POSITIVE"
   | "WRONG_TYPE"
@@ -740,6 +748,10 @@ export const executionService = {
 
   getUserProjectsGlobalTestsRate: (): Promise<AxiosResponse<Record<string, any>>> =>
     api.get(`/execution-service/api/stats/global-tests-rate`),
+
+  getProjectExecutionStats: (): Promise<AxiosResponse<ProjectExecutionStats[]>> =>
+    api.get(`/execution-service/api/stats/latest-project-execs`),
+
 };
 
 
@@ -900,9 +912,6 @@ export type {
   SharedAccess,
   SharedProject,
   InvitationInfo,
-  ExecuteApiRequestDTO,
-  ApiResponseDTO,
-  SavedApiRequestDTO,
   ProjectCredentials,
 };
 export interface RegisterWithInvitationRequest {

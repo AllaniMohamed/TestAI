@@ -2,23 +2,36 @@ import React, { useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/common/Card';
-import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { 
   ArrowDownTrayIcon, 
-  FunnelIcon,
   ChartBarSquareIcon,
   ShieldCheckIcon,
   BugAntIcon
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { executionService } from '../services/api';
+import type { ProjectExecutionStats } from '../services/api';
 import { useEffect } from 'react';
+import ReportPreview from '../components/modals/ReportPreview';
 
 interface ReportData {
   date: string;
   execs: number;
   success: number;
+}
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return formatter.format(date);
 }
 
 const formatReportData = (data) => {
@@ -36,6 +49,8 @@ const ReportsPage: React.FC = () => {
   // const [period, setPeriod] = useState('30d');
   const [globalStats, setGlobalStats] = useState<Record<string, number>>({});
   const [reportData, setReportData] = useState<ReportData[]>([]);
+  const [executionStats, setExecutionStats] = useState<ProjectExecutionStats[]>([]);
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchGlobalStats = async () => {
@@ -44,6 +59,8 @@ const ReportsPage: React.FC = () => {
         setGlobalStats(response.data);
         const rateResponse = await executionService.getUserProjectsGlobalTestsRate();
         setReportData(formatReportData(rateResponse.data));
+        const execStatsResponse = await executionService.getProjectExecutionStats();
+        setExecutionStats(execStatsResponse.data);
       } catch (error) {
         console.error("Erreur lors de la récupération des statistiques globales:", error);
       }
@@ -115,55 +132,42 @@ const ReportsPage: React.FC = () => {
           <Card className="p-0 overflow-hidden">
             <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant/20">
               <h3 className="text-lg font-headline font-bold">Historique des exécutions</h3>
-              <div className="flex gap-2">
-                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
-                    <FunnelIcon className="h-4 w-4" />
-                  </span>
-                  <select className="pl-10 pr-4 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface-container-lowest text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                    <option>Tous les services</option>
-                    <option>User API</option>
-                    <option>Payment Service</option>
-                  </select>
-                </div>
-              </div>
             </div>
             <table className="w-full text-left">
               <thead className="bg-surface-container-low">
                 <tr>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Service</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Statut</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Tests</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Passed Tests</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Durée</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Date</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Date de dernière exécution</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Rapport</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} className="hover:bg-surface-container-low transition">
-                    <td className="px-6 py-4 font-semibold text-on-surface">User Management API</td>
-                    <td className="px-6 py-4">
-                      <Badge variant={i % 3 === 0 ? 'warning' : 'success'}>
-                        {i % 3 === 0 ? 'Avertissement' : 'Réussi'}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">48/50</td>
-                    <td className="px-6 py-4 text-on-surface-variant">12.4s</td>
-                    <td className="px-6 py-4 text-on-surface-variant text-sm">Aujourd'hui, 14:02</td>
+                {executionStats.map(i => (
+                  <tr key={i.id} className="hover:bg-surface-container-low transition">
+                    <td className="px-6 py-4 font-semibold text-on-surface capitalize">{i.projectName}</td>
+                    <td className="px-6 py-4">{i.passedTests}</td>
+                    <td className="px-6 py-4 text-on-surface-variant">{i.duration}</td>
+                    <td className="px-6 py-4 text-on-surface-variant text-sm">{formatDate(i.date)}</td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-primary text-sm font-bold hover:underline">Ouvrir</button>
+                      <button className="text-primary text-sm font-bold hover:underline" onClick={() => setSelectedReport(i.id)}>Ouvrir</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="p-4 bg-surface-container-low text-center border-t border-outline-variant/20">
-              <button className="text-sm text-primary font-bold hover:underline">Charger plus...</button>
-            </div>
           </Card>
         </main>
       </div>
+      {/* Report Preview Modal */}
+      {selectedReport && (
+        <ReportPreview
+          name={executionStats.find(i => i.id === selectedReport)?.projectName || 'Project'}
+          id={selectedReport}
+          close={() => setSelectedReport(null)}
+        />
+      )}
     </div>
   );
 };
@@ -177,15 +181,6 @@ const KPI: React.FC<{ icon: React.ReactNode, title: string, value: string }> = (
     <p className="text-2xl font-bold text-on-surface">{value}</p>
     <p className="text-xs text-on-surface-variant font-bold uppercase tracking-tight">{title}</p>
   </Card>
-);
-
-const PeriodBtn: React.FC<{ active: boolean, children: React.ReactNode, onClick: () => void }> = ({ active, children, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${active ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
-  >
-    {children}
-  </button>
 );
 
 export default ReportsPage;
