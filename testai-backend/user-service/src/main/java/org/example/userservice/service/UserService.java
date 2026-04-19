@@ -14,6 +14,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -905,22 +907,13 @@ public class UserService {
         );
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    public List<UserDTO> getAllUsers(){
+        List<User> usersList = userRepository.findAll();
+        List<UserDTO> userDTOList = new ArrayList<>();
+        for(User user: usersList){
+            userDTOList.add(mapToDTO(user));
+        }
+        return userDTOList;
+    }
 
 }

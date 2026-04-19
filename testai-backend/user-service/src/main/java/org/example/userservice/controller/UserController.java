@@ -11,13 +11,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/users")
@@ -154,5 +154,33 @@ public class UserController {
 
         UserDTO updatedUser = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @PutMapping("/{userId}/{isActive}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId, @PathVariable Boolean isActive){
+        Map<String, String> message = new HashMap<>();
+        try{
+            UserDTO userDTO = userService.getUserById(userId);
+            userDTO.setIsActive(isActive);
+            userService.updateUser(userId, userDTO);
+            message.put("success", "User " + userDTO.getName() + " is "
+                    + (isActive ? "activated" : "deactivated") + " successfully!!");
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            message.put("error",e.toString());
+            return ResponseEntity.badRequest().body(message);
+        }
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getAllUsers(){
+        try{
+            return ResponseEntity.ok(userService.getAllUsers());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ArrayList<>());
+        }
     }
 }
