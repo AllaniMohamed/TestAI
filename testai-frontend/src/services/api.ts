@@ -743,14 +743,20 @@ export const executionService = {
   ): Promise<AxiosResponse<Record<string, any>>> =>
     api.get(`/execution-service/api/stats/${projectId}/success-rate-history`),
 
-  getUserProjectsGlobalStats: (): Promise<AxiosResponse<Record<string, number>>> =>
-    api.get(`/execution-service/api/stats/execution-global-stats`),
+  getUserProjectsGlobalStats: (
+    userId: string,
+  ): Promise<AxiosResponse<Record<string, number>>> =>
+    api.get(`/execution-service/api/stats/${userId}/execution-global-stats`),
 
-  getUserProjectsGlobalTestsRate: (): Promise<AxiosResponse<Record<string, any>>> =>
-    api.get(`/execution-service/api/stats/global-tests-rate`),
+  getUserProjectsGlobalTestsRate: (
+    userId: string,
+  ): Promise<AxiosResponse<Record<string, any>>> =>
+    api.get(`/execution-service/api/stats/${userId}/global-tests-rate`),
 
-  getProjectExecutionStats: (): Promise<AxiosResponse<ProjectExecutionStats[]>> =>
-    api.get(`/execution-service/api/stats/latest-project-execs`),
+  getProjectExecutionStats: (
+    userId: string,
+  ): Promise<AxiosResponse<ProjectExecutionStats[]>> =>
+    api.get(`/execution-service/api/stats/${userId}/latest-project-execs`),
 
 };
 

@@ -41,8 +41,8 @@ public class StatisticService {
         );
     }
 
-    public Map<String, Long> getUserProjectsGlobalStats(){
-        Set<UUID> projectIds = projectServiceClient.getUserProjects();
+    public Map<String, Long> getUserProjectsGlobalStats(UUID userId){
+        Set<UUID> projectIds = projectServiceClient.getUserProjects(userId);
         long countAll = 0L;
         long countSuccess = 0L;
         for(UUID projectId: projectIds){
@@ -55,8 +55,8 @@ public class StatisticService {
         return stringLongMap;
     }
 
-    public Map<LocalDate, Map<String, Long>> getUserProjectsTestsRate() {
-        Set<UUID> projectIds = projectServiceClient.getUserProjects();
+    public Map<LocalDate, Map<String, Long>> getUserProjectsTestsRate(UUID userId) {
+        Set<UUID> projectIds = projectServiceClient.getUserProjects(userId);
         Map<LocalDate, Map<String, Long>> totalStats = new HashMap<>();
 
         for (UUID uuid : projectIds) {
@@ -76,8 +76,8 @@ public class StatisticService {
         return totalStats;
     }
 
-    public List<Map<String, String>> getProjectExecHistory(){
-        Set<UUID> projectIds = projectServiceClient.getUserProjects();
+    public List<Map<String, String>> getProjectExecHistory(UUID userId){
+        Set<UUID> projectIds = projectServiceClient.getUserProjects(userId);
         List<Map<String, String>> historyList = new ArrayList<>();
         for (UUID uuid: projectIds){
             ProjectExecution projectExecution = projectExecutionRepository.findByProjectIdOrderByExecutedAtDesc(uuid).get(0);

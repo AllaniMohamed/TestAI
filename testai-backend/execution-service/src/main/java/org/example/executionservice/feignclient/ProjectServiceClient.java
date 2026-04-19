@@ -16,6 +16,6 @@ public interface ProjectServiceClient {
     @GetMapping("/{projectId}")
     ProjectDTO getProjectById(@PathVariable UUID projectId);
 
-    @GetMapping("/current-user/ids")
-    Set<UUID> getUserProjects();
+    @GetMapping("/{userId}/projectIds")
+    Set<UUID> getUserProjects(@PathVariable UUID userId);
 }

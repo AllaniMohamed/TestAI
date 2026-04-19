@@ -147,10 +147,9 @@ public class ProjectController {
         }
     }
 
-    @GetMapping("/current-user/ids")
-    public ResponseEntity<Set<UUID>> getUserProjects(){
+    @GetMapping("/{userId}/projectIds")
+    public ResponseEntity<Set<UUID>> getUserProjects(@PathVariable UUID userId){
         try{
-            UUID userId = getCurrentUserId();
             List<UUID> list1 = projectService.getUserProjects(userId);
             List<UUID> list2 = sharedAccessService.getUserProjects(userId);
             Set<UUID> mergedSet = new HashSet<>(list1);

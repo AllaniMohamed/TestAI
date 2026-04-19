@@ -52,10 +52,10 @@ public class StatsController {
         }
     }
 
-    @GetMapping("/execution-global-stats")
-    public ResponseEntity<Map<String,Long>> getUserProjectsGlobalStats(){
+    @GetMapping("/{userId}/execution-global-stats")
+    public ResponseEntity<Map<String,Long>> getUserProjectsGlobalStats(@PathVariable UUID userId){
         try {
-            Map<String, Long> stringLongMap = statisticService.getUserProjectsGlobalStats();
+            Map<String, Long> stringLongMap = statisticService.getUserProjectsGlobalStats(userId);
             stringLongMap.put("SUCCESS", Math.round(((double)stringLongMap.get("SUCCESS") / stringLongMap.get("ALL"))*100));
             stringLongMap.put("BUGS", stringLongMap.get("ALL") - stringLongMap.get("SUCCESS"));
             return ResponseEntity.ok(stringLongMap);
@@ -66,11 +66,11 @@ public class StatsController {
         }
     }
 
-    @GetMapping("/global-tests-rate")
-    public ResponseEntity<Map<String, Map<String, Long>>> getUserProjectsGlobalTestsRate(){
+    @GetMapping("/{userId}/global-tests-rate")
+    public ResponseEntity<Map<String, Map<String, Long>>> getUserProjectsGlobalTestsRate(@PathVariable UUID userId){
         try{
             Map<String, Map<String, Long>> stringLongMap = new HashMap<>();
-            Map<LocalDate, Map<String, Long>> temp = statisticService.getUserProjectsTestsRate();
+            Map<LocalDate, Map<String, Long>> temp = statisticService.getUserProjectsTestsRate(userId);
             for(Map.Entry<LocalDate, Map<String, Long>> entry : temp.entrySet()){
                 String date = entry.getKey().toString();
                 Long total = entry.getValue().get("total");
@@ -88,10 +88,10 @@ public class StatsController {
         }
     }
 
-    @GetMapping("/latest-project-execs")
-    public ResponseEntity<List<Map<String, String>>> getUserProjectsLatestExecs(){
+    @GetMapping("/{userId}/latest-project-execs")
+    public ResponseEntity<List<Map<String, String>>> getUserProjectsLatestExecs(@PathVariable UUID userId){
         try {
-            List<Map<String, String>> historyList = statisticService.getProjectExecHistory();
+            List<Map<String, String>> historyList = statisticService.getProjectExecHistory(userId);
             return ResponseEntity.ok(historyList);
         } catch (Exception e) {
             List<Map<String, String>> errors = new ArrayList<>();

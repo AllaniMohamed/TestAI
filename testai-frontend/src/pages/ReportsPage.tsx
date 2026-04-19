@@ -55,11 +55,13 @@ const ReportsPage: React.FC = () => {
   useEffect(() => {
     const fetchGlobalStats = async () => {
       try {
-        const response = await executionService.getUserProjectsGlobalStats();
+        const userStr = sessionStorage.getItem("user");
+        const userId = userStr ? JSON.parse(userStr).id : null;
+        const response = await executionService.getUserProjectsGlobalStats(userId);
         setGlobalStats(response.data);
-        const rateResponse = await executionService.getUserProjectsGlobalTestsRate();
+        const rateResponse = await executionService.getUserProjectsGlobalTestsRate(userId);
         setReportData(formatReportData(rateResponse.data));
-        const execStatsResponse = await executionService.getProjectExecutionStats();
+        const execStatsResponse = await executionService.getProjectExecutionStats(userId);
         setExecutionStats(execStatsResponse.data);
       } catch (error) {
         console.error("Erreur lors de la récupération des statistiques globales:", error);
