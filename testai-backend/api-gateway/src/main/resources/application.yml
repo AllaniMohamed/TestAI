@@ -100,6 +100,16 @@ spring:
           filters:
             - RewritePath=/api/executions/(?<segment>.*), /api/executions/$\{segment}
 
+        # ==========================================
+        # ADMIN-SERVICE ROUTES (Spring Boot, Eureka)
+        # ==========================================
+        - id: admin-service
+          uri: lb://ADMIN-SERVICE
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - RewritePath=/api/admin/(?<segment>.*), /api/executions/$\{segment}
+
 # Eureka Configuration
 eureka:
   client:

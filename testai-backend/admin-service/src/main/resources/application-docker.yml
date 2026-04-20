@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: admin-service
+
+  # ========================================
+  # Keycloak Resource Server
+  # ========================================
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+
+server:
+  port: ${SERVER_PORT}:8087
+
+# ========================================
+# Eureka (Service Discovery)
+# ========================================
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URL}
+    enabled: ${EUREKA_ENABLED:true}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# ========================================
+# Actuator (Health checks)
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ========================================
+# Logging
+# ========================================
+logging:
+  level:
+    com.example.adminservice: INFO
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

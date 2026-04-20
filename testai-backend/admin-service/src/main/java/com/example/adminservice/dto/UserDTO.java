@@ -1,5 +1,6 @@
 package com.example.adminservice.dto;
 
+import com.example.adminservice.enums.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

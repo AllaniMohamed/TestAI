@@ -51,6 +51,16 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ==========================================
+        # TEST-SERVICE ROUTES (if needed)
+        # ==========================================
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=0
+
 
       globalcors:
         cors-configurations:

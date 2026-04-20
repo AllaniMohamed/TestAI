@@ -1,4 +1,4 @@
-package com.example.adminservice.dto;
+package com.example.adminservice.enums;
 
 public enum UserRole {
     ADMIN,

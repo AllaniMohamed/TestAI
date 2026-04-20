@@ -183,4 +183,16 @@ public class UserController {
             return ResponseEntity.badRequest().body(new ArrayList<>());
         }
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteUserById(@PathVariable UUID id){
+        try{
+            return ResponseEntity.ok(userService.deleteUserById(id));
+        } catch (Exception e) {
+            Map<String, String> map = new HashMap<>();
+            map.put("failed", e.toString());
+            return ResponseEntity.badRequest().body(map);
+        }
+    }
 }

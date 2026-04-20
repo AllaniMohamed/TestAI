@@ -14,10 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -914,6 +911,18 @@ public class UserService {
             userDTOList.add(mapToDTO(user));
         }
         return userDTOList;
+    }
+
+    public Map<String, String> deleteUserById(UUID id){
+        Map<String, String> message = new HashMap<>();
+        try{
+            User user = userRepository.findById(id).orElseThrow();
+            userRepository.delete(user);
+            message.put("success", "User " + user.getName() + " deleted successfully!!");
+        } catch (Exception e) {
+            message.put("failed", e.toString());
+        }
+        return message;
     }
 
 }
