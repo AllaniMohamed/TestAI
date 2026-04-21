@@ -1,9 +1,11 @@
 package com.example.adminservice.controller;
 
+import com.example.adminservice.dto.HealthDTO;
 import com.example.adminservice.dto.ProjectEntity;
 import com.example.adminservice.dto.SharedAccessDTO;
 import com.example.adminservice.dto.UserDTO;
 import com.example.adminservice.feignclient.*;
+import com.example.adminservice.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -11,10 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,6 +22,7 @@ public class AdminController {
     private final ExecutionServiceClient executionServiceClient;
     private final UserServiceClient userServiceClient;
     private final ProjectServiceClient projectServiceClient;
+    private final AdminService adminService;
 
     // USERS
     @GetMapping("/users")
@@ -107,5 +107,15 @@ public class AdminController {
     @DeleteMapping("/projects/{id}")
     public ResponseEntity<Map<?,?>> deleteProjectById(@PathVariable UUID id){
         return ResponseEntity.ok(projectServiceClient.deleteProjectById(id));
+    }
+
+    // Services Health
+    @GetMapping("/health")
+    public ResponseEntity<List<HealthDTO>> getServiceHealth(){
+        try{
+            return ResponseEntity.ok(adminService.extractServiceStatus());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ArrayList<>());
+        }
     }
 }
