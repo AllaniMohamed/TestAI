@@ -33,6 +33,92 @@ interface ExtendedService extends Service {
   isActive?: boolean; // ⭐ NOUVEAU
 }
 
+// ⭐ Composant modal pour la configuration Jenkins
+const AutomationModal: React.FC<{
+  projectId: string;
+  projectName: string;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ projectId, projectName, onClose, onSaved }) => {
+  const [jenkinsUrl, setJenkinsUrl] = useState("http://localhost:9090/job/TestAI-Auto");
+  const [schedule, setSchedule] = useState("H 2 * * *");
+  const [threshold, setThreshold] = useState(70);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Appel à l'API pour sauvegarder la configuration
+      await projectService.updateAutomationConfig(projectId, {
+        enabled: true,
+        jenkinsUrl,
+        schedule,
+        threshold,
+      });
+      onSaved();
+    } catch (error) {
+      alert("Erreur lors de la sauvegarde de la configuration Jenkins.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+        <h2 className="text-xl font-bold mb-4">Configurer l'automation Jenkins</h2>
+        <p className="text-sm text-slate-500 mb-4">Projet : {projectName}</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold mb-1">URL du job Jenkins</label>
+            <input
+              type="text"
+              value={jenkinsUrl}
+              onChange={(e) => setJenkinsUrl(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1">Planification (cron)</label>
+            <input
+              type="text"
+              value={schedule}
+              onChange={(e) => setSchedule(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1">Seuil de succès (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={threshold}
+              onChange={(e) => setThreshold(parseInt(e.target.value) || 70)}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50"
+          >
+            {saving ? "Enregistrement..." : "Activer l'automation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProjectsPage: React.FC = () => {
   const [services, setServices] = useState<ExtendedService[]>([]);
   const [loading, setLoading] = useState(true);
@@ -277,86 +363,139 @@ const ProjectCard: React.FC<{
   };
 
   const isActive = service.isActive !== false;
+  
+  // ⭐ États pour automation Jenkins
+  const [showAutomationModal, setShowAutomationModal] = useState(false);
+  const [automationEnabled, setAutomationEnabled] = useState(false);
+
+  // ⭐ Charger la config automation au mount
+  useEffect(() => {
+    projectService.getAutomationConfig(service.id)
+      .then(res => setAutomationEnabled(res.data.enabled))
+      .catch(() => {});
+  }, [service.id]);
 
   return (
-    <div
-      className={`group relative bg-surface-container-lowest p-1 rounded-2xl overflow-hidden transition-all hover:shadow-2xl hover:shadow-primary/5 ${
-        !isActive ? "opacity-60" : ""
-      }`}
-    >
-      <div className="bg-surface p-5 rounded-xl">
-        <div className="flex justify-between items-start mb-6">
-          <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              isActive ? "bg-primary/5" : "bg-slate-200"
-            }`}
-          >
-            <ServerStackIcon
-              className={`w-6 h-6 ${isActive ? "text-primary" : "text-slate-500"}`}
-            />
-          </div>
-
-          {/* ⭐ TOGGLE ACTIVATION (MANAGER uniquement) */}
-          {userRole === "MANAGER" && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                onToggleActivation(service.id);
-              }}
-              className="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
-              style={{
-                backgroundColor: isActive ? "#10b981" : "#cbd5e1",
-              }}
+    <>
+      <div
+        className={`group relative bg-surface-container-lowest p-1 rounded-2xl overflow-hidden transition-all hover:shadow-2xl hover:shadow-primary/5 ${
+          !isActive ? "opacity-60" : ""
+        }`}
+      >
+        <div className="bg-surface p-5 rounded-xl">
+          <div className="flex justify-between items-start mb-6">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                isActive ? "bg-primary/5" : "bg-slate-200"
+              }`}
             >
-              <span
-                className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full shadow ${
-                  isActive ? "translate-x-6" : "translate-x-1"
-                }`}
+              <ServerStackIcon
+                className={`w-6 h-6 ${isActive ? "text-primary" : "text-slate-500"}`}
               />
-            </button>
-          )}
-        </div>
+            </div>
 
-        <h5 className="text-lg font-bold text-on-surface mb-1">{service.name}</h5>
-        <p className="text-xs text-on-surface-variant mb-4 line-clamp-1">
-          {service.description}
-        </p>
+            <div className="flex items-center gap-2">
+              {/* ⭐ Bouton Automation Jenkins */}
+              {userRole === "MANAGER" && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowAutomationModal(true);
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors border ${
+                    automationEnabled
+                      ? "bg-orange-50 text-orange-600 border-orange-200"
+                      : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-orange-50 hover:text-orange-500"
+                  }`}
+                  title="Configurer l'automation Jenkins"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
+                    <rect width="24" height="24" rx="4" fill={automationEnabled ? "#D33833" : "#94a3b8"}/>
+                    <circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="2"/>
+                    <circle cx="12" cy="12" r="1.5" fill="white"/>
+                  </svg>
+                  {automationEnabled ? "Auto ON" : "Auto OFF"}
+                </button>
+              )}
 
-        <div className="space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-medium text-on-surface-variant">Couverture des tests</span>
-            <span className="font-bold text-primary">88%</span>
+              {/* ⭐ TOGGLE ACTIVATION (MANAGER uniquement) */}
+              {userRole === "MANAGER" && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onToggleActivation(service.id);
+                  }}
+                  className="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  style={{
+                    backgroundColor: isActive ? "#10b981" : "#cbd5e1",
+                  }}
+                >
+                  <span
+                    className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full shadow ${
+                      isActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full w-[88%] bg-primary rounded-full"></div>
-          </div>
-        </div>
 
-        <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
-          <div className="flex gap-2">
-            <Badge
-              variant={service.authType === "BEARER" ? "warning" : "default"}
-            >
-              {service.authType === "BEARER"
-                ? "Bearer Auth"
-                : service.authType === "NONE"
-                ? "No Auth"
-                : "Auth"}
-            </Badge>
-            {!isActive && (
-              <Badge variant="default" className="bg-slate-200 text-slate-700">
-                Désactivé
+          <h5 className="text-lg font-bold text-on-surface mb-1">{service.name}</h5>
+          <p className="text-xs text-on-surface-variant mb-4 line-clamp-1">
+            {service.description}
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-on-surface-variant">Couverture des tests</span>
+              <span className="font-bold text-primary">88%</span>
+            </div>
+            <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+              <div className="h-full w-[88%] bg-primary rounded-full"></div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
+            <div className="flex gap-2">
+              <Badge
+                variant={service.authType === "BEARER" ? "warning" : "default"}
+              >
+                {service.authType === "BEARER"
+                  ? "Bearer Auth"
+                  : service.authType === "NONE"
+                  ? "No Auth"
+                  : "Auth"}
               </Badge>
-            )}
+              {!isActive && (
+                <Badge variant="default" className="bg-slate-200 text-slate-700">
+                  Désactivé
+                </Badge>
+              )}
+            </div>
+            <Link to={`/service/${service.id}`} state={linkState}>
+              <button className="text-primary hover:text-primary-container transition-colors">
+                <ArrowRightIcon className="w-5 h-5" />
+              </button>
+            </Link>
           </div>
-          <Link to={`/service/${service.id}`} state={linkState}>
-            <button className="text-primary hover:text-primary-container transition-colors">
-              <ArrowRightIcon className="w-5 h-5" />
-            </button>
-          </Link>
         </div>
       </div>
-    </div>
+
+      {/* ⭐ Modal Automation */}
+      {showAutomationModal && (
+        <AutomationModal
+          projectId={service.id}
+          projectName={service.name}
+          onClose={() => setShowAutomationModal(false)}
+          onSaved={() => {
+            setShowAutomationModal(false);
+            projectService.getAutomationConfig(service.id)
+              .then(res => setAutomationEnabled(res.data.enabled))
+              .catch(() => {});
+          }}
+        />
+      )}
+    </>
   );
 };
 

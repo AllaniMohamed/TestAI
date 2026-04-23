@@ -12,6 +12,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "axios": "^1.13.2",
+    "file-save": "^0.2.0",
     "file-saver": "^2.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

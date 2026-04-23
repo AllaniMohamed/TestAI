@@ -4,6 +4,7 @@ import com.testai.projectservice.dto.*;
 import com.testai.projectservice.entity.Project;
 import com.testai.projectservice.exception.UserNotFoundException;
 import com.testai.projectservice.feignclient.UserServiceClient;
+import com.testai.projectservice.repository.ProjectRepository;
 import com.testai.projectservice.service.ProjectService;
 import com.testai.projectservice.service.SharedAccessService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +17,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -31,7 +36,10 @@ public class ProjectController {
     private UserServiceClient userServiceClient;
 
     @Autowired
-    private SharedAccessService sharedAccessService;   // ⭐ Ajout pour le partage
+    private SharedAccessService sharedAccessService;
+
+    @Autowired
+    private ProjectRepository projectRepository;
 
     // ========================================
     // ANCIENNES MÉTHODES (inchangées)
@@ -342,5 +350,116 @@ public class ProjectController {
         String token = "Bearer " + jwt.getTokenValue();
         UserDTO user = userServiceClient.getUserByEmail(email, token);
         return user.getId();
+    }
+
+
+    // Dans ProjectController.java
+
+    /**
+     * Configurer l'automation d'un projet
+     * PUT /api/projects/{id}/automation
+     */
+    @PutMapping("/{id}/automation")
+    public ResponseEntity<?> updateAutomation(
+            @PathVariable UUID id,
+            @RequestBody AutomationConfigRequest request) {
+        try {
+            Project project = projectRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Project not found"));
+
+            project.setAutomationEnabled(request.getEnabled());
+            if (request.getEnabled()) {
+                project.setAutomationHour(request.getHour());
+                project.setAutomationMinute(request.getMinute());
+                project.setAutomationDays(request.getDays() != null ? request.getDays() : "DAILY");
+                project.setAutomationUserId(request.getUserId());
+            }
+            projectRepository.save(project);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", request.getEnabled() ? "Automation activée" : "Automation désactivée"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * ⭐ Endpoint appelé par Jenkins chaque minute
+     * Retourne les projets dont le schedule correspond à MAINTENANT
+     * GET /api/projects/automation/due
+     */
+    @GetMapping("/automation/due")
+    public ResponseEntity<List<AutomationStatusDTO>> getDueProjects() {
+
+        // ⭐ Forcer explicitement le timezone Tunis
+        ZoneId tunisZone = ZoneId.of("Africa/Tunis");
+        ZonedDateTime now = ZonedDateTime.now(tunisZone);
+
+        int currentHour   = now.getHour();
+        int currentMinute = now.getMinute();
+        String currentDay = now.getDayOfWeek().name().substring(0, 3); // MON, TUE...
+
+        // ⭐ Log pour débugger
+        log.info("🕐 Heure Tunis: {}:{} - Jour: {}", currentHour, currentMinute, currentDay);
+
+        List<Project> allEnabled = projectRepository.findByAutomationEnabledTrue();
+
+        // ⭐ Log tous les projets enabled
+        log.info("📋 {} projet(s) avec automation activée", allEnabled.size());
+        allEnabled.forEach(p -> log.info("  → {} | heure config: {}:{} | jours: {}",
+                p.getName(), p.getAutomationHour(), p.getAutomationMinute(), p.getAutomationDays()));
+
+        List<AutomationStatusDTO> due = allEnabled.stream()
+                .filter(p -> {
+                    if (p.getAutomationHour() == null || p.getAutomationMinute() == null) return false;
+                    boolean hourMatch   = p.getAutomationHour()   == currentHour;
+                    boolean minuteMatch = p.getAutomationMinute() == currentMinute;
+                    boolean dayMatch    = isDayMatch(p.getAutomationDays(), currentDay);
+
+                    log.info("  Projet {} → heure: {} min: {} jour: {}",
+                            p.getName(), hourMatch, minuteMatch, dayMatch);
+
+                    return hourMatch && minuteMatch && dayMatch;
+                })
+                .map(p -> AutomationStatusDTO.builder()
+                        .projectId(p.getId())
+                        .projectName(p.getName())
+                        .projectUrl(p.getProjectUrl())
+                        .automationUserId(p.getAutomationUserId())
+                        .automationHour(p.getAutomationHour())
+                        .automationMinute(p.getAutomationMinute())
+                        .automationDays(p.getAutomationDays())
+                        .build())
+                .collect(Collectors.toList());
+
+        log.info("✅ {} projet(s) dus maintenant", due.size());
+        return ResponseEntity.ok(due);
+    }
+    /**
+     * Récupérer la config automation d'un projet
+     * GET /api/projects/{id}/automation
+     */
+    @GetMapping("/{id}/automation")
+    public ResponseEntity<?> getAutomationConfig(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        return ResponseEntity.ok(Map.of(
+                "enabled",  project.getAutomationEnabled() != null && project.getAutomationEnabled(),
+                "hour",     project.getAutomationHour() != null ? project.getAutomationHour() : 2,
+                "minute",   project.getAutomationMinute() != null ? project.getAutomationMinute() : 0,
+                "days",     project.getAutomationDays() != null ? project.getAutomationDays() : "DAILY",
+                "userId",   project.getAutomationUserId()
+        ));
+    }
+
+    // Helper
+    private boolean isDayMatch(String days, String currentDay) {
+        if (days == null || "DAILY".equals(days)) return true;
+        if ("MON-FRI".equals(days)) {
+            return List.of("MON","TUE","WED","THU","FRI").contains(currentDay);
+        }
+        return Arrays.asList(days.split(",")).contains(currentDay);
     }
 }

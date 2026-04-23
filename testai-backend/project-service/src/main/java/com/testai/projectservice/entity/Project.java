@@ -69,4 +69,20 @@ public class Project {
     public enum AuthType {
         NONE, BASIC, APIKEY, BEARER
     }
+
+    // ⭐ AUTOMATION JENKINS
+    @Column(nullable = false)
+    private Boolean automationEnabled = false;
+
+    @Column
+    private Integer automationHour = 2; // heure d'exécution (0-23)
+
+    @Column
+    private Integer automationMinute = 0; // minute (0-59)
+
+    @Column
+    private String automationDays = "DAILY"; // "DAILY", "MON-FRI", "MON,WED,FRI"
+
+    @Column
+    private UUID automationUserId; // qui déclenche l'exécution
 }

@@ -32,6 +32,7 @@ import ExecuteRapideApiPage from "./pages/ExecuteRapideApiPage";
 
 // Auth
 import authService from "./services/authService";
+import JenkinsPage from "./pages/JenkinsPage";
 
 // Garde de route
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -159,6 +160,13 @@ const App: React.FC = () => {
         element={
           <PrivateRoute>
             <ExecuteRapideApiPage />
+          </PrivateRoute>
+        } />
+
+         <Route path="/jenkins" 
+        element={
+          <PrivateRoute>
+            <JenkinsPage />
           </PrivateRoute>
         } />
 

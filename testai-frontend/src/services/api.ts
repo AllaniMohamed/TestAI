@@ -367,6 +367,20 @@ export const projectService = {
     projectId: string,
   ): Promise<AxiosResponse<Project>> =>
     api.post(`/project-service/api/projects/${projectId}/toggle-activation`),
+
+  getAutomationConfig: (projectId: string) =>
+    api.get(`/project-service/api/projects/${projectId}/automation`),
+
+  updateAutomation: (
+    projectId: string,
+    config: {
+      enabled: boolean;
+      hour: number;
+      minute: number;
+      days: string;
+      userId: string;
+    },
+  ) => api.put(`/project-service/api/projects/${projectId}/automation`, config),
 };
 
 // Endpoint Service
@@ -677,7 +691,6 @@ export const executionService = {
   ): Promise<AxiosResponse<ProjectExecutionResponse>> =>
     api.get(`/execution-service/api/executions/${executionId}/status`),
 
-  
   // Report endpoints
   getSingleEndpointReport: (
     projectId: string,
@@ -703,12 +716,9 @@ export const executionService = {
     }),
 
   getSimpleProjectReport: (projectId: string): Promise<AxiosResponse<Blob>> =>
-    api.get(
-      `/execution-service/api/executions/report/${projectId}/simple`,
-      {
-        responseType: "blob",
-      },
-    ),
+    api.get(`/execution-service/api/executions/report/${projectId}/simple`, {
+      responseType: "blob",
+    }),
 
   getTagReport: (
     projectId: string,
@@ -728,9 +738,7 @@ export const executionService = {
       { responseType: "blob" },
     ),
 
-  getTestedEndpoints: (
-    projectId: string,
-  ): Promise<AxiosResponse<Endpoint[]>> =>
+  getTestedEndpoints: (projectId: string): Promise<AxiosResponse<Endpoint[]>> =>
     api.get(`/execution-service/api/executions/${projectId}/tested-endpoints`),
 
   getProjectSuccessRate: (
@@ -757,12 +765,7 @@ export const executionService = {
     userId: string,
   ): Promise<AxiosResponse<ProjectExecutionStats[]>> =>
     api.get(`/execution-service/api/stats/${userId}/latest-project-execs`),
-
 };
-
-
-
-
 
 // ==========================================
 // API RUNNER SERVICE ⭐

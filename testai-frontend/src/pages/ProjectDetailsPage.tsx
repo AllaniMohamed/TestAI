@@ -99,7 +99,7 @@ interface ExecutionLog {
   message: string;
 }
 
-interface ProjectReportStats{
+interface ProjectReportStats {
   name: string;
   value: number;
   color: string;
@@ -518,6 +518,17 @@ const ServiceDetailsPage: React.FC = () => {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentExecutionIdRef = useRef<string | null>(null);
 
+  // ⭐ JENKINS
+  const [automatedExecutions, setAutomatedExecutions] = useState<ProjectExecution[]>([]);
+  const [jenkinsConfig, setJenkinsConfig] = useState({
+    schedule: "Nightly at 02:00",
+    cronExpr: "H 2 * * *",
+    threshold: 70,
+    jobUrl: "http://localhost:9090/job/TestAI-Auto",
+  });
+  const [jenkinsTriggering, setJenkinsTriggering] = useState(false);
+  const [showJenkinsConfig, setShowJenkinsConfig] = useState(false);
+
   // Settings form state
   const [editForm, setEditForm] = useState({
     name: "",
@@ -620,6 +631,13 @@ const ServiceDetailsPage: React.FC = () => {
     if (activeTab === "history" && id) loadExecutionHistory();
   }, [activeTab, id]);
 
+  // Charger les exécutions CI/CD quand l'onglet execution est actif
+  useEffect(() => {
+    if (activeTab === "execution" && id) {
+      loadAutomatedExecutions();
+    }
+  }, [activeTab, id]);
+
   useEffect(() => {
     return () => {
       stopPolling();
@@ -674,9 +692,9 @@ const ServiceDetailsPage: React.FC = () => {
       const res = await executionService.getProjectSuccessRate(id);
       setSuccessRate(res.data);
       const PIE_DATA = [
-        { name: "Passed", value: Math.round((successRate.SUCCESS/successRate.TOTAL) * 100), color: "#22c55e" },
-        { name: "Failed", value: Math.round((successRate.FAILED/successRate.TOTAL) * 100), color: "#ef4444" },
-        { name: "Error", value: Math.round((successRate.ERROR/successRate.TOTAL) * 100), color: "#e69138" },
+        { name: "Passed", value: Math.round((successRate.SUCCESS / successRate.TOTAL) * 100), color: "#22c55e" },
+        { name: "Failed", value: Math.round((successRate.FAILED / successRate.TOTAL) * 100), color: "#ef4444" },
+        { name: "Error", value: Math.round((successRate.ERROR / successRate.TOTAL) * 100), color: "#e69138" },
       ];
       setProjectStats(PIE_DATA);
     } catch {
@@ -689,20 +707,20 @@ const ServiceDetailsPage: React.FC = () => {
     try {
       const res = await executionService.getProjectSuccessRateHistory(id);
       // res.data is a Map-like object: { "2024-01-15": 95.5, "2024-01-16": 87.3, ... }
-      
+
       const formattedData = Object.entries(res.data).map(([dateString, successRate]) => {
         // Parse the date and format as "mm-dd"
         const date = new Date(dateString);
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         const formattedDate = `${month}-${day}`;
-        
+
         return {
           name: formattedDate,
           success: Math.round(successRate as number)
         };
       });
-      
+
       setProjectChartData(formattedData);
     } catch (error) {
       console.error('Failed to fetch project chart data:', error);
@@ -758,6 +776,36 @@ const ServiceDetailsPage: React.FC = () => {
       setTestExecutions(res.data);
     } catch {
       setTestExecutions([]);
+    }
+  };
+
+  const loadAutomatedExecutions = async () => {
+    if (!id) return;
+    try {
+      const res = await executionService.getProjectExecutions(id);
+      const automated = (res.data as ProjectExecution[]).filter(
+        (e) => e.executionContext === "ci_cd" || e.executionContext === "scheduled"
+      );
+      setAutomatedExecutions(automated.slice(0, 5)); // 5 dernières
+    } catch {
+      setAutomatedExecutions([]);
+    }
+  };
+
+  const handleTriggerJenkins = async () => {
+    if (!jenkinsConfig.jobUrl || !id) return;
+    setJenkinsTriggering(true);
+    try {
+      const userStr = sessionStorage.getItem("user");
+      const userId = userStr ? JSON.parse(userStr).id : "";
+      const triggerUrl = `${jenkinsConfig.jobUrl}/buildWithParameters?PROJECT_ID=${id}&USER_ID=${userId}&SUCCESS_THRESHOLD=${jenkinsConfig.threshold}`;
+      window.open(triggerUrl, "_blank");
+      addToast("info", "Pipeline Jenkins déclenché — vérifiez Jenkins.");
+      setTimeout(() => loadAutomatedExecutions(), 5000);
+    } catch {
+      addToast("error", "Impossible de déclencher Jenkins.");
+    } finally {
+      setJenkinsTriggering(false);
     }
   };
 
@@ -1702,6 +1750,284 @@ const ServiceDetailsPage: React.FC = () => {
                 isRunning={isExecuting}
                 onStop={handleStopExecution}
               />
+
+              {/* ════════════════════════════════════════════════════════════
+                  JENKINS — AUTOMATED EXECUTION
+              ════════════════════════════════════════════════════════════ */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* Jenkins logo en SVG */}
+                      <div className="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center shadow-sm">
+                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                          <rect width="24" height="24" rx="4" fill="#D33833" />
+                          <path
+                            d="M12 4C7.58 4 4 7.58 4 12s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"
+                            fill="white"
+                            opacity="0.9"
+                          />
+                          <circle cx="12" cy="12" r="3" fill="white" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900">Automated Execution · Jenkins</h4>
+                        <p className="text-xs text-slate-500">
+                          Pipeline CI/CD — déclenche automatiquement les tests
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowJenkinsConfig((p) => !p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                      >
+                        <CogIcon className="w-3.5 h-3.5" />
+                        Configure
+                      </button>
+                      <a
+                        href="http://localhost:9090"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 border border-orange-200 rounded-lg hover:bg-orange-200 transition-colors"
+                      >
+                        <ArrowRightIcon className="w-3.5 h-3.5" />
+                        Open Jenkins
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Config panel (collapsible) */}
+                  {showJenkinsConfig && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                      <h5 className="text-sm font-bold text-slate-700">⚙️ Pipeline Configuration</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Schedule (Cron)
+                          </label>
+                          <input
+                            type="text"
+                            value={jenkinsConfig.cronExpr}
+                            onChange={(e) =>
+                              setJenkinsConfig((p) => ({ ...p, cronExpr: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-white"
+                            placeholder="H 2 * * *"
+                          />
+                          <p className="text-xs text-slate-400 mt-1">
+                            Actuellement : {jenkinsConfig.schedule}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Success Threshold (%)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={jenkinsConfig.threshold}
+                            onChange={(e) =>
+                              setJenkinsConfig((p) => ({
+                                ...p,
+                                threshold: parseInt(e.target.value) || 70,
+                              }))
+                            }
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                          />
+                          <p className="text-xs text-slate-400 mt-1">
+                            Build UNSTABLE si taux &lt; seuil
+                          </p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Jenkins Job URL
+                          </label>
+                          <input
+                            type="text"
+                            value={jenkinsConfig.jobUrl}
+                            onChange={(e) =>
+                              setJenkinsConfig((p) => ({ ...p, jobUrl: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => {
+                            setShowJenkinsConfig(false);
+                            addToast("success", "Configuration Jenkins mise à jour.");
+                          }}
+                          className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors"
+                        >
+                          Save Configuration
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
+                      <p className="text-2xl font-bold text-orange-600">
+                        {automatedExecutions.length}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">Automated runs</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
+                      <p className="text-2xl font-bold text-green-600">
+                        {automatedExecutions.length > 0
+                          ? `${Math.round(
+                            automatedExecutions
+                              .filter((e) => e.status === "COMPLETED")
+                              .reduce((sum, e) => sum + (e.successRate ?? 0), 0) /
+                            Math.max(
+                              automatedExecutions.filter((e) => e.status === "COMPLETED").length,
+                              1
+                            )
+                          )}%`
+                          : "—"}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">Avg success rate</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
+                      <div className="flex items-center justify-center gap-2 mt-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                        <p className="text-sm font-bold text-slate-700">Active</p>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Pipeline status</p>
+                    </div>
+                  </div>
+
+                  {/* Schedule info */}
+                  <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-800">
+                    <CalendarIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <span className="font-semibold">Scheduled :</span>{" "}
+                      {jenkinsConfig.schedule}
+                      <span className="ml-2 font-mono text-xs text-blue-500">
+                        ({jenkinsConfig.cronExpr})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Trigger now button */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleTriggerJenkins}
+                      disabled={jenkinsTriggering || endpointsWithTests.length === 0}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border
+                        ${jenkinsTriggering || endpointsWithTests.length === 0
+                          ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                          : "bg-orange-600 text-white border-orange-700 hover:bg-orange-700 shadow-md active:scale-95"
+                        }`}
+                    >
+                      {jenkinsTriggering ? (
+                        <>
+                          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                          Triggering...
+                        </>
+                      ) : (
+                        <>
+                          <BoltIcon className="w-4 h-4" />
+                          Trigger Pipeline Now
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-slate-400">
+                      Ouvre Jenkins et déclenche le pipeline pour ce projet
+                    </p>
+                  </div>
+
+                  {/* Last automated runs */}
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-700 mb-3">
+                      Recent Automated Runs
+                    </h5>
+                    {automatedExecutions.length === 0 ? (
+                      <div className="text-center py-8 text-sm text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                        No automated runs yet — trigger the Jenkins pipeline above.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {automatedExecutions.map((exec) => (
+                          <div
+                            key={exec.id}
+                            className="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-white transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${exec.status === "COMPLETED"
+                                    ? "bg-green-500"
+                                    : exec.status === "RUNNING"
+                                      ? "bg-yellow-400 animate-pulse"
+                                      : "bg-red-500"
+                                  }`}
+                              />
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                  {new Date(exec.executedAt).toLocaleDateString("en-US", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {exec.executionContext === "ci_cd" ? "🤖 CI/CD" : "⏰ Scheduled"} ·{" "}
+                                  {exec.totalTests} tests
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p
+                                  className={`text-sm font-bold ${(exec.successRate ?? 0) >= jenkinsConfig.threshold
+                                      ? "text-green-600"
+                                      : "text-red-500"
+                                    }`}
+                                >
+                                  {exec.successRate?.toFixed(1) ?? 0}%
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {exec.testsPassed}✓ {exec.testsFailed}✗
+                                </p>
+                              </div>
+                              <Badge
+                                variant={
+                                  exec.status === "COMPLETED"
+                                    ? "success"
+                                    : exec.status === "RUNNING"
+                                      ? "warning"
+                                      : "danger"
+                                }
+                              >
+                                {exec.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Jenkinsfile location hint */}
+                  <div className="flex items-start gap-3 p-4 bg-slate-900 rounded-xl text-xs font-mono text-green-400">
+                    <CodeBracketIcon className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-slate-500 mb-1"># Pipeline défini dans :</p>
+                      <p>testai-backend/Jenkinsfile</p>
+                      <p className="text-slate-500 mt-1"># Script Path Jenkins :</p>
+                      <p>testai-backend/Jenkinsfile</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {endpointsWithTests.length > 0 && (
                 <div className="space-y-4">

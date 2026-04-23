@@ -27,6 +27,7 @@ const MANAGER_NAV: NavItem[] = [
   { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
   { name: "Historique", href: "/history", icon: ClockIcon },
   { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
+  { name: "Jenkins CI/CD", href: "/jenkins", icon: BoltIcon },
 
 ];
 
