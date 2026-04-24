@@ -22,6 +22,9 @@ public interface ExecutionServiceClient {
     @GetMapping("/stats/{userId}/latest-project-execs")
     List<Map<String, String>> getUserProjectsLatestExecs(@PathVariable UUID userId);
 
+    @GetMapping("/stats/{projectId}/success-rate")
+    Map<String, Long> getProjectSuccessRate(@PathVariable UUID projectId);
+
     @GetMapping(value = "/executions/report/{projectId}", produces = MediaType.APPLICATION_PDF_VALUE)
     ResponseEntity<byte[]> generateProjectFullReport(@PathVariable UUID projectId);
 

@@ -22,6 +22,7 @@ public class UserDTO {
     private UserRole role;
     private String avatar;
     private String company;
+    private String phoneNumber;
     private Boolean isActive;
     private Instant createdAt;
     private Instant lastLogin;

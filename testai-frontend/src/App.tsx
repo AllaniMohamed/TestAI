@@ -33,6 +33,9 @@ import ExecuteRapideApiPage from "./pages/ExecuteRapideApiPage";
 // Auth
 import authService from "./services/authService";
 import JenkinsPage from "./pages/JenkinsPage";
+import UsersPage from "./pages/admin/UsersPage";
+import ServiceHealthPage from "./pages/admin/ServiceHealthPage";
+import AdminProjectPage from "./pages/admin/AdminProjectPage";
 
 // Garde de route
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -170,6 +173,26 @@ const App: React.FC = () => {
           </PrivateRoute>
         } />
 
+        <Route path="/users"
+        element={
+          <PrivateRoute>
+            <UsersPage/>
+          </PrivateRoute>
+        } />
+
+        <Route path="/service-health"
+        element={
+          <PrivateRoute>
+            <ServiceHealthPage/>
+          </PrivateRoute>
+        } />
+
+        <Route path="/projects-stats"
+        element={
+          <PrivateRoute>
+            <AdminProjectPage/>
+          </PrivateRoute>
+        } />
 
         {/* Projets partagés (accès legacy) */}
         <Route path="/shared-projects" element={<SharedProjectsPage />} />

@@ -2,7 +2,11 @@ package com.example.adminservice.service;
 
 import com.example.adminservice.dto.HealthDTO;
 import com.example.adminservice.dto.HealthDTO.ServiceStatus;
+import com.example.adminservice.dto.ProjectEntity;
+import com.example.adminservice.dto.ProjectStatsDTO;
 import com.example.adminservice.feignclient.ActuatorClient;
+import com.example.adminservice.feignclient.ExecutionServiceClient;
+import com.example.adminservice.feignclient.ProjectServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +18,10 @@ import java.util.Map;
 public class AdminService {
     @Autowired
     private ActuatorClient actuatorClient;
+    @Autowired
+    private ProjectServiceClient projectServiceClient;
+    @Autowired
+    private ExecutionServiceClient executionServiceClient;
 
     public List<HealthDTO> extractServiceStatus(){
         Map<String, Object> health = actuatorClient.getHealth();
@@ -57,5 +65,26 @@ public class AdminService {
         }
 
         return result;
+    }
+
+    public List<ProjectStatsDTO> getAllProjectsStats(){
+        try{
+            List<ProjectEntity> allProjects = projectServiceClient.getAllProjects();
+            List<ProjectStatsDTO> projectStats = new ArrayList<>();
+            for(ProjectEntity project: allProjects){
+                ProjectStatsDTO statsDTO = new ProjectStatsDTO(
+                        project.getId(), project.getName(), project.getDescription(),
+                        project.getProjectUrl(), project.getIsActive()
+                );
+                Map<String, Long> testRate = executionServiceClient.getProjectSuccessRate(project.getId());
+                Long totalTests = testRate.get("TOTAL");
+                Double successRate = (double) testRate.get("SUCCESS") / totalTests;
+                statsDTO.setTestsRate(totalTests, successRate);
+                projectStats.add(statsDTO);
+            }
+            return projectStats;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

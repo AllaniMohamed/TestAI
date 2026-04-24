@@ -720,6 +720,10 @@ public class UserService {
             user.setCompany(userDTO.getCompany());
         }
 
+        if(userDTO.getIsActive() != user.getIsActive()){
+            user.setIsActive(userDTO.getIsActive());
+        }
+
         // ⚠️ NE PAS permettre la mise à jour de l'avatar via ce endpoint
         // L'avatar doit être uploadé via uploadAvatar()
 
@@ -760,6 +764,7 @@ public class UserService {
                 user.getRole(),
                 user.getAvatar(),
                 user.getCompany(),
+                user.getPhoneNumber(),
                 user.getIsActive(),
                 user.getCreatedAt(),
                 user.getLastLogin()
@@ -923,6 +928,11 @@ public class UserService {
             message.put("failed", e.toString());
         }
         return message;
+    }
+
+    public User getFullUserById(UUID id){
+        User user = userRepository.findById(id).orElseThrow();
+        return user;
     }
 
 }

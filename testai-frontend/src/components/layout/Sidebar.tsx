@@ -10,6 +10,8 @@ import {
   UserPlusIcon,
   ArrowRightOnRectangleIcon,
   BoltIcon,
+  UserIcon,
+  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import authService from "../../services/authService";
 
@@ -40,6 +42,13 @@ const DEVELOPER_NAV: NavItem[] = [
   { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
 ];
 
+const ADMIN_NAV: NavItem[] = [
+  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { name: "Utilisateurs", href: "/users", icon: UserIcon },
+  { name: "Projets", href: "/projects-stats", icon: NewspaperIcon },
+  { name: "Service Health", href: "/service-health", icon: ServerStackIcon },
+];  
+
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -48,7 +57,8 @@ const Sidebar: React.FC = () => {
   const user = userStr ? JSON.parse(userStr) : null;
   const userRole: string = user?.role ?? "MANAGER";
   const isManager = userRole === "MANAGER";
-  const NAV = isManager ? MANAGER_NAV : DEVELOPER_NAV;
+  const isAdmin = userRole === "ADMIN";
+  const NAV = isManager ? MANAGER_NAV : isAdmin ? ADMIN_NAV : DEVELOPER_NAV;
 
   const handleLogout = async () => {
     setLoggingOut(true);

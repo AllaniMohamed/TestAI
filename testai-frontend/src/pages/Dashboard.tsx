@@ -19,7 +19,7 @@ import {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [userRole, setUserRole] = useState<string>("");
+  const [userRole, setUserRole] = useState<"MANAGER" | "DEVELOPER" | "ADMIN" | "">("");
   const [servicesCount, setServicesCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -65,24 +65,29 @@ const Dashboard: React.FC = () => {
               <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
                 Tableau de bord
               </h1>
-              <p className="text-on-surface-variant max-w-xl font-medium">
-                Bienvenue, {userRole === "MANAGER" ? "Manager" : "Développeur"}. Vue d'ensemble de votre activité API.
+              <p className={`text-on-surface-variant ${userRole !== "ADMIN" ? "max-w-xl" : ""} font-medium`}>
+                Bienvenue, {userRole === "MANAGER" ? "Manager" : ((userRole == "DEVELOPER") ? "Développeur" : "Administrateur")}.
+                {userRole !== "ADMIN" ? " Vue d'ensemble de votre activité API." : " Vue d'ensemble de statistiques de votre plateforme."}
               </p>
             </div>
-            <div className="flex gap-3 items-center">
-              <Link to="/projects">
-                <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
-                  Voir tous les projets
-                </Button>
-              </Link>
-              {userRole === "MANAGER" && (
-                <Link to="/add-service">
-                  <Button icon={<PlusIcon className="w-5 h-5" />}>
-                    Nouveau service
+            {userRole !== "ADMIN" && (
+              <div className="flex gap-3 items-center">
+
+                <Link to="/projects">
+                  <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
+                    Voir tous les projets
                   </Button>
                 </Link>
-              )}
-            </div>
+
+                {userRole === "MANAGER" && (
+                  <Link to="/add-service">
+                    <Button icon={<PlusIcon className="w-5 h-5" />}>
+                      Nouveau service
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Stats Grid */}

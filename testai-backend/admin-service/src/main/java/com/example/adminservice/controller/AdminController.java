@@ -1,9 +1,6 @@
 package com.example.adminservice.controller;
 
-import com.example.adminservice.dto.HealthDTO;
-import com.example.adminservice.dto.ProjectEntity;
-import com.example.adminservice.dto.SharedAccessDTO;
-import com.example.adminservice.dto.UserDTO;
+import com.example.adminservice.dto.*;
 import com.example.adminservice.feignclient.*;
 import com.example.adminservice.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +27,14 @@ public class AdminController {
         return ResponseEntity.ok(userServiceClient.getAllUsers());
     }
 
-    @PutMapping("/users/{userId}/{isActive}")
-    public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId, @PathVariable Boolean isActive) {
-        return ResponseEntity.ok(userServiceClient.setActive(userId, isActive));
+    @GetMapping("/users/{id}/full")
+    public ResponseEntity<UserEntity> getFullUserById(@PathVariable UUID id){
+        return ResponseEntity.ok(userServiceClient.getFullUserById(id));
+    }
+
+    @PostMapping("/users/{userId}/toggle")
+    public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId) {
+        return ResponseEntity.ok(userServiceClient.toggleActive(userId));
     }
 
     @DeleteMapping("/users/{id}")
@@ -54,6 +56,15 @@ public class AdminController {
     @GetMapping("/stats/{userId}/latest-project-execs")
     public ResponseEntity<List<Map<String, String>>> getUserProjectsLatestExecs(@PathVariable UUID userId){
         return ResponseEntity.ok(executionServiceClient.getUserProjectsLatestExecs(userId));
+    }
+
+    @GetMapping("/stats/projects/all")
+    public ResponseEntity<?> getAllProjectsStats(){
+        try{
+            return ResponseEntity.ok(adminService.getAllProjectsStats());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.toString());
+        }
     }
 
     // REPORTS

@@ -24,6 +24,9 @@ public interface ProjectServiceClient {
     @GetMapping("/{id}")
     ProjectEntity getProjectById(@PathVariable UUID id);
 
+    @GetMapping("/all")
+    List<ProjectEntity> getAllProjects();
+
     @DeleteMapping("/{id}")
     Map<?,?> deleteProjectById(@PathVariable UUID id);
 }

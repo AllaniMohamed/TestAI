@@ -51,6 +51,35 @@ interface User {
   phoneNumber: string;
   company: string;
   role: string;
+  isActive: boolean;
+}
+
+interface FullUser {
+  id: string; // UUID -> string
+  name: string;
+  email: string;
+  role: string; // assuming you define this enum separately
+  keycloakId: string;
+  avatar: string;
+  company: string;
+  isActive: boolean;
+  createdAt: string; // Instant -> ISO string
+  updatedAt: string;
+  lastLogin: string;
+  emailVerified: boolean;
+  emailVerificationToken: string;
+  verificationTokenExpiresAt: string;
+  tempPassword: string;
+  phoneNumber: string;
+  phoneVerified: boolean;
+  phoneVerificationCode: string;
+  phoneVerificationCodeExpiresAt: string;
+  phoneVerificationAttempts: number;
+  phoneVerificationSentAt: string;
+  passwordResetToken: string;
+  passwordResetTokenExpiresAt: string;
+  passwordResetAttempts: number;
+  passwordResetRequestedAt: string;
 }
 
 // src/services/api.ts
@@ -767,6 +796,78 @@ export const executionService = {
     api.get(`/execution-service/api/stats/${userId}/latest-project-execs`),
 };
 
+export interface HealthDTO {
+  serviceName: string;
+  serviceStatus: "UP" | "DOWN";
+  instancesCount: number;
+}
+
+export interface AdminProjectStatsDTO {
+  id: string;
+  name: string;
+  description: string;
+  projectUrl: string;
+  isActive: boolean;
+  successRate: number;
+  totalTests: number;
+}
+
+export const adminService = {
+  // Users
+  getAllUsers: (): Promise<AxiosResponse<User[]>> =>
+    api.get("/admin-service/api/admin/users"),
+
+  getFullUserById: (userId: string): Promise<AxiosResponse<FullUser>> =>
+    api.get(`/admin-service/api/admin/users/${userId}/full`),
+
+  toggleUserActive: (userId: string): Promise<AxiosResponse<User>> =>
+    api.post(`/admin-service/api/admin/users/${userId}/toggle`),
+
+  deleteUser: (userId: string): Promise<AxiosResponse<Record<string, string>>> =>
+    api.delete(`/admin-service/api/admin/users/${userId}`),
+
+  // Stats
+  getUserProjectsGlobalStats: (userId: string): Promise<AxiosResponse<Record<string, number>>> =>
+    api.get(`/admin-service/api/admin/users/${userId}/execution-global-stats`),
+
+  getUserProjectsGlobalTestsRate: (userId: string): Promise<AxiosResponse<Record<string, any>>> =>
+    api.get(`/admin-service/api/admin/users/${userId}/global-tests-rate`),
+
+  getUserProjectsLatestExecs: (userId: string): Promise<AxiosResponse<Record<string, string>[]>> =>
+    api.get(`/admin-service/api/admin/users/${userId}/latest-project-execs`),
+
+  // Reports
+  generateProjectFullReport: (projectId: string): Promise<AxiosResponse<Blob>> =>
+    api.get(`/admin-service/api/admin/report/project/${projectId}`, {
+      responseType: "blob",
+    }),
+
+  generateProjectSimpleReport: (projectId: string): Promise<AxiosResponse<Blob>> =>
+    api.get(`/admin-service/api/admin/report/project/${projectId}/simple`, {
+      responseType: "blob",
+    }),
+  
+  // Projects
+  getProjectShares: (projectId: string): Promise<AxiosResponse<SharedAccess[]>> =>
+    api.get(`/admin-service/api/admin/projects/${projectId}/shares`),
+
+  getUserProjectsIds: (userId: string): Promise<AxiosResponse<string[]>> =>
+    api.get(`/admin-service/api/admin/projects/${userId}/projectsIds`),
+
+  getProjectById: (projectId: string): Promise<AxiosResponse<Project>> =>
+    api.get(`/admin-service/api/admin/projects/${projectId}`),
+
+  deleteProject: (projectId: string): Promise<AxiosResponse<Record<string, any>>> =>
+    api.delete(`/admin-service/api/admin/projects/${projectId}`),
+
+  // Health Check
+  getServiceHealth: (): Promise<AxiosResponse<HealthDTO[]>> =>
+    api.get(`/admin-service/api/admin/health`),
+
+  getAllProjectsStats: (): Promise<AxiosResponse<AdminProjectStatsDTO[]>> =>
+    api.get(`/admin-service/api/admin/stats/projects/all`),
+};
+
 // ==========================================
 // API RUNNER SERVICE ⭐
 // ==========================================
@@ -912,6 +1013,7 @@ export type {
   RegisterRequest,
   LoginResponse,
   User,
+  FullUser,
   Project,
   Endpoint,
   Test,

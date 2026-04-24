@@ -2,6 +2,7 @@ package org.example.userservice.controller;
 
 
 import org.example.userservice.dto.UserDTO;
+import org.example.userservice.entity.User;
 import org.example.userservice.service.FileStorageService;
 import org.example.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -156,17 +157,17 @@ public class UserController {
         return ResponseEntity.ok(updatedUser);
     }
 
-    @PutMapping("/{userId}/{isActive}")
+    @PostMapping("/{userId}/toggle")
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId, @PathVariable Boolean isActive){
+    public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId){
         Map<String, String> message = new HashMap<>();
         try{
             UserDTO userDTO = userService.getUserById(userId);
-            userDTO.setIsActive(isActive);
+            userDTO.setIsActive(!userDTO.getIsActive());
             userService.updateUser(userId, userDTO);
             message.put("success", "User " + userDTO.getName() + " is "
-                    + (isActive ? "activated" : "deactivated") + " successfully!!");
+                    + (userDTO.getIsActive() ? "activated" : "deactivated") + " successfully!!");
             return ResponseEntity.ok(message);
         } catch (Exception e) {
             message.put("error",e.toString());
@@ -181,6 +182,16 @@ public class UserController {
             return ResponseEntity.ok(userService.getAllUsers());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ArrayList<>());
+        }
+    }
+
+    @GetMapping("/{id}/full")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getFullUserById(@PathVariable UUID id){
+        try{
+            return ResponseEntity.ok(userService.getFullUserById(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.toString()) ;
         }
     }
 
