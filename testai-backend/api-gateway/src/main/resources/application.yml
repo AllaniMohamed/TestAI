@@ -109,7 +109,13 @@ spring:
             - Path=/api/admin/**
           filters:
             - RewritePath=/api/admin/(?<segment>.*), /api/executions/$\{segment}
-
+        # ==========================================
+        # Notification-SERVICE ROUTES (Spring Boot, Eureka)
+        # ==========================================
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification-service/**
 # Eureka Configuration
 eureka:
   client:

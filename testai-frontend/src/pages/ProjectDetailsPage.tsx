@@ -15,6 +15,7 @@ import {
   type ProjectExecution,
   type TestExecution,
   type UpdateProjectRequest,
+  userService,
 } from "../services/api";
 import ShareProjectModal from "../components/modals/ShareProjectModal";
 import {
@@ -271,11 +272,12 @@ const GenerateButton: React.FC<{
       flex items-center justify-center gap-2 font-semibold border border-outline-variant/30 rounded-lg transition-all
       ${fullWidth ? "w-full" : ""}
       ${size === "sm" ? "px-3 py-2 text-sm" : "px-2.5 py-1.5 text-xs"}
-      ${loading
-        ? "bg-primary/5 text-primary border-primary/20 cursor-wait"
-        : disabled
-          ? "opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant"
-          : "bg-white text-on-surface hover:bg-surface-container-low cursor-pointer"
+      ${
+        loading
+          ? "bg-primary/5 text-primary border-primary/20 cursor-wait"
+          : disabled
+            ? "opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant"
+            : "bg-white text-on-surface hover:bg-surface-container-low cursor-pointer"
       }
     `}
   >
@@ -470,7 +472,9 @@ const ServiceDetailsPage: React.FC = () => {
   // Stats
   const [successRate, setSuccessRate] = useState<Record<string, number>>({});
   const [projectStats, setProjectStats] = useState<ProjectReportStats[]>([]);
-  const [projectChartData, setProjectChartData] = useState<Record<string, any>[]>([]);
+  const [projectChartData, setProjectChartData] = useState<
+    Record<string, any>[]
+  >([]);
 
   // UI
   const [rescanning, setRescanning] = useState(false);
@@ -494,7 +498,7 @@ const ServiceDetailsPage: React.FC = () => {
     variant?: "danger" | "primary";
     confirmLabel?: string;
     onConfirm: () => void;
-  }>({ open: false, title: "", message: "", onConfirm: () => { } });
+  }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
   // Auth / role
   const [isOwner, setIsOwner] = useState(false);
@@ -511,6 +515,7 @@ const ServiceDetailsPage: React.FC = () => {
     useState<ProjectExecution | null>(null);
   const [testExecutions, setTestExecutions] = useState<TestExecution[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [executorName, setExecutorName] = useState<string | null>(null);
 
   // ⭐ EXECUTION TERMINAL
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
@@ -519,7 +524,9 @@ const ServiceDetailsPage: React.FC = () => {
   const currentExecutionIdRef = useRef<string | null>(null);
 
   // ⭐ JENKINS
-  const [automatedExecutions, setAutomatedExecutions] = useState<ProjectExecution[]>([]);
+  const [automatedExecutions, setAutomatedExecutions] = useState<
+    ProjectExecution[]
+  >([]);
   const [jenkinsConfig, setJenkinsConfig] = useState({
     schedule: "Nightly at 02:00",
     cronExpr: "H 2 * * *",
@@ -547,6 +554,11 @@ const ServiceDetailsPage: React.FC = () => {
     bearerToken: "",
   });
   const [updating, setUpdating] = useState(false);
+
+  // ⭐ Récupération de l'ID utilisateur DÈS MAINTENANT, avant tout hook qui en dépend
+  const userStr = sessionStorage.getItem("user");
+  const currentUserObj = userStr ? JSON.parse(userStr) : null;
+  const currentUserId = currentUserObj?.id;
 
   // ── Toast helpers ──────────────────────────────────────────────────────────
   const addToast = useCallback((type: ToastItem["type"], message: string) => {
@@ -612,7 +624,7 @@ const ServiceDetailsPage: React.FC = () => {
       try {
         const u = JSON.parse(userStr);
         setUserRole(u.role || "MANAGER");
-      } catch { }
+      } catch {}
     }
   }, []);
 
@@ -630,6 +642,26 @@ const ServiceDetailsPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === "history" && id) loadExecutionHistory();
   }, [activeTab, id]);
+
+  // ⭐ Charger le nom de l'exécuteur lorsqu'une exécution est sélectionnée
+  useEffect(() => {
+    if (!selectedExecution || !selectedExecution.executedBy) {
+      setExecutorName(null);
+      return;
+    }
+    const userId = selectedExecution.executedBy;
+    if (userId === currentUserId) {
+      setExecutorName(null);
+      return;
+    }
+    userService
+      .getUserById(userId)
+      .then((res) => {
+        const user = res.data;
+        setExecutorName(user.name || user.email || "Unknown");
+      })
+      .catch(() => setExecutorName("Unknown"));
+  }, [selectedExecution, currentUserId]);
 
   // Charger les exécutions CI/CD quand l'onglet execution est actif
   useEffect(() => {
@@ -692,9 +724,21 @@ const ServiceDetailsPage: React.FC = () => {
       const res = await executionService.getProjectSuccessRate(id);
       setSuccessRate(res.data);
       const PIE_DATA = [
-        { name: "Passed", value: Math.round((successRate.SUCCESS / successRate.TOTAL) * 100), color: "#22c55e" },
-        { name: "Failed", value: Math.round((successRate.FAILED / successRate.TOTAL) * 100), color: "#ef4444" },
-        { name: "Error", value: Math.round((successRate.ERROR / successRate.TOTAL) * 100), color: "#e69138" },
+        {
+          name: "Passed",
+          value: Math.round((successRate.SUCCESS / successRate.TOTAL) * 100),
+          color: "#22c55e",
+        },
+        {
+          name: "Failed",
+          value: Math.round((successRate.FAILED / successRate.TOTAL) * 100),
+          color: "#ef4444",
+        },
+        {
+          name: "Error",
+          value: Math.round((successRate.ERROR / successRate.TOTAL) * 100),
+          color: "#e69138",
+        },
       ];
       setProjectStats(PIE_DATA);
     } catch {
@@ -708,22 +752,24 @@ const ServiceDetailsPage: React.FC = () => {
       const res = await executionService.getProjectSuccessRateHistory(id);
       // res.data is a Map-like object: { "2024-01-15": 95.5, "2024-01-16": 87.3, ... }
 
-      const formattedData = Object.entries(res.data).map(([dateString, successRate]) => {
-        // Parse the date and format as "mm-dd"
-        const date = new Date(dateString);
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const formattedDate = `${month}-${day}`;
+      const formattedData = Object.entries(res.data).map(
+        ([dateString, successRate]) => {
+          // Parse the date and format as "mm-dd"
+          const date = new Date(dateString);
+          const month = (date.getMonth() + 1).toString().padStart(2, "0");
+          const day = date.getDate().toString().padStart(2, "0");
+          const formattedDate = `${month}-${day}`;
 
-        return {
-          name: formattedDate,
-          success: Math.round(successRate as number)
-        };
-      });
+          return {
+            name: formattedDate,
+            success: Math.round(successRate as number),
+          };
+        },
+      );
 
       setProjectChartData(formattedData);
     } catch (error) {
-      console.error('Failed to fetch project chart data:', error);
+      console.error("Failed to fetch project chart data:", error);
       setProjectChartData([]);
     }
   };
@@ -784,7 +830,8 @@ const ServiceDetailsPage: React.FC = () => {
     try {
       const res = await executionService.getProjectExecutions(id);
       const automated = (res.data as ProjectExecution[]).filter(
-        (e) => e.executionContext === "ci_cd" || e.executionContext === "scheduled"
+        (e) =>
+          e.executionContext === "ci_cd" || e.executionContext === "scheduled",
       );
       setAutomatedExecutions(automated.slice(0, 5)); // 5 dernières
     } catch {
@@ -809,44 +856,71 @@ const ServiceDetailsPage: React.FC = () => {
     }
   };
 
-  const handleDownloadProjectReport = async (reportType: 'simple' | 'full') => {
+  const handleDownloadProjectReport = async (reportType: "simple" | "full") => {
     if (!id) return;
     try {
-      const res = reportType === 'simple'
-        ? await executionService.getSimpleProjectReport(id)
-        : await executionService.getProjectReport(id);
+      const res =
+        reportType === "simple"
+          ? await executionService.getSimpleProjectReport(id)
+          : await executionService.getProjectReport(id);
       const blob = new Blob([res.data], { type: "application/pdf" });
-      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${reportType}-report.pdf`);
+      saveAs(
+        blob,
+        `${project?.name?.replaceAll(" ", "_") || "project"}-${reportType}-report.pdf`,
+      );
     } catch (err: any) {
-      addToast("error", err.response?.data?.message || "Error downloading project report.");
+      addToast(
+        "error",
+        err.response?.data?.message || "Error downloading project report.",
+      );
     }
   };
 
-  const handleDownloadEndpointReport = async (reportType: 'simple' | 'full', endpointId: string) => {
+  const handleDownloadEndpointReport = async (
+    reportType: "simple" | "full",
+    endpointId: string,
+  ) => {
     if (!id) return;
     try {
-      const res = reportType === 'simple'
-        ? await executionService.getSimpleSingleEndpointReport(id, endpointId)
-        : await executionService.getSingleEndpointReport(id, endpointId);
+      const res =
+        reportType === "simple"
+          ? await executionService.getSimpleSingleEndpointReport(id, endpointId)
+          : await executionService.getSingleEndpointReport(id, endpointId);
       const blob = new Blob([res.data], { type: "application/pdf" });
-      const ep = endpoints.find(e => e.id === endpointId);
+      const ep = endpoints.find((e) => e.id === endpointId);
       const epName = ep ? ep.path.replaceAll("/", "_") : "endpoint";
-      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${epName}-${reportType}-report.pdf`);
+      saveAs(
+        blob,
+        `${project?.name?.replaceAll(" ", "_") || "project"}-${epName}-${reportType}-report.pdf`,
+      );
     } catch (err: any) {
-      addToast("error", err.response?.data?.message || "Error downloading endpoint report.");
+      addToast(
+        "error",
+        err.response?.data?.message || "Error downloading endpoint report.",
+      );
     }
   };
 
-  const handleDownloadTagReport = async (reportType: 'simple' | 'full', tag: string) => {
+  const handleDownloadTagReport = async (
+    reportType: "simple" | "full",
+    tag: string,
+  ) => {
     if (!id) return;
     try {
-      const res = reportType === 'simple'
-        ? await executionService.getSimpleTagReport(id, tag)
-        : await executionService.getTagReport(id, tag);
+      const res =
+        reportType === "simple"
+          ? await executionService.getSimpleTagReport(id, tag)
+          : await executionService.getTagReport(id, tag);
       const blob = new Blob([res.data], { type: "application/pdf" });
-      saveAs(blob, `${project?.name?.replaceAll(" ", "_") || "project"}-${tag}-${reportType}-report.pdf`);
+      saveAs(
+        blob,
+        `${project?.name?.replaceAll(" ", "_") || "project"}-${tag}-${reportType}-report.pdf`,
+      );
     } catch (err: any) {
-      addToast("error", err.response?.data?.message || "Error downloading tag report.");
+      addToast(
+        "error",
+        err.response?.data?.message || "Error downloading tag report.",
+      );
     }
   };
 
@@ -918,7 +992,10 @@ const ServiceDetailsPage: React.FC = () => {
       setProject(projectRes.data);
       addToast("success", "Project updated successfully.");
     } catch (err: any) {
-      addToast("error", err.response?.data?.message || "Error updating project.");
+      addToast(
+        "error",
+        err.response?.data?.message || "Error updating project.",
+      );
     } finally {
       setUpdating(false);
     }
@@ -1115,13 +1192,18 @@ const ServiceDetailsPage: React.FC = () => {
     isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
 
   // ── Groupings ──────────────────────────────────────────────────────────────
-  function tagEndpointsByPath(endpoints: Endpoint[]): Record<string, Endpoint[]> {
-    return endpoints.reduce((groups, ep) => {
-      const tag = ep.path?.split("/")[1]?.trim() || "General";
-      if (!groups[tag]) groups[tag] = [];
-      groups[tag].push(ep);
-      return groups;
-    }, {} as Record<string, Endpoint[]>);
+  function tagEndpointsByPath(
+    endpoints: Endpoint[],
+  ): Record<string, Endpoint[]> {
+    return endpoints.reduce(
+      (groups, ep) => {
+        const tag = ep.path?.split("/")[1]?.trim() || "General";
+        if (!groups[tag]) groups[tag] = [];
+        groups[tag].push(ep);
+        return groups;
+      },
+      {} as Record<string, Endpoint[]>,
+    );
   }
 
   const groupedEndpoints = endpoints.reduce(
@@ -1165,7 +1247,7 @@ const ServiceDetailsPage: React.FC = () => {
       TEST_SECTIONS.forEach(({ key }) => {
         try {
           if ((test as any)[key]) totalTestsCount++;
-        } catch { }
+        } catch {}
       });
     });
   });
@@ -1725,9 +1807,10 @@ const ServiceDetailsPage: React.FC = () => {
                     onClick={handleExecuteAllProject}
                     disabled={isExecuting || endpointsWithTests.length === 0}
                     className={`flex items-center gap-3 px-8 py-4 rounded-xl text-base font-bold transition-all shadow-lg
-                      ${isExecuting || endpointsWithTests.length === 0
-                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                        : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"
+                      ${
+                        isExecuting || endpointsWithTests.length === 0
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"
                       }`}
                   >
                     {isExecuting ? (
@@ -1761,7 +1844,11 @@ const ServiceDetailsPage: React.FC = () => {
                     <div className="flex items-center gap-3">
                       {/* Jenkins logo en SVG */}
                       <div className="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center shadow-sm">
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="w-6 h-6"
+                          fill="none"
+                        >
                           <rect width="24" height="24" rx="4" fill="#D33833" />
                           <path
                             d="M12 4C7.58 4 4 7.58 4 12s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"
@@ -1772,7 +1859,9 @@ const ServiceDetailsPage: React.FC = () => {
                         </svg>
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900">Automated Execution · Jenkins</h4>
+                        <h4 className="font-bold text-slate-900">
+                          Automated Execution · Jenkins
+                        </h4>
                         <p className="text-xs text-slate-500">
                           Pipeline CI/CD — déclenche automatiquement les tests
                         </p>
@@ -1803,7 +1892,9 @@ const ServiceDetailsPage: React.FC = () => {
                   {/* Config panel (collapsible) */}
                   {showJenkinsConfig && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                      <h5 className="text-sm font-bold text-slate-700">⚙️ Pipeline Configuration</h5>
+                      <h5 className="text-sm font-bold text-slate-700">
+                        ⚙️ Pipeline Configuration
+                      </h5>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-1">
@@ -1813,7 +1904,10 @@ const ServiceDetailsPage: React.FC = () => {
                             type="text"
                             value={jenkinsConfig.cronExpr}
                             onChange={(e) =>
-                              setJenkinsConfig((p) => ({ ...p, cronExpr: e.target.value }))
+                              setJenkinsConfig((p) => ({
+                                ...p,
+                                cronExpr: e.target.value,
+                              }))
                             }
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-white"
                             placeholder="H 2 * * *"
@@ -1851,7 +1945,10 @@ const ServiceDetailsPage: React.FC = () => {
                             type="text"
                             value={jenkinsConfig.jobUrl}
                             onChange={(e) =>
-                              setJenkinsConfig((p) => ({ ...p, jobUrl: e.target.value }))
+                              setJenkinsConfig((p) => ({
+                                ...p,
+                                jobUrl: e.target.value,
+                              }))
                             }
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-white"
                           />
@@ -1861,7 +1958,10 @@ const ServiceDetailsPage: React.FC = () => {
                         <button
                           onClick={() => {
                             setShowJenkinsConfig(false);
-                            addToast("success", "Configuration Jenkins mise à jour.");
+                            addToast(
+                              "success",
+                              "Configuration Jenkins mise à jour.",
+                            );
                           }}
                           className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors"
                         >
@@ -1877,30 +1977,43 @@ const ServiceDetailsPage: React.FC = () => {
                       <p className="text-2xl font-bold text-orange-600">
                         {automatedExecutions.length}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">Automated runs</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Automated runs
+                      </p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
                       <p className="text-2xl font-bold text-green-600">
                         {automatedExecutions.length > 0
                           ? `${Math.round(
-                            automatedExecutions
-                              .filter((e) => e.status === "COMPLETED")
-                              .reduce((sum, e) => sum + (e.successRate ?? 0), 0) /
-                            Math.max(
-                              automatedExecutions.filter((e) => e.status === "COMPLETED").length,
-                              1
-                            )
-                          )}%`
+                              automatedExecutions
+                                .filter((e) => e.status === "COMPLETED")
+                                .reduce(
+                                  (sum, e) => sum + (e.successRate ?? 0),
+                                  0,
+                                ) /
+                                Math.max(
+                                  automatedExecutions.filter(
+                                    (e) => e.status === "COMPLETED",
+                                  ).length,
+                                  1,
+                                ),
+                            )}%`
                           : "—"}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">Avg success rate</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Avg success rate
+                      </p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
                       <div className="flex items-center justify-center gap-2 mt-1">
                         <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                        <p className="text-sm font-bold text-slate-700">Active</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          Active
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">Pipeline status</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Pipeline status
+                      </p>
                     </div>
                   </div>
 
@@ -1920,11 +2033,14 @@ const ServiceDetailsPage: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleTriggerJenkins}
-                      disabled={jenkinsTriggering || endpointsWithTests.length === 0}
+                      disabled={
+                        jenkinsTriggering || endpointsWithTests.length === 0
+                      }
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border
-                        ${jenkinsTriggering || endpointsWithTests.length === 0
-                          ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                          : "bg-orange-600 text-white border-orange-700 hover:bg-orange-700 shadow-md active:scale-95"
+                        ${
+                          jenkinsTriggering || endpointsWithTests.length === 0
+                            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                            : "bg-orange-600 text-white border-orange-700 hover:bg-orange-700 shadow-md active:scale-95"
                         }`}
                     >
                       {jenkinsTriggering ? (
@@ -1951,7 +2067,8 @@ const ServiceDetailsPage: React.FC = () => {
                     </h5>
                     {automatedExecutions.length === 0 ? (
                       <div className="text-center py-8 text-sm text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
-                        No automated runs yet — trigger the Jenkins pipeline above.
+                        No automated runs yet — trigger the Jenkins pipeline
+                        above.
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1962,35 +2079,43 @@ const ServiceDetailsPage: React.FC = () => {
                           >
                             <div className="flex items-center gap-3">
                               <div
-                                className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${exec.status === "COMPLETED"
+                                className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                  exec.status === "COMPLETED"
                                     ? "bg-green-500"
                                     : exec.status === "RUNNING"
                                       ? "bg-yellow-400 animate-pulse"
                                       : "bg-red-500"
-                                  }`}
+                                }`}
                               />
                               <div>
                                 <p className="text-sm font-semibold text-slate-800">
-                                  {new Date(exec.executedAt).toLocaleDateString("en-US", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                  {new Date(exec.executedAt).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      day: "2-digit",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                  {exec.executionContext === "ci_cd" ? "🤖 CI/CD" : "⏰ Scheduled"} ·{" "}
-                                  {exec.totalTests} tests
+                                  {exec.executionContext === "ci_cd"
+                                    ? "🤖 CI/CD"
+                                    : "⏰ Scheduled"}{" "}
+                                  · {exec.totalTests} tests
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="text-right">
                                 <p
-                                  className={`text-sm font-bold ${(exec.successRate ?? 0) >= jenkinsConfig.threshold
+                                  className={`text-sm font-bold ${
+                                    (exec.successRate ?? 0) >=
+                                    jenkinsConfig.threshold
                                       ? "text-green-600"
                                       : "text-red-500"
-                                    }`}
+                                  }`}
                                 >
                                   {exec.successRate?.toFixed(1) ?? 0}%
                                 </p>
@@ -2020,9 +2145,13 @@ const ServiceDetailsPage: React.FC = () => {
                   <div className="flex items-start gap-3 p-4 bg-slate-900 rounded-xl text-xs font-mono text-green-400">
                     <CodeBracketIcon className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-slate-500 mb-1"># Pipeline défini dans :</p>
+                      <p className="text-slate-500 mb-1">
+                        # Pipeline défini dans :
+                      </p>
                       <p>testai-backend/Jenkinsfile</p>
-                      <p className="text-slate-500 mt-1"># Script Path Jenkins :</p>
+                      <p className="text-slate-500 mt-1">
+                        # Script Path Jenkins :
+                      </p>
                       <p>testai-backend/Jenkinsfile</p>
                     </div>
                   </div>
@@ -2040,7 +2169,7 @@ const ServiceDetailsPage: React.FC = () => {
                         TEST_SECTIONS.forEach(({ key }) => {
                           try {
                             if ((test as any)[key]) testsCount++;
-                          } catch { }
+                          } catch {}
                         });
                       });
                       const methodColor =
@@ -2122,74 +2251,146 @@ const ServiceDetailsPage: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="space-y-3">
-                    {executions.map((exec) => (
-                      <div
-                        key={exec.id}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all
-                          ${selectedExecution?.id === exec.id ? "border-primary bg-primary/5 shadow-sm" : "border-outline-variant/20 hover:bg-surface-container-low"}`}
-                        onClick={() => {
-                          setSelectedExecution(exec);
-                          loadTestExecutions(exec.id);
-                        }}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <p className="text-sm font-bold">
-                              {new Date(exec.executedAt).toLocaleDateString(
-                                "en-US",
-                              )}
-                            </p>
-                            <p className="text-xs text-on-surface-variant">
-                              {new Date(exec.executedAt).toLocaleTimeString(
-                                "en-US",
-                              )}
-                            </p>
+                    {executions.map((exec) => {
+                      // ⭐ Déterminer le libellé de l'exécuteur
+                      const isYou =
+                        exec.executedBy &&
+                        currentUserId &&
+                        exec.executedBy === currentUserId;
+                      const executorLabel = isYou ? "You" : "User";
+                      const executorIcon = isYou ? "👤" : "👥";
+
+                      const contextLabel =
+                        exec.executionContext === "ci_cd"
+                          ? "CI/CD"
+                          : exec.executionContext === "scheduled"
+                            ? "Jenkins"
+                            : "Manual";
+
+                      return (
+                        <div
+                          key={exec.id}
+                          className={`p-4 rounded-xl border cursor-pointer transition-all
+                  ${selectedExecution?.id === exec.id ? "border-primary bg-primary/5 shadow-sm" : "border-outline-variant/20 hover:bg-surface-container-low"}`}
+                          onClick={() => {
+                            setSelectedExecution(exec);
+                            loadTestExecutions(exec.id);
+                          }}
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="text-sm font-bold">
+                                {new Date(exec.executedAt).toLocaleDateString(
+                                  "en-US",
+                                )}
+                              </p>
+                              <p className="text-xs text-on-surface-variant">
+                                {new Date(exec.executedAt).toLocaleTimeString(
+                                  "en-US",
+                                )}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                exec.status === "COMPLETED"
+                                  ? "success"
+                                  : exec.status === "RUNNING"
+                                    ? "warning"
+                                    : "danger"
+                              }
+                            >
+                              {exec.status}
+                            </Badge>
                           </div>
-                          <Badge
-                            variant={
-                              exec.status === "COMPLETED"
-                                ? "success"
-                                : exec.status === "RUNNING"
-                                  ? "warning"
-                                  : "danger"
-                            }
-                          >
-                            {exec.status}
-                          </Badge>
+
+                          {/* ⭐ Badges Executor & Context */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                              {executorIcon} {executorLabel}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                exec.executionContext === "ci_cd"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : exec.executionContext === "scheduled"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {contextLabel}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div>
+                              <p className="font-bold text-green-600">
+                                {exec.testsPassed}
+                              </p>
+                              <p className="text-on-surface-variant">Passed</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-red-600">
+                                {exec.testsFailed}
+                              </p>
+                              <p className="text-on-surface-variant">Failed</p>
+                            </div>
+                            <div>
+                              <p className="font-bold">
+                                {exec.successRate?.toFixed(0) ?? 0}%
+                              </p>
+                              <p className="text-on-surface-variant">Rate</p>
+                            </div>
+                          </div>
+                          {exec.totalDurationMs && (
+                            <p className="text-xs text-on-surface-variant mt-2">
+                              Duration:{" "}
+                              {(exec.totalDurationMs / 1000).toFixed(2)}s
+                            </p>
+                          )}
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                          <div>
-                            <p className="font-bold text-green-600">
-                              {exec.testsPassed}
-                            </p>
-                            <p className="text-on-surface-variant">Passed</p>
-                          </div>
-                          <div>
-                            <p className="font-bold text-red-600">
-                              {exec.testsFailed}
-                            </p>
-                            <p className="text-on-surface-variant">Failed</p>
-                          </div>
-                          <div>
-                            <p className="font-bold">
-                              {exec.successRate?.toFixed(0) ?? 0}%
-                            </p>
-                            <p className="text-on-surface-variant">Rate</p>
-                          </div>
-                        </div>
-                        {exec.totalDurationMs && (
-                          <p className="text-xs text-on-surface-variant mt-2">
-                            Duration: {(exec.totalDurationMs / 1000).toFixed(2)}
-                            s
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
+
+                  {/* Colonne de droite – détails */}
                   <div className="lg:col-span-2 space-y-5">
                     {selectedExecution && (
                       <>
-                        <Card title="Statistics">
+                        {/* ⭐ En‑tête enrichi avec exécuteur et contexte */}
+                        <Card>
+                          <div className="flex flex-wrap items-center justify-between mb-4">
+                            <h4 className="font-bold text-slate-900">
+                              Execution Details
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                                {selectedExecution.executedBy === currentUserId
+                                  ? "👤 You"
+                                  : executorName
+                                    ? `👥 ${executorName}`
+                                    : "👥 User"}
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  selectedExecution.executionContext === "ci_cd"
+                                    ? "bg-orange-100 text-orange-700"
+                                    : selectedExecution.executionContext ===
+                                        "scheduled"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {selectedExecution.executionContext === "ci_cd"
+                                  ? " CI/CD"
+                                  : selectedExecution.executionContext ===
+                                      "scheduled"
+                                    ? "Jenkins"
+                                    : " Manual"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Graphique et stats (inchangé) */}
                           <div className="h-56">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
@@ -2255,6 +2456,7 @@ const ServiceDetailsPage: React.FC = () => {
                             ))}
                           </div>
                         </Card>
+
                         <Card title="Test Details">
                           {testExecutions.length === 0 ? (
                             <p className="text-center text-on-surface-variant p-6 text-sm">
@@ -2345,7 +2547,6 @@ const ServiceDetailsPage: React.FC = () => {
               )}
             </div>
           )}
-
           {/* ════════════════════════════════════════════════════════════
               REPORTS TAB
           ════════════════════════════════════════════════════════════ */}
@@ -2388,30 +2589,30 @@ const ServiceDetailsPage: React.FC = () => {
                 </Card>
                 <Card
                   title="Success History"
-                  footer={<div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      icon={<DocumentArrowDownIcon className="w-6 h-6" />}
-                      onClick={() => handleDownloadProjectReport('full')}
-                    >
-                      Full Project Report
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      icon={<DocumentArrowDownIcon className="w-6 h-6" />}
-                      onClick={() => handleDownloadProjectReport('simple')}
-                    >
-                      Simple Project Report
-                    </Button>
-                  </div>}
+                  footer={
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        icon={<DocumentArrowDownIcon className="w-6 h-6" />}
+                        onClick={() => handleDownloadProjectReport("full")}
+                      >
+                        Full Project Report
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        icon={<DocumentArrowDownIcon className="w-6 h-6" />}
+                        onClick={() => handleDownloadProjectReport("simple")}
+                      >
+                        Simple Project Report
+                      </Button>
+                    </div>
+                  }
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={projectChartData as []}
-                      >
+                      <LineChart data={projectChartData as []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
@@ -2431,46 +2632,50 @@ const ServiceDetailsPage: React.FC = () => {
 
               {/* Second row: Full width for the endpoints list */}
               <div className="space-y-3">
-                {Object.entries(tagEndpointsByPath(testedEndpoints)).map(([tag, eps]: [string, Endpoint[]]) => (
-                  <div key={tag} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-on-surface-variant">
-                        <NewspaperIcon className="w-4 h-4" />
-                        <h3 className="font-bold">{tag}</h3>
-                        <span className="text-xs font-mono">
-                          ({eps.length})
-                        </span>
+                {Object.entries(tagEndpointsByPath(testedEndpoints)).map(
+                  ([tag, eps]: [string, Endpoint[]]) => (
+                    <div key={tag} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-on-surface-variant">
+                          <NewspaperIcon className="w-4 h-4" />
+                          <h3 className="font-bold">{tag}</h3>
+                          <span className="text-xs font-mono">
+                            ({eps.length})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            icon={<DocumentArrowDownIcon className="w-4 h-4" />}
+                            variant="outline"
+                            onClick={() =>
+                              handleDownloadTagReport("simple", tag)
+                            }
+                            className="font-normal text-xs"
+                          >
+                            Simple Category Report
+                          </Button>
+                          <Button
+                            variant="outline"
+                            icon={<DocumentArrowDownIcon className="w-4 h-4" />}
+                            onClick={() => handleDownloadTagReport("full", tag)}
+                            className="font-normal text-xs"
+                          >
+                            Full Category Report
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          icon={<DocumentArrowDownIcon className="w-4 h-4" />}
-                          variant="outline"
-                          onClick={() => handleDownloadTagReport("simple", tag)}
-                          className="font-normal text-xs"
-                        >
-                          Simple Category Report
-                        </Button>
-                        <Button
-                          variant="outline"
-                          icon={<DocumentArrowDownIcon className="w-4 h-4" />}
-                          onClick={() => handleDownloadTagReport("full", tag)}
-                          className="font-normal text-xs"
-                        >
-                          Full Category Report
-                        </Button>
+                      <div className="space-y-2">
+                        {eps.map((ep: Endpoint) => (
+                          <TestedEndpointAccordion
+                            key={ep.id}
+                            endpoint={ep}
+                            getReport={handleDownloadEndpointReport}
+                          />
+                        ))}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      {eps.map((ep: Endpoint) => (
-                        <TestedEndpointAccordion
-                          key={ep.id}
-                          endpoint={ep}
-                          getReport={handleDownloadEndpointReport}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -2525,17 +2730,21 @@ const ServiceDetailsPage: React.FC = () => {
                     <input
                       type="text"
                       value={editForm.projectUrl}
-                      onChange={(e) => setEditForm({ ...editForm, projectUrl: e.target.value })}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${!canEdit || endpoints.length > 0
-                        ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
-                        : 'bg-white border-outline-variant/30'
-                        }`}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, projectUrl: e.target.value })
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${
+                        !canEdit || endpoints.length > 0
+                          ? "bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed"
+                          : "bg-white border-outline-variant/30"
+                      }`}
                       disabled={!canEdit || endpoints.length > 0}
                     />
                     {endpoints.length > 0 && (
                       <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
                         <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-                        URL locked – endpoints already exist. Delete endpoints first to modify.
+                        URL locked – endpoints already exist. Delete endpoints
+                        first to modify.
                       </p>
                     )}
                   </div>
@@ -2548,22 +2757,25 @@ const ServiceDetailsPage: React.FC = () => {
                     <input
                       type="text"
                       value={editForm.docUrl}
-                      onChange={(e) => setEditForm({ ...editForm, docUrl: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, docUrl: e.target.value })
+                      }
                       placeholder="https://api.example.com/swagger.json"
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${!canEdit || endpoints.length > 0
-                        ? 'bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed'
-                        : 'bg-white border-outline-variant/30'
-                        }`}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${
+                        !canEdit || endpoints.length > 0
+                          ? "bg-surface-container-low text-on-surface-variant/60 border-outline-variant/20 cursor-not-allowed"
+                          : "bg-white border-outline-variant/30"
+                      }`}
                       disabled={!canEdit || endpoints.length > 0}
                     />
                     {endpoints.length > 0 && (
                       <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
                         <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-                        URL locked – endpoints already exist. Delete endpoints first to modify.
+                        URL locked – endpoints already exist. Delete endpoints
+                        first to modify.
                       </p>
                     )}
                   </div>
-
 
                   {/* Authentication Type */}
                   <div>
@@ -2806,176 +3018,176 @@ const EndpointAccordion: React.FC<{
   hasTests,
   testCount,
 }) => {
-    const methodColor =
-      METHOD_COLORS[endpoint.method] ??
-      "bg-surface-container-high text-on-surface-variant";
-    let parameters: any[] = [];
-    let requestBodyParsed = null,
-      responseBodyParsed = null;
-    try {
-      if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
-    } catch { }
-    try {
-      if (endpoint.requestBody)
-        requestBodyParsed = JSON.parse(endpoint.requestBody);
-    } catch { }
-    try {
-      if (endpoint.responseBody)
-        responseBodyParsed = JSON.parse(endpoint.responseBody);
-    } catch { }
+  const methodColor =
+    METHOD_COLORS[endpoint.method] ??
+    "bg-surface-container-high text-on-surface-variant";
+  let parameters: any[] = [];
+  let requestBodyParsed = null,
+    responseBodyParsed = null;
+  try {
+    if (endpoint.parameters) parameters = JSON.parse(endpoint.parameters);
+  } catch {}
+  try {
+    if (endpoint.requestBody)
+      requestBodyParsed = JSON.parse(endpoint.requestBody);
+  } catch {}
+  try {
+    if (endpoint.responseBody)
+      responseBodyParsed = JSON.parse(endpoint.responseBody);
+  } catch {}
 
-    return (
-      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
-        >
-          <div className="flex items-center gap-4 flex-wrap">
-            <span
-              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
-            >
-              {endpoint.method}
-            </span>
-            <div className="text-left">
-              <p className="font-mono text-sm text-on-surface">{endpoint.path}</p>
-              <p className="text-xs text-on-surface-variant">
-                {endpoint.description || "No description"}
-              </p>
-            </div>
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
+      >
+        <div className="flex items-center gap-4 flex-wrap">
+          <span
+            className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
+          >
+            {endpoint.method}
+          </span>
+          <div className="text-left">
+            <p className="font-mono text-sm text-on-surface">{endpoint.path}</p>
+            <p className="text-xs text-on-surface-variant">
+              {endpoint.description || "No description"}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            {hasTests && (
-              <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                {testCount} test{testCount > 1 ? "s" : ""}
-              </span>
-            )}
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs text-on-surface-variant">Active</span>
-            </div>
-            <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
-              {isExpanded ? "unfold_less" : "unfold_more"}
+        </div>
+        <div className="flex items-center gap-3">
+          {hasTests && (
+            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+              {testCount} test{testCount > 1 ? "s" : ""}
             </span>
+          )}
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="text-xs text-on-surface-variant">Active</span>
           </div>
-        </button>
+          <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
+            {isExpanded ? "unfold_less" : "unfold_more"}
+          </span>
+        </div>
+      </button>
 
-        {isExpanded && (
-          <div className="px-5 py-6 border-t border-outline-variant/10 space-y-6">
-            {parameters.length > 0 && (
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                  <CodeBracketIcon className="w-4 h-4" /> Parameters
-                </h4>
-                <div className="overflow-x-auto border border-outline-variant/20 rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="bg-surface-container-high text-[10px] text-on-surface-variant uppercase">
-                      <tr>
-                        {[
-                          "Name",
-                          "Location",
-                          "Required",
-                          "Type",
-                          "Description",
-                        ].map((h) => (
-                          <th key={h} className="px-4 py-2 text-left">
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-outline-variant/10">
-                      {parameters.map((p, i) => (
-                        <tr key={i}>
-                          <td className="px-4 py-2 font-mono">
-                            {p.name ?? p.$ref ?? "?"}
-                          </td>
-                          <td className="px-4 py-2">{p.in ?? "-"}</td>
-                          <td className="px-4 py-2">
-                            {p.required ? "Yes" : "No"}
-                          </td>
-                          <td className="px-4 py-2">
-                            {p.type ?? p.schema?.type ?? "object"}
-                          </td>
-                          <td className="px-4 py-2 text-on-surface-variant">
-                            {p.description ?? "-"}
-                          </td>
-                        </tr>
+      {isExpanded && (
+        <div className="px-5 py-6 border-t border-outline-variant/10 space-y-6">
+          {parameters.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                <CodeBracketIcon className="w-4 h-4" /> Parameters
+              </h4>
+              <div className="overflow-x-auto border border-outline-variant/20 rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-container-high text-[10px] text-on-surface-variant uppercase">
+                    <tr>
+                      {[
+                        "Name",
+                        "Location",
+                        "Required",
+                        "Type",
+                        "Description",
+                      ].map((h) => (
+                        <th key={h} className="px-4 py-2 text-left">
+                          {h}
+                        </th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {requestBodyParsed && (
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                  Request Body
-                </h4>
-                <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
-                  {JSON.stringify(requestBodyParsed, null, 2)}
-                </pre>
-              </div>
-            )}
-            {responseBodyParsed && (
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-                  Response Body
-                </h4>
-                <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
-                  {JSON.stringify(responseBodyParsed, null, 2)}
-                </pre>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
-                  Status Codes
-                </h4>
-                <div className="flex flex-wrap gap-1">
-                  {endpoint.statusCodes?.split(",").map((code) => (
-                    <Badge
-                      key={code}
-                      variant={
-                        code.trim().startsWith("2")
-                          ? "success"
-                          : code.trim().startsWith("4")
-                            ? "warning"
-                            : "danger"
-                      }
-                    >
-                      {code.trim()}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
-                  Auth Required
-                </h4>
-                <Badge variant={endpoint.requiresAuth ? "warning" : "default"}>
-                  {endpoint.requiresAuth ? "Yes" : "No"}
-                </Badge>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10">
+                    {parameters.map((p, i) => (
+                      <tr key={i}>
+                        <td className="px-4 py-2 font-mono">
+                          {p.name ?? p.$ref ?? "?"}
+                        </td>
+                        <td className="px-4 py-2">{p.in ?? "-"}</td>
+                        <td className="px-4 py-2">
+                          {p.required ? "Yes" : "No"}
+                        </td>
+                        <td className="px-4 py-2">
+                          {p.type ?? p.schema?.type ?? "object"}
+                        </td>
+                        <td className="px-4 py-2 text-on-surface-variant">
+                          {p.description ?? "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <GenerateButton
-              loading={generating}
-              onClick={onGenerate}
-              disabled={!canGenerateTests}
-              fullWidth
-              label={hasTests ? "Regenerate tests" : "Generate tests"}
-              icon={
-                hasTests ? (
-                  <ArrowPathIcon className="w-3.5 h-3.5" />
-                ) : (
-                  <SparklesIcon className="w-3.5 h-3.5" />
-                )
-              }
-            />
+          )}
+          {requestBodyParsed && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+                Request Body
+              </h4>
+              <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
+                {JSON.stringify(requestBodyParsed, null, 2)}
+              </pre>
+            </div>
+          )}
+          {responseBodyParsed && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+                Response Body
+              </h4>
+              <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-64">
+                {JSON.stringify(responseBodyParsed, null, 2)}
+              </pre>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                Status Codes
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {endpoint.statusCodes?.split(",").map((code) => (
+                  <Badge
+                    key={code}
+                    variant={
+                      code.trim().startsWith("2")
+                        ? "success"
+                        : code.trim().startsWith("4")
+                          ? "warning"
+                          : "danger"
+                    }
+                  >
+                    {code.trim()}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                Auth Required
+              </h4>
+              <Badge variant={endpoint.requiresAuth ? "warning" : "default"}>
+                {endpoint.requiresAuth ? "Yes" : "No"}
+              </Badge>
+            </div>
           </div>
-        )}
-      </div>
-    );
-  };
+          <GenerateButton
+            loading={generating}
+            onClick={onGenerate}
+            disabled={!canGenerateTests}
+            fullWidth
+            label={hasTests ? "Regenerate tests" : "Generate tests"}
+            icon={
+              hasTests ? (
+                <ArrowPathIcon className="w-3.5 h-3.5" />
+              ) : (
+                <SparklesIcon className="w-3.5 h-3.5" />
+              )
+            }
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEST ACCORDION
@@ -3000,214 +3212,217 @@ const TestAccordion: React.FC<{
   refreshTests,
   addToast,
 }) => {
-    const method = test.endpointPath.split(" ")[0];
-    const methodColor =
-      METHOD_COLORS[method] ??
-      "bg-surface-container-high text-on-surface-variant";
-    const [editMode, setEditMode] = useState(false);
-    const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
-    const [saving, setSaving] = useState(false);
+  const method = test.endpointPath.split(" ")[0];
+  const methodColor =
+    METHOD_COLORS[method] ??
+    "bg-surface-container-high text-on-surface-variant";
+  const [editMode, setEditMode] = useState(false);
+  const [rawTestData, setRawTestData] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
-    const testDataParsed: Record<string, any> = {};
-    TEST_SECTIONS.forEach(({ key }) => {
-      try {
-        const v = (test as any)[key];
-        if (v) testDataParsed[key] = typeof v === "string" ? JSON.parse(v) : v;
-      } catch { }
-    });
+  const testDataParsed: Record<string, any> = {};
+  TEST_SECTIONS.forEach(({ key }) => {
+    try {
+      const v = (test as any)[key];
+      if (v) testDataParsed[key] = typeof v === "string" ? JSON.parse(v) : v;
+    } catch {}
+  });
 
-    const handleSave = async () => {
-      const parsedData: Record<string, any> = {};
-      for (const key in rawTestData) {
-        try {
-          parsedData[key] = JSON.parse(rawTestData[key]);
-        } catch {
-          addToast(
-            "error",
-            `Invalid JSON in "${TEST_SECTIONS.find((s) => s.key === key)?.label ?? key}"`,
-          );
-          return;
-        }
-      }
+  const handleSave = async () => {
+    const parsedData: Record<string, any> = {};
+    for (const key in rawTestData) {
       try {
-        setSaving(true);
-        await testService.update({ ...test, ...parsedData } as Test);
-        await refreshTests();
-        setRawTestData({});
-        setEditMode(false);
-        addToast("success", "Tests updated successfully.");
+        parsedData[key] = JSON.parse(rawTestData[key]);
       } catch {
-        addToast("error", "Error while saving.");
-      } finally {
-        setSaving(false);
+        addToast(
+          "error",
+          `Invalid JSON in "${TEST_SECTIONS.find((s) => s.key === key)?.label ?? key}"`,
+        );
+        return;
       }
-    };
+    }
+    try {
+      setSaving(true);
+      await testService.update({ ...test, ...parsedData } as Test);
+      await refreshTests();
+      setRawTestData({});
+      setEditMode(false);
+      addToast("success", "Tests updated successfully.");
+    } catch {
+      addToast("error", "Error while saving.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    return (
-      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
-        >
-          <div className="flex items-center gap-4 flex-wrap">
-            <span
-              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
-            >
-              {method}
-            </span>
-            <p className="font-mono text-sm text-on-surface">
-              {test.endpointPath}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex gap-1">
-              {TEST_SECTIONS.filter(({ key }) => testDataParsed[key]).map(
-                ({ key, label }) => (
-                  <span
-                    key={key}
-                    className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant"
-                  >
-                    {label.split(" ").slice(1).join(" ") || label}
-                  </span>
-                ),
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs text-on-surface-variant">Active</span>
-            </div>
-            <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
-              {isExpanded ? "unfold_less" : "unfold_more"}
-            </span>
-          </div>
-        </button>
-
-        {isExpanded && (
-          <div className="px-5 py-6 border-t border-outline-variant/10 space-y-5">
-            {TEST_SECTIONS.map(({ key, label }) =>
-              testDataParsed[key] ? (
-                <div key={key}>
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
-                    <CodeBracketIcon className="w-4 h-4" /> {label}
-                  </h4>
-                  {editMode ? (
-                    <textarea
-                      value={
-                        rawTestData[key] !== undefined
-                          ? rawTestData[key]
-                          : JSON.stringify(testDataParsed[key], null, 2)
-                      }
-                      rows={13}
-                      onChange={(e) =>
-                        setRawTestData((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                    />
-                  ) : (
-                    <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
-                      {JSON.stringify(testDataParsed[key], null, 2)}
-                    </pre>
-                  )}
-                </div>
-              ) : null,
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group"
+      >
+        <div className="flex items-center gap-4 flex-wrap">
+          <span
+            className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${methodColor}`}
+          >
+            {method}
+          </span>
+          <p className="font-mono text-sm text-on-surface">
+            {test.endpointPath}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex gap-1">
+            {TEST_SECTIONS.filter(({ key }) => testDataParsed[key]).map(
+              ({ key, label }) => (
+                <span
+                  key={key}
+                  className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant"
+                >
+                  {label.split(" ").slice(1).join(" ") || label}
+                </span>
+              ),
             )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="text-xs text-on-surface-variant">Active</span>
+          </div>
+          <span className="material-symbols-outlined text-sm text-on-surface-variant group-hover:text-primary transition-colors">
+            {isExpanded ? "unfold_less" : "unfold_more"}
+          </span>
+        </div>
+      </button>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              {editMode ? (
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-60"
-                >
-                  {saving ? (
-                    <>
-                      <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-                      Saving…
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="py-2 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
-                >
-                  Edit test
-                </button>
-              )}
-              <GenerateButton
-                loading={generating}
-                onClick={onRegenerate}
-                disabled={!canRegenerateTests}
-                label="Regenerate"
-                size="xs"
-              />
-            </div>
+      {isExpanded && (
+        <div className="px-5 py-6 border-t border-outline-variant/10 space-y-5">
+          {TEST_SECTIONS.map(({ key, label }) =>
+            testDataParsed[key] ? (
+              <div key={key}>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-2">
+                  <CodeBracketIcon className="w-4 h-4" /> {label}
+                </h4>
+                {editMode ? (
+                  <textarea
+                    value={
+                      rawTestData[key] !== undefined
+                        ? rawTestData[key]
+                        : JSON.stringify(testDataParsed[key], null, 2)
+                    }
+                    rows={13}
+                    onChange={(e) =>
+                      setRawTestData((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                      }))
+                    }
+                    className="w-full p-4 bg-inverse-surface text-on-primary-container font-mono text-xs rounded-xl border border-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                ) : (
+                  <pre className="bg-inverse-surface text-on-primary-container text-xs p-4 rounded-xl overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
+                    {JSON.stringify(testDataParsed[key], null, 2)}
+                  </pre>
+                )}
+              </div>
+            ) : null,
+          )}
 
-            {editMode && (
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            {editMode ? (
               <button
-                onClick={() => {
-                  setEditMode(false);
-                  setRawTestData({});
-                }}
-                className="w-full py-1.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-60"
               >
-                Cancel
+                {saving ? (
+                  <>
+                    <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={() => setEditMode(true)}
+                className="py-2 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
+              >
+                Edit test
               </button>
             )}
+            <GenerateButton
+              loading={generating}
+              onClick={onRegenerate}
+              disabled={!canRegenerateTests}
+              label="Regenerate"
+              size="xs"
+            />
           </div>
-        )}
-      </div>
-    );
-  };
+
+          {editMode && (
+            <button
+              onClick={() => {
+                setEditMode(false);
+                setRawTestData({});
+              }}
+              className="w-full py-1.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const TestedEndpointAccordion: React.FC<{
   endpoint: Endpoint;
-  getReport: (reportType: 'simple' | 'full', endpointId: string) => void;
-}> = ({
-  endpoint,
-  getReport
-}) => {
-    const methodColor =
-      METHOD_COLORS[endpoint.method] ??
-      "bg-surface-container-high text-on-surface-variant";
-    return (
-      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-2 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <span
-              className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center flex-shrink-0 ${methodColor}`}
-            >
-              {endpoint.method}
-            </span>
-            <div className="text-left flex-1 min-w-0">
-              <p className="font-mono text-sm text-on-surface truncate">{endpoint.path}</p>
-            </div>
+  getReport: (reportType: "simple" | "full", endpointId: string) => void;
+}> = ({ endpoint, getReport }) => {
+  const methodColor =
+    METHOD_COLORS[endpoint.method] ??
+    "bg-surface-container-high text-on-surface-variant";
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
+      <div className="p-2 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <span
+            className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center flex-shrink-0 ${methodColor}`}
+          >
+            {endpoint.method}
+          </span>
+          <div className="text-left flex-1 min-w-0">
+            <p className="font-mono text-sm text-on-surface truncate">
+              {endpoint.path}
+            </p>
           </div>
-          <Button
-            variant="outline"
-            icon={<DocumentArrowDownIcon className="w-5 h-5" />}
-            onClick={() => getReport('simple', endpoint.id)}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
-          >
-            <span className="text-xs text-on-surface-variant font-bold text-black font-medium">Simple Report</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            icon={<DocumentArrowDownIcon className="w-5 h-5" />}
-            onClick={() => getReport('full', endpoint.id)}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
-          >
-            <span className="text-xs text-on-surface-variant font-bold text-black font-medium">Full Report</span>
-          </Button>
         </div>
+        <Button
+          variant="outline"
+          icon={<DocumentArrowDownIcon className="w-5 h-5" />}
+          onClick={() => getReport("simple", endpoint.id)}
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
+        >
+          <span className="text-xs text-on-surface-variant font-bold text-black font-medium">
+            Simple Report
+          </span>
+        </Button>
+
+        <Button
+          variant="outline"
+          icon={<DocumentArrowDownIcon className="w-5 h-5" />}
+          onClick={() => getReport("full", endpoint.id)}
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high flex-shrink-0"
+        >
+          <span className="text-xs text-on-surface-variant font-bold text-black font-medium">
+            Full Report
+          </span>
+        </Button>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
 export default ServiceDetailsPage;

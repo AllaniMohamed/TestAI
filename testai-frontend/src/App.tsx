@@ -36,6 +36,10 @@ import JenkinsPage from "./pages/JenkinsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import ServiceHealthPage from "./pages/admin/ServiceHealthPage";
 import AdminProjectPage from "./pages/admin/AdminProjectPage";
+<<<<<<< HEAD
+import { NotificationProvider } from "./context/NotificationContext";
+=======
+>>>>>>> fc6c294 (added some admin dashboard)
 
 // Garde de route
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -45,6 +49,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App: React.FC = () => {
   return (
+  <NotificationProvider>
     <Router>
       <Routes>
         {/* ─── Routes publiques ─── */}
@@ -201,6 +206,7 @@ const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+  </NotificationProvider>
   );
 };
 

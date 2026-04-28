@@ -149,8 +149,8 @@ const ProfilePage: React.FC = () => {
       setMessage("❌ Les mots de passe ne correspondent pas");
       return;
     }
-    if (newPassword.length < 12) {
-      setMessage("❌ Le mot de passe doit comporter au moins 12 caractères");
+    if (newPassword.length < 8) {
+      setMessage("❌ Le mot de passe doit comporter au moins 8 caractères");
       return;
     }
     setLoading(true);
@@ -383,7 +383,7 @@ const ProfilePage: React.FC = () => {
                     <div className="p-4 bg-surface-container rounded-xl">
                       <p className="text-[11px] text-on-surface-variant flex items-center gap-2">
                         <span className="material-symbols-outlined text-xs">info</span>
-                        Password must be at least 12 characters and include a mix of symbols and numbers.
+                        Password must be at least 8 characters and include a mix of symbols and numbers.
                       </p>
                     </div>
                     <div className="flex justify-end">

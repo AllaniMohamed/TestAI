@@ -57,11 +57,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- OAuth2 Resource Server (for JWT validation – you'll add later) -->
-        <!-- <dependency>
+         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-        </dependency> -->
+        </dependency>
 
         <!-- Lombok (optional) -->
         <dependency>

@@ -1,5 +1,5 @@
 // ProjectsPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
@@ -349,7 +349,6 @@ const ProjectsPage: React.FC = () => {
   );
 };
 
-// ⭐ COMPOSANT CARD MODIFIÉ
 const ProjectCard: React.FC<{
   service: ExtendedService;
   userRole: string;
@@ -367,14 +366,18 @@ const ProjectCard: React.FC<{
   // ⭐ États pour automation Jenkins
   const [showAutomationModal, setShowAutomationModal] = useState(false);
   const [automationEnabled, setAutomationEnabled] = useState(false);
+  const fetchedRef = useRef(false); // ⭐ empêche les appels multiples
 
-  // ⭐ Charger la config automation au mount
+  // ⭐ Charger la config automation une seule fois
   useEffect(() => {
-    projectService.getAutomationConfig(service.id)
-      .then(res => setAutomationEnabled(res.data.enabled))
-      .catch(() => {});
-  }, [service.id]);
-
+    if (!fetchedRef.current && userRole === "MANAGER") {
+      fetchedRef.current = true;
+      projectService.getAutomationConfig(service.id)
+        .then(res => setAutomationEnabled(res.data?.enabled ?? false))
+        .catch(() => setAutomationEnabled(false)); // ⭐ Pas de crash si 500
+    }
+  }, [service.id, userRole]);
+  
   return (
     <>
       <div

@@ -1003,6 +1003,36 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error),
 );
+
+
+// ==========================================
+// NOTIFICATION SERVICE ⭐
+// ==========================================
+
+export interface NotificationDTO {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  projectId?: string;
+  isRead: boolean;
+  createdAt: string;
+  metadata?: Record<string, any>;
+}
+
+export const notificationService = {
+  // Récupérer les notifications de l'utilisateur connecté
+  getUserNotifications: (userId: string): Promise<AxiosResponse<NotificationDTO[]>> =>
+    api.get(`/notification-service/api/notifications/user/${userId}`),
+
+  // Marquer une notification comme lue
+  markAsRead: (notificationId: string): Promise<AxiosResponse<void>> =>
+    api.put(`/notification-service/api/notifications/${notificationId}/read`, {}),
+
+  // Marquer toutes les notifications comme lues
+  markAllAsRead: (userId: string): Promise<AxiosResponse<void>> =>
+    api.put(`/notification-service/api/notifications/user/${userId}/read-all`, {}),
+};
 // ==========================================
 // TYPES ⭐
 // ==========================================

@@ -9,8 +9,6 @@ import {
   ChevronDownIcon,
   TrashIcon,
   SparklesIcon,
-  BellIcon,
-  CogIcon,
   PlusIcon,
   FolderOpenIcon,
   ArrowPathIcon,
@@ -634,20 +632,18 @@ ${
       <Navbar />
       <div className="flex pt-0">
         <Sidebar />
-<main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
-          <header className="flex justify-between items-center px-8 w-full h-16 border-b border-primary/10 bg-surface">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-headline font-bold tracking-tight text-on-surface">
-                API Runner
-              </h2>
-              <Badge
-                variant="info"
-                className="text-[10px] font-bold tracking-wider"
-              >
-                v2.4.0-STABLE
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2">
+        <main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
+          {/* HEADER – adapté au style Dashboard */}
+          <header className="px-8 pt-8 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface">
+                  API Runner
+                </h1>
+                <Badge variant="info" className="text-[10px] font-bold tracking-wider">
+                  v2.4.0-STABLE
+                </Badge>
+              </div>
               <button
                 onClick={() => setShowSaveModal(true)}
                 className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1"
@@ -656,17 +652,11 @@ ${
                 <FolderOpenIcon className="w-5 h-5" />
                 <span className="text-xs font-medium">Save</span>
               </button>
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors">
-                <BellIcon className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors">
-                <CogIcon className="w-5 h-5" />
-              </button>
             </div>
           </header>
 
           <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 p-8 overflow-y-auto space-y-8">
+            <div className="flex-1 p-8 pt-0 overflow-y-auto space-y-8">
               {/* Request bar */}
               <div className="bg-surface-container-lowest p-1 rounded-xl shadow-sm ring-1 ring-outline-variant/15 flex items-center gap-2">
                 <div className="relative">

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -37,10 +36,17 @@ const LandingPage: React.FC = () => {
             <Button variant="outline" size="lg" className="w-full sm:w-auto">Découvrir la plateforme</Button>
           </div>
           
+          {/* Vidéo Preview */}
           <div className="mt-20 relative max-w-5xl mx-auto">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-purple-500 rounded-3xl blur opacity-20"></div>
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20">
-              <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070" alt="Dashboard Preview" className="w-full object-cover" />
+            <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-black">
+              <video
+                src="vv.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-auto object-cover"
+              />
             </div>
           </div>
         </div>

@@ -14,8 +14,8 @@ tokenizer = None
 def download_model_and_adapter():
     # base model download
     if not os.path.exists(config.BASE_MODEL_PATH) or len(os.listdir(config.BASE_MODEL_PATH)) == 0:
-        model_link = r'https://drive.google.com/file/d/1uOMm6NJb1O9CMIb0lytP9GgSbvLxH3kk/view?usp=drive_link'
-        gdown.download(model_link, MODEL_ZIP, quiet=False, fuzzy=True)
+        model_link = r'https://drive.google.com/uc?id=1uOMm6NJb1O9CMIb0lytP9GgSbvLxH3kk'
+        gdown.download(model_link, MODEL_ZIP, quiet=False)   # fuzzy supprimé
         os.makedirs(config.BASE_MODEL_PATH, exist_ok=True)
         with zipfile.ZipFile(MODEL_ZIP, 'r') as zip_ref:
             zip_ref.extractall(config.BASE_MODEL_PATH)
@@ -23,8 +23,8 @@ def download_model_and_adapter():
 
     # adapter download
     if not os.path.exists(config.ADAPTER_PATH) or len(os.listdir(config.ADAPTER_PATH)) == 0:
-        adapter_link = r'https://drive.google.com/file/d/1OWTxNZyWcXElT-nmC_AZftCt6C2rscmU/view?usp=drive_link'
-        gdown.download(adapter_link, ADAPTER_ZIP, quiet=False, fuzzy=True)
+        adapter_link = r'https://drive.google.com/uc?id=1OWTxNZyWcXElT-nmC_AZftCt6C2rscmU'
+        gdown.download(adapter_link, ADAPTER_ZIP, quiet=False)  # fuzzy supprimé
         os.makedirs(config.ADAPTER_PATH, exist_ok=True)
         with zipfile.ZipFile(ADAPTER_ZIP, 'r') as zip_ref:
             zip_ref.extractall(config.ADAPTER_PATH)

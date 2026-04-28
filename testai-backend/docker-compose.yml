@@ -253,7 +253,8 @@ services:
       EUREKA_ENABLED: true
       EUREKA_URL: http://eureka-server:8761/eureka/
       FILE_UPLOAD_DIR: /app/uploads/projects-docs
-      JAVA_OPTS: "-Xmx512m -Xms256m"
+      TZ: Africa/Tunis                             
+      JAVA_OPTS: "-Xmx512m -Xms256m -Duser.timezone=Africa/Tunis"  
     ports:
       - "8082:8082"
     volumes:
@@ -406,6 +407,10 @@ services:
       SERVER_PORT: 8086
       EUREKA_URL: http://eureka-server:8761/eureka/
       JAVA_OPTS: "-Xmx512m -Xms256m"
+      KEYCLOAK_URL: http://testai-keycloak:8080
+      KEYCLOAK_REALM: testai
+      KEYCLOAK_CLIENT_ID: user-service
+      KEYCLOAK_CLIENT_SECRET: 0W791wbIPTtDR3v7noogqAFpBBsOZpw0
     ports:
       - "8086:8086"
     depends_on:
@@ -524,7 +529,89 @@ services:
       - endpoint-db
       - test-db  # ⭐️ Ajout
     restart: unless-stopped
+# ==========================================
+  # JENKINS (CI/CD)
+  # ==========================================
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: testai-jenkins
+    user: root
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - TZ=Africa/Tunis  
 
+    networks:
+      - testai-network
+    restart: unless-stopped
+
+# ==========================================
+  # NOTIFICATION DATABASE
+  # ==========================================
+  notification-db:
+    image: postgres:15-alpine
+    container_name: testai-notification-db
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - testai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ==========================================
+  # NOTIFICATION SERVICE
+  # ==========================================
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: testai-notification-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: notification-db
+      DB_PORT: 5432
+      DB_NAME: notification_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      SERVER_PORT: 8089
+      EUREKA_ENABLED: true
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/testai
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/testai/protocol/openid-connect/certs
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "8089:8089"
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - testai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped    
 # ==========================================
 # VOLUMES
 # ==========================================
@@ -556,6 +643,12 @@ volumes:
   execution-db-data:
     driver: local
     name: testai-execution-db-data
+  jenkins-data:
+      driver: local
+      name: testai-jenkins-data
+  notification-db-data:
+      driver: local
+      name: testai-notification-db-data      
 # ==========================================
 # RÉSEAU
 # ==========================================
