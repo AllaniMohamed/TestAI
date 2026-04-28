@@ -9,7 +9,7 @@ import {
   ShieldCheckIcon,
   BugAntIcon
 } from '@heroicons/react/24/outline';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Label } from 'recharts';
 import { executionService } from '../services/api';
 import type { ProjectExecutionStats } from '../services/api';
 import { useEffect } from 'react';
@@ -34,11 +34,12 @@ function formatDate(dateStr: string): string {
   return formatter.format(date);
 }
 
-const formatReportData = (data) => {
+const formatReportData = (data: Record<string, unknown>) => {
     return Object.entries(data).map(([date, stats]) => ({
       date: new Date(date).toLocaleDateString('en-GB', { 
         day: 'numeric', 
-        month: 'short' 
+        month: 'short',
+        year: '2-digit' 
       }),
       execs: (stats as Record<string, number>).total,
       success: (stats as Record<string, number>).success
@@ -102,14 +103,18 @@ const ReportsPage: React.FC = () => {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-            <Card title="Volume de tests quotidiens">
+            <Card title="Volume d'executions quotidiens">
               <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reportData}>
+                  <BarChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
-                    <YAxis tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
-                    <Tooltip contentStyle={{ backgroundColor: "var(--color-surface-container-lowest)", borderColor: "var(--color-outline-variant)" }} />
+                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }}>
+                      <Label value="Latest 7 days" offset={-5} position="bottom" fill="var(--color-on-surface-variant, #464555)" />
+                    </XAxis>
+                    <YAxis tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >
+                      <Label value="Number of Executions" angle={-90} position="insideLeft" style={{ textAnchor: "middle" }} fill="var(--color-on-surface-variant, #464555)" />
+                    </YAxis>
+                    <Tooltip contentStyle={{ backgroundColor: "var(--color-surface-container-lowest)", borderColor: "var(--color-outline-variant)" }} itemStyle={{color: "rgba(0,0,0,0.6)"}} />
                     <Bar dataKey="execs" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -118,10 +123,14 @@ const ReportsPage: React.FC = () => {
             <Card title="Stabilité des services (%)">
                <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={reportData}>
+                  <LineChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
-                    <YAxis domain={[80, 100]} tick={{ fill: "var(--color-on-surface-variant, #464555)" }} />
+                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >
+                      <Label value="Latest 7 days" offset={-5} position="bottom" fill="var(--color-on-surface-variant, #464555)" />
+                    </XAxis>
+                    <YAxis domain={[80, 100]} tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >
+                      <Label value="Success Rate (%)" angle={-90} position="insideLeft" style={{ textAnchor: "middle" }} fill="var(--color-on-surface-variant, #464555)" />
+                    </YAxis>
                     <Tooltip contentStyle={{ backgroundColor: "var(--color-surface-container-lowest)", borderColor: "var(--color-outline-variant)" }} />
                     <Line type="monotone" dataKey="success" stroke="#28a745" strokeWidth={3} dot={{ r: 6 }} />
                   </LineChart>
