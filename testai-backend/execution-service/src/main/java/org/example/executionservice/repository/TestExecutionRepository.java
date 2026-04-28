@@ -42,15 +42,25 @@ public interface TestExecutionRepository extends JpaRepository<TestExecution, UU
     @Query("SELECT t.status as status,COUNT(t) as count FROM TestExecution t WHERE t.projectId = :projectId GROUP BY t.status")
     List<TestStatisticsDTO.TestStatusCount> findTestSuccessRate(@Param("projectId") UUID projectId);
 
-    @Query(value="SELECT " +
-            "    DATE(executed_at) as executed_at," +
-            "    COUNT(CASE WHEN status = 'SUCCESS' THEN 1 END) as success_count," +
-            "    COUNT(*) as total_count " +
-            "FROM test_executions " +
-            "WHERE project_id = :projectId " +
-            "  AND executed_at >= CURRENT_DATE - INTERVAL '7 days' " +
-            "GROUP BY DATE(executed_at) " +
-            "ORDER BY DATE(executed_at) DESC", nativeQuery = true)
+    @Query(value = """
+        WITH last_test_days AS (
+            SELECT DISTINCT DATE(executed_at) AS test_day
+            FROM test_executions
+            WHERE project_id = :projectId
+            ORDER BY test_day DESC
+            LIMIT 7
+        )
+        SELECT 
+            DATE(te.executed_at) AS executed_at,
+            COUNT(*) FILTER (WHERE te.status = 'SUCCESS') AS success_count,
+            COUNT(*) AS total_count
+        FROM test_executions te
+        JOIN last_test_days ltd 
+            ON DATE(te.executed_at) = ltd.test_day
+        WHERE te.project_id = :projectId
+        GROUP BY DATE(te.executed_at)
+        ORDER BY DATE(te.executed_at) DESC
+        """, nativeQuery = true)
     List<TestStatisticsDTO.TestStatusHistory> findTestSuccessRateHistory(@Param("projectId") UUID projectId);
 
     long countAllByProjectId(UUID projectId);
