@@ -40,7 +40,7 @@ const LandingPage: React.FC = () => {
           <div className="mt-20 relative max-w-5xl mx-auto">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-black">
               <video
-                src="vv.mp4"
+                src="OIG3.mp4"
                 autoPlay
                 loop
                 muted
