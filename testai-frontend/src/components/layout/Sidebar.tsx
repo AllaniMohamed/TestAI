@@ -12,6 +12,7 @@ import {
   BoltIcon,
   UserIcon,
   NewspaperIcon,
+  PlayCircleIcon,
 } from "@heroicons/react/24/outline";
 import authService from "../../services/authService";
 
@@ -27,9 +28,8 @@ const MANAGER_NAV: NavItem[] = [
   { name: "Projets", href: "/projects", icon: ServerStackIcon },
   { name: "Api Runner  ", href: "/execute-rapide", icon: BoltIcon },
   { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Historique", href: "/history", icon: ClockIcon },
   { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
-  { name: "Jenkins CI/CD", href: "/jenkins", icon: BoltIcon },
+  { name: "Jenkins CI/CD", href: "/jenkins", icon: PlayCircleIcon },
 
 ];
 
@@ -38,7 +38,6 @@ const DEVELOPER_NAV: NavItem[] = [
   { name: "Mes Projets", href: "/projects", icon: ServerStackIcon },
   { name: "Api Runner  ", href: "/execute-rapide", icon: BoltIcon },
   { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Historique", href: "/history", icon: ClockIcon },
   { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
 ];
 
