@@ -23,9 +23,7 @@ import {
   type Project,
 } from "../services/api";
 
-// ───────────────────────────────────────────────────────────────────
-// Types utilitaires
-// ───────────────────────────────────────────────────────────────────
+// Types pour les statistiques
 interface DashboardStats {
   servicesCount: number;
   totalTests: number;
@@ -37,10 +35,16 @@ interface DashboardStats {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<"MANAGER" | "DEVELOPER" | "ADMIN" | "">("");
-  const [servicesCount, setServicesCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [userId, setUserId] = useState<string>(""); // ✅ Ajout manquant
+  const [stats, setStats] = useState<DashboardStats>({  // ✅ Ajout manquant
+    servicesCount: 0,
+    totalTests: 0,
+    averageSuccessRate: 0,
+    todayExecutions: 0,
+    loading: true,
+  });
 
-  // ── Récupération de l'utilisateur ──────────────────────────────────
+  // Récupération de l'utilisateur depuis sessionStorage
   useEffect(() => {
     const userStr = sessionStorage.getItem("user");
     if (userStr) {
@@ -54,7 +58,7 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
-  // ── Chargement des données dynamiques ──────────────────────────────
+  // Chargement des données dynamiques
   const loadDashboardData = useCallback(async () => {
     if (!userId || !userRole) return;
 
@@ -96,7 +100,7 @@ const Dashboard: React.FC = () => {
         const projectCount = Object.keys(rates).length;
         if (projectCount > 0) {
           const sum = Object.values(rates).reduce((a, b) => a + b, 0);
-          averageSuccessRate = Math.round((sum / projectCount) * 10) / 10; // un décimal
+          averageSuccessRate = Math.round((sum / projectCount) * 10) / 10;
         }
       } catch { /* laisser à 0 */ }
 
@@ -105,7 +109,7 @@ const Dashboard: React.FC = () => {
       try {
         const execsRes = await executionService.getProjectExecutionStats(userId);
         const execs = execsRes.data as any[];
-        const todayStr = new Date().toISOString().substring(0, 10); // YYYY-MM-DD
+        const todayStr = new Date().toISOString().substring(0, 10);
         todayExecutions = execs.filter((e: any) =>
           e.date?.substring(0, 10) === todayStr
         ).length;
@@ -130,7 +134,6 @@ const Dashboard: React.FC = () => {
     }
   }, [userId, userRole, loadDashboardData]);
 
-  // ── Rendu ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
       <Navbar />
@@ -148,19 +151,17 @@ const Dashboard: React.FC = () => {
                 Tableau de bord
               </h1>
               <p className={`text-on-surface-variant ${userRole !== "ADMIN" ? "max-w-xl" : ""} font-medium`}>
-                Bienvenue, {userRole === "MANAGER" ? "Manager" : ((userRole == "DEVELOPER") ? "Développeur" : "Administrateur")}.
-                {userRole !== "ADMIN" ? " Vue d'ensemble de votre activité API." : " Vue d'ensemble de statistiques de votre plateforme."}
+                Bienvenue, {userRole === "MANAGER" ? "Manager" : (userRole === "DEVELOPER" ? "Développeur" : "Administrateur")}.
+                {userRole !== "ADMIN" ? " Vue d'ensemble de votre activité API." : " Vue d'ensemble des statistiques de votre plateforme."}
               </p>
             </div>
             {userRole !== "ADMIN" && (
               <div className="flex gap-3 items-center">
-
                 <Link to="/projects">
                   <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
                     Voir tous les projets
                   </Button>
                 </Link>
-
                 {userRole === "MANAGER" && (
                   <Link to="/add-service">
                     <Button icon={<PlusIcon className="w-5 h-5" />}>
@@ -258,10 +259,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-// ───────────────────────────────────────────────────────────────────
 // Sous-composants
-// ───────────────────────────────────────────────────────────────────
-
 const StatCard: React.FC<{
   title: string;
   value: string;
@@ -323,7 +321,7 @@ const RecentExecutionsList: React.FC<{ userId: string }> = ({ userId }) => {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold">{exec.passedTests} / {exec.passedTests} <span className="text-on-surface-variant">passés</span></p>
+            <p className="text-xs font-bold">{exec.passedTests} / {exec.totalTests} <span className="text-on-surface-variant">passés</span></p>
             <p className="text-[10px] text-on-surface-variant">{exec.duration}</p>
           </div>
         </div>
