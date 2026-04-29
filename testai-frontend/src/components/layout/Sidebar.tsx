@@ -4,7 +4,7 @@ import {
   HomeIcon,
   ServerStackIcon,
   PresentationChartLineIcon,
-  ClockIcon,
+  PlayCircleIcon,
   Cog6ToothIcon,
   BookOpenIcon,
   UserPlusIcon,
