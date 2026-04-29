@@ -1,6 +1,6 @@
 // Dashboard.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import Button from "../components/common/Button";
@@ -10,10 +10,8 @@ import {
   CheckBadgeIcon,
   SparklesIcon,
   ClockIcon,
-  ArrowRightIcon,
   FolderIcon,
   BoltIcon,
-  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import {
   projectService,
@@ -33,8 +31,7 @@ interface DashboardStats {
 }
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [userRole, setUserRole] = useState<"MANAGER" | "DEVELOPER" | "ADMIN" | "">("");
+  const [userRole, setUserRole] = useState<"MANAGER" | "DEVELOPER" | "">("");
   const [userId, setUserId] = useState<string>(""); // ✅ Ajout manquant
   const [stats, setStats] = useState<DashboardStats>({  // ✅ Ajout manquant
     servicesCount: 0,
@@ -150,13 +147,12 @@ const Dashboard: React.FC = () => {
               <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
                 Tableau de bord
               </h1>
-              <p className={`text-on-surface-variant ${userRole !== "ADMIN" ? "max-w-xl" : ""} font-medium`}>
+              <p className={`text-on-surface-variant font-medium`}>
                 Bienvenue, {userRole === "MANAGER" ? "Manager" : (userRole === "DEVELOPER" ? "Développeur" : "Administrateur")}.
-                {userRole !== "ADMIN" ? " Vue d'ensemble de votre activité API." : " Vue d'ensemble des statistiques de votre plateforme."}
+                Vue d'ensemble de votre activité API." 
               </p>
             </div>
-            {userRole !== "ADMIN" && (
-              <div className="flex gap-3 items-center">
+            <div className="flex gap-3 items-center">
                 <Link to="/projects">
                   <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
                     Voir tous les projets
@@ -170,7 +166,6 @@ const Dashboard: React.FC = () => {
                   </Link>
                 )}
               </div>
-            )}
           </div>
 
           {/* Stats Grid */}

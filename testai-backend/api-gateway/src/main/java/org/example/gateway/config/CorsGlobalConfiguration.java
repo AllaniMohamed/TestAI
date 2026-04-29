@@ -42,6 +42,7 @@ public class CorsGlobalConfiguration {
 
         // En production : spécifier les domaines autorisés
         corsConfig.addAllowedOrigin("http://localhost:5173");
+        corsConfig.addAllowedOrigin("http://localhost:5200");
         // corsConfig.addAllowedOrigin("https://testai.example.com");
 
         // ========================================

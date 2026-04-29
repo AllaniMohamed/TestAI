@@ -3,13 +3,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   HomeIcon,
   ServerStackIcon,
-  PresentationChartLineIcon,
-  ClockIcon,
-  Cog6ToothIcon,
   BookOpenIcon,
-  UserPlusIcon,
   ArrowRightOnRectangleIcon,
   BoltIcon,
+  UserIcon,
+  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import authService from "../../services/authService";
 
@@ -20,23 +18,12 @@ interface NavItem {
   badge?: number;
 }
 
-const MANAGER_NAV: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Projets", href: "/projects", icon: ServerStackIcon },
-  { name: "Api Runner  ", href: "/execute-rapide", icon: BoltIcon },
-  { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
-  { name: "Jenkins CI/CD", href: "/jenkins", icon: PlayCircleIcon },
-
-];
-
-const DEVELOPER_NAV: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Mes Projets", href: "/projects", icon: ServerStackIcon },
-  { name: "Api Runner  ", href: "/execute-rapide", icon: BoltIcon },
-  { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
-]; 
+const ADMIN_NAV: NavItem[] = [
+  { name: "Dashboard", href: "/", icon: HomeIcon },
+  { name: "Utilisateurs", href: "/users", icon: UserIcon },
+  { name: "Projets", href: "/projects-stats", icon: NewspaperIcon },
+  { name: "Service Health", href: "/service-health", icon: ServerStackIcon },
+];  
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -44,9 +31,6 @@ const Sidebar: React.FC = () => {
 
   const userStr = sessionStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
-  const userRole: string = user?.role ?? "MANAGER";
-  const isManager = userRole === "MANAGER";
-  const NAV = isManager ? MANAGER_NAV : DEVELOPER_NAV;
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -75,7 +59,7 @@ const Sidebar: React.FC = () => {
             TestAI
           </h1>
           <p className="text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-0.5">
-            Precision Lab
+            Admin Dashboard
           </p>
         </div>
       </div>
@@ -85,7 +69,7 @@ const Sidebar: React.FC = () => {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">
           Navigation
         </p>
-        {NAV.map((item) => (
+        {ADMIN_NAV.map((item) => (
           <NavLink
             key={item.name}
             to={item.href}
@@ -125,16 +109,6 @@ const Sidebar: React.FC = () => {
 
       {/* Section du bas */}
       <div className="px-3 py-4 border-t border-slate-100 space-y-1">
-        {/* Bouton Invite uniquement pour Manager */}
-        {isManager && (
-          <button
-            onClick={() => navigate("/projects")}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
-          >
-            <UserPlusIcon className="w-[18px] h-[18px]" />
-            <span>Inviter un membre</span>
-          </button>
-        )}
 
         {/* Documentation */}
         <a
@@ -157,7 +131,6 @@ const Sidebar: React.FC = () => {
               <p className="text-xs font-semibold text-slate-800 truncate">
                 {user?.name ?? "Utilisateur"}
               </p>
-              <p className="text-[10px] text-slate-400 truncate">{userRole}</p>
             </div>
             <button
               onClick={handleLogout}
