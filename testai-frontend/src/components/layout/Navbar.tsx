@@ -221,7 +221,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-full text-gray-500 hover:bg-gray-100/50 transition-colors"
-                title="Déconnexion"
+                title="Logout"
               >
                 <ArrowRightOnRectangleIcon className="h-5 w-5" />
               </button>
@@ -230,11 +230,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
         ) : (
           <div className="flex gap-4">
             <Link to="/login" className="text-gray-600 font-medium hover:text-primary pt-2">
-              Connexion
+              Log in
             </Link>
             <Link to="/register">
               <button className="bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
-                Commencer
+                Sign up
               </button>
             </Link>
           </div>

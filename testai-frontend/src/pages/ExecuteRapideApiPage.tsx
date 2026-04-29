@@ -703,7 +703,7 @@ ${
                     "authorization",
                     "headers",
                     "body",
-                    "settings",
+                    // "settings",
                   ].map((tab) => (
                     <button
                       key={tab}
@@ -1081,21 +1081,7 @@ ${
                 )}
               </div>
 
-              {/* AI Card */}
-              <div className="mt-auto p-4 bg-gradient-to-br from-inverse-surface to-[#131b2e] rounded-xl text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <SparklesIcon className="w-5 h-5 text-primary-fixed" />
-                  <span className="text-[10px] font-black tracking-widest uppercase">
-                    Lab AI
-                  </span>
-                </div>
-                <p className="text-xs text-indigo-100/70 mb-3 leading-relaxed">
-                  Let AI generate test scripts from this request schema.
-                </p>
-                <button className="w-full py-2 bg-primary-container text-white rounded-lg text-[10px] font-bold uppercase tracking-tighter hover:bg-primary transition-all">
-                  Generate Assertions
-                </button>
-              </div>
+              
             </aside>
           </div>
         </main>
