@@ -93,11 +93,15 @@ const Dashboard: React.FC = () => {
       let averageSuccessRate = 0;
       try {
         const rateRes = await executionService.getUserProjectsGlobalTestsRate(userId);
-        const rates = rateRes.data as Record<string, number>;
-        const projectCount = Object.keys(rates).length;
-        if (projectCount > 0) {
-          const sum = Object.values(rates).reduce((a, b) => a + b, 0);
-          averageSuccessRate = Math.round((sum / projectCount) * 10) / 10;
+        const rates = rateRes.data as Record<string, Record<string, number>>;
+        const executionCount = Object.keys(rates).length;
+        if (executionCount > 0) {
+          var sum = 0;
+          for (const date in rates) {
+            const projectRates = rates[date];
+            sum += projectRates.success
+          }
+          averageSuccessRate = Math.round(sum / executionCount);
         }
       } catch { /* laisser à 0 */ }
 
@@ -185,7 +189,7 @@ const Dashboard: React.FC = () => {
               title="Score Moyen"
               value={stats.loading ? "..." : `${stats.averageSuccessRate}%`}
               icon={<SparklesIcon className="w-6 h-6 text-primary" />}
-              trend={stats.averageSuccessRate >= 80 ? "Optimal" : stats.averageSuccessRate > 0 ? "Correct" : undefined}
+              trend={stats.averageSuccessRate >= 75 ? "Optimal" : stats.averageSuccessRate < 45 ? "Low" : "Normal"}
             />
             <StatCard
               title="Exécutions aujourd'hui"
@@ -311,12 +315,12 @@ const RecentExecutionsList: React.FC<{ userId: string }> = ({ userId }) => {
             <div>
               <p className="text-xs font-bold">{exec.projectName}</p>
               <p className="text-[10px] text-on-surface-variant">
-                {new Date(exec.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {new Date(exec.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold">{exec.passedTests} / {exec.totalTests} <span className="text-on-surface-variant">passés</span></p>
+            <p className="text-xs font-bold">{exec.passedTests} <span className="text-on-surface-variant">passés</span></p>
             <p className="text-[10px] text-on-surface-variant">{exec.duration}</p>
           </div>
         </div>
