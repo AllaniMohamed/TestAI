@@ -1,9 +1,11 @@
 // Dashboard.tsx
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import {
   SparklesIcon,
+  ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
 
 const Dashboard: React.FC = () => {
@@ -44,6 +46,44 @@ const Dashboard: React.FC = () => {
                 Bienvenue, {userName}. Vue d'ensemble des statistiques de votre plateforme.
               </p>
             </div>
+          </div>
+          <div className="space-y-4"> {/* Hoverable Lines Container */}
+            {/* Line 1: Users */}
+            <Link
+              to="/users"
+              className="block bg-surface-variant rounded-lg p-6 shadow-sm hover:bg-primary/10 hover:shadow-md transition-all duration-200 cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Utilisateurs</h2>
+                </div>
+              </div>
+            </Link>
+            {/* Line 2: Projects */}
+            <Link
+              to="/projects-stats"
+              className="block bg-surface-variant rounded-lg p-6 shadow-sm hover:bg-primary/10 hover:shadow-md transition-all duration-200 cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Statistiques de tous les projets</h2>
+                </div>
+              </div>
+            </Link>
+            {/* Line 3: Service Health */}
+            <Link
+              to="/service-health"
+              className="block bg-surface-variant rounded-lg p-6 shadow-sm hover:bg-primary/10 hover:shadow-md transition-all duration-200 cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Santé des services</h2>
+                </div>
+              </div>
+            </Link>
           </div>
         </main>
       </div>

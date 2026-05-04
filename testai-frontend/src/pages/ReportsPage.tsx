@@ -35,7 +35,12 @@ function formatDate(dateStr: string): string {
 }
 
 const formatReportData = (data: Record<string, unknown>) => {
-    return Object.entries(data).map(([date, stats]) => ({
+  return Object.entries(data)
+    // 1. Sort by date (earliest → latest)
+    .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
+    
+    // 2. Then map/format
+    .map(([date, stats]) => ({
       date: new Date(date).toLocaleDateString('en-GB', { 
         day: 'numeric', 
         month: 'short',
@@ -44,7 +49,7 @@ const formatReportData = (data: Record<string, unknown>) => {
       execs: (stats as Record<string, number>).total,
       success: (stats as Record<string, number>).success
     }));
-  };
+};
 
 const ReportsPage: React.FC = () => {
   // const [period, setPeriod] = useState('30d');
@@ -108,7 +113,7 @@ const ReportsPage: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }}>
+                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)", fontSize: 11 }}>
                       <Label value="Latest 7 days" offset={-5} position="bottom" fill="var(--color-on-surface-variant, #464555)" />
                     </XAxis>
                     <YAxis tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >
@@ -125,7 +130,7 @@ const ReportsPage: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >
+                    <XAxis dataKey="date" tick={{ fill: "var(--color-on-surface-variant, #464555)", fontSize: 11 }} >
                       <Label value="Latest 7 days" offset={-5} position="bottom" fill="var(--color-on-surface-variant, #464555)" />
                     </XAxis>
                     <YAxis domain={[80, 100]} tick={{ fill: "var(--color-on-surface-variant, #464555)" }} >

@@ -106,7 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
-    navigate('/');
+    navigate('/login');
   };
 
   const logoMark = (
@@ -125,7 +125,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <Link to={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-2">
+        <Link to={isLoggedIn ? '/dashboard' : '/login'} className="flex items-center gap-2">
           {logoMark}
           <span className="text-xl font-bold text-gray-900 tracking-tight hidden sm:inline">TestAI</span>
         </Link>

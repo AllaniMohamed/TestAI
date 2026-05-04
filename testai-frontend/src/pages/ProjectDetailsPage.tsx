@@ -61,6 +61,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Label,
 } from "recharts";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2137,8 +2138,15 @@ const ServiceDetailsPage: React.FC = () => {
                 <Card title="Success History" footer={<div className="flex flex-col sm:flex-row gap-3"><Button variant="outline" className="w-full" icon={<DocumentArrowDownIcon className="w-6 h-6" />} onClick={() => handleDownloadProjectReport("full")}>Full Project Report</Button><Button variant="outline" className="w-full" icon={<DocumentArrowDownIcon className="w-6 h-6" />} onClick={() => handleDownloadProjectReport("simple")}>Simple Project Report</Button></div>}>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={projectChartData as []}>
-                        <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip />
+                      <LineChart data={projectChartData as []} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fill: "var(--color-on-surface-variant, #464555)", fontSize: 12 }}>
+                          <Label value="Latest 7 days" position="insideBottom" fill="var(--color-on-surface-variant, #464555)" />
+                        </XAxis>
+                        <YAxis>
+                          <Label value="Success Rate (%)" angle={-90} position="insideLeft" style={{ textAnchor: "middle" }} fill="var(--color-on-surface-variant, #464555)" />
+                        </YAxis>
+                        <Tooltip />
                         <Line type="monotone" dataKey="success" stroke="#6366f1" strokeWidth={2.5} dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
