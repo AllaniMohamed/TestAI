@@ -29,7 +29,7 @@ const ForgotPasswordPage: React.FC = () => {
     } catch (error: any) {
       setError(
         error.response?.data?.message ||
-          "Une erreur est survenue. Veuillez réessayer.",
+          "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -46,20 +46,19 @@ const ForgotPasswordPage: React.FC = () => {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Email envoyé !
+              Email sent!
             </h1>
 
             <p className="text-gray-600 mb-8">
-              Si un compte existe pour <strong>{email}</strong>, vous recevrez
-              un email avec les instructions pour réinitialiser votre mot de
-              passe.
+              If an account exists for <strong>{email}</strong>, you will
+              receive an email with instructions to reset your password.
               <br />
               <br />
-              Le lien est valable pendant 1 heure.
+              The link is valid for 1 hour.
             </p>
 
             <Link to="/login">
-              <Button className="w-full">Retour à la connexion</Button>
+              <Button className="w-full">Back to login</Button>
             </Link>
           </Card>
         </div>
@@ -74,18 +73,18 @@ const ForgotPasswordPage: React.FC = () => {
         className="mb-8 flex items-center text-gray-500 hover:text-primary transition"
       >
         <ArrowLeftIcon className="w-4 h-4 mr-2" />
-        Retour à la connexion
+        Back to login
       </Link>
 
       <div className="w-full max-w-md">
         <Card className="shadow-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              Mot de passe oublié ?
+              Forgot password?
             </h1>
             <p className="text-gray-500 mt-2">
-              Entrez votre email et nous vous enverrons un lien pour
-              réinitialiser votre mot de passe.
+              Enter your email and we'll send you a link to reset your
+              password.
             </p>
           </div>
 
@@ -97,9 +96,9 @@ const ForgotPasswordPage: React.FC = () => {
 
           <form onSubmit={handleSubmit}>
             <Input
-              label="Email professionnel"
+              label="Professional email"
               type="email"
-              placeholder="votre@email.com"
+              placeholder="your@email.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -107,7 +106,7 @@ const ForgotPasswordPage: React.FC = () => {
             />
 
             <Button type="submit" className="w-full mt-6" loading={loading}>
-              Envoyer le lien
+              Send link
             </Button>
           </form>
         </Card>

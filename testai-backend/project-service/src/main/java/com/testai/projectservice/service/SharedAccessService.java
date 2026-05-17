@@ -124,6 +124,28 @@ public class SharedAccessService {
         return dto;
     }
 
+    public InvitationInfoDTO getInvitationInfo(String token) {
+        SharedAccess sharedAccess = sharedAccessRepository.findByInvitationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+
+        Project project = projectRepository.findById(sharedAccess.getProjectId())
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        // ⭐ Appel public sans token
+        UserDTO manager = userServiceClient.getUserByIdPublic(sharedAccess.getSharedBy());
+
+        InvitationInfoDTO info = new InvitationInfoDTO();
+        info.setProjectName(project.getName());
+        info.setProjectDescription(project.getDescription());
+        info.setManagerName(manager.getName());
+        info.setDeveloperEmail(sharedAccess.getDeveloperEmail());
+        info.setDeveloperName(sharedAccess.getDeveloperEmail());
+        info.setAccessLevel(sharedAccess.getAccessLevel().toString());
+        info.setStatus(sharedAccess.getStatus().toString());
+        info.setInvitedAt(sharedAccess.getInvitedAt());
+        return info;
+    }
+
     @Transactional
     public ActivateInvitationResponse activateInvitation(String token) {
         SharedAccess sharedAccess = sharedAccessRepository.findByInvitationToken(token)
@@ -136,14 +158,14 @@ public class SharedAccessService {
         Project project = projectRepository.findById(sharedAccess.getProjectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        String authToken = getAuthToken();
+        // ⭐ Appel public sans token
         UserDTO developer = null;
         boolean hasAccount = false;
-
         try {
-            developer = userServiceClient.getUserByEmail(sharedAccess.getDeveloperEmail(), authToken);
-            hasAccount = true;
+            developer = userServiceClient.getUserByEmailPublic(sharedAccess.getDeveloperEmail());
+            hasAccount = developer != null;
         } catch (Exception e) {
+            log.info("ℹ️ Developer sans compte existant : {}", sharedAccess.getDeveloperEmail());
             hasAccount = false;
         }
 
@@ -155,36 +177,42 @@ public class SharedAccessService {
         sharedAccess.setActivatedAt(LocalDateTime.now());
         sharedAccess = sharedAccessRepository.save(sharedAccess);
 
-        // ⭐ Notifier le manager que le developer a accepté
-        if (hasAccount && developer != null) {
-            UserDTO finalDeveloper = developer;
-            sendNotificationSafe(new NotificationRequest(
-                    sharedAccess.getSharedBy(),
-                    "INVITATION_ACCEPTED",
-                    "🤝 Invitation acceptée",
-                    finalDeveloper.getName() + " a accepté votre invitation sur \""
-                            + project.getName() + "\"",
-                    project.getId(),
-                    Map.of(
-                            "developerEmail", sharedAccess.getDeveloperEmail(),
-                            "developerName", finalDeveloper.getName(),
-                            "projectName", project.getName()
-                    )
-            ));
-        } else {
-            // Le developer n'a pas de compte — notifier le manager avec l'email
-            sendNotificationSafe(new NotificationRequest(
-                    sharedAccess.getSharedBy(),
-                    "INVITATION_ACCEPTED",
-                    "🤝 Invitation acceptée",
-                    sharedAccess.getDeveloperEmail() + " a accepté votre invitation sur \""
-                            + project.getName() + "\"",
-                    project.getId(),
-                    Map.of(
-                            "developerEmail", sharedAccess.getDeveloperEmail(),
-                            "projectName", project.getName()
-                    )
-            ));
+        // ⭐ Notifications envoyées de manière non bloquante
+        // On récupère le token du manager via son userId pour les notifs
+        try {
+            String projectName = project.getName();
+
+            if (hasAccount && developer != null) {
+                UserDTO finalDeveloper = developer;
+                sendNotificationSafe(new NotificationRequest(
+                        sharedAccess.getSharedBy(),
+                        "INVITATION_ACCEPTED",
+                        "🤝 Invitation acceptée",
+                        finalDeveloper.getName() + " a accepté votre invitation sur \""
+                                + projectName + "\"",
+                        project.getId(),
+                        Map.of(
+                                "developerEmail", sharedAccess.getDeveloperEmail(),
+                                "developerName", finalDeveloper.getName(),
+                                "projectName", projectName
+                        )
+                ));
+            } else {
+                sendNotificationSafe(new NotificationRequest(
+                        sharedAccess.getSharedBy(),
+                        "INVITATION_ACCEPTED",
+                        "🤝 Invitation acceptée",
+                        sharedAccess.getDeveloperEmail() + " a accepté votre invitation sur \""
+                                + projectName + "\"",
+                        project.getId(),
+                        Map.of(
+                                "developerEmail", sharedAccess.getDeveloperEmail(),
+                                "projectName", projectName
+                        )
+                ));
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Notification manager non envoyée : {}", e.getMessage());
         }
 
         ActivateInvitationResponse response = new ActivateInvitationResponse();
@@ -194,7 +222,6 @@ public class SharedAccessService {
         response.setProjectName(project.getName());
         return response;
     }
-
     @Transactional
     public void revokeAccess(UUID sharedAccessId) {
         SharedAccess sharedAccess = sharedAccessRepository.findById(sharedAccessId)
@@ -227,26 +254,7 @@ public class SharedAccessService {
         }
     }
 
-    // ── Méthodes inchangées ────────────────────────────────────────────────
 
-    public InvitationInfoDTO getInvitationInfo(String token) {
-        SharedAccess sharedAccess = sharedAccessRepository.findByInvitationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
-        Project project = projectRepository.findById(sharedAccess.getProjectId())
-                .orElseThrow(() -> new RuntimeException("Project not found"));
-        String authToken = getAuthToken();
-        UserDTO manager = userServiceClient.getUserById(sharedAccess.getSharedBy(), authToken);
-        InvitationInfoDTO info = new InvitationInfoDTO();
-        info.setProjectName(project.getName());
-        info.setProjectDescription(project.getDescription());
-        info.setManagerName(manager.getName());
-        info.setDeveloperEmail(sharedAccess.getDeveloperEmail());
-        info.setDeveloperName(sharedAccess.getDeveloperEmail());
-        info.setAccessLevel(sharedAccess.getAccessLevel().toString());
-        info.setStatus(sharedAccess.getStatus().toString());
-        info.setInvitedAt(sharedAccess.getInvitedAt());
-        return info;
-    }
 
     public List<SharedAccessDTO> getProjectShares(UUID projectId) {
         List<SharedAccess> shares = sharedAccessRepository.findByProjectId(projectId);

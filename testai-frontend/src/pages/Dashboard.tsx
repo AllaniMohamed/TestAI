@@ -146,26 +146,26 @@ const Dashboard: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
                 <SparklesIcon className="w-4 h-4" />
-                <span>Espace de travail</span>
+                <span>Workspace</span>
               </div>
               <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
-                Tableau de bord
+                Dashboard
               </h1>
               <p className={`text-on-surface-variant font-medium`}>
-                Bienvenue, {userRole === "MANAGER" ? "Manager" : (userRole === "DEVELOPER" ? "Développeur" : "Administrateur")}.
-                Vue d'ensemble de votre activité API." 
+                Welcome, {userRole === "MANAGER" ? "Manager" : (userRole === "DEVELOPER" ? "Developer" : "Administrator")}.
+                Overview of your API activity.
               </p>
             </div>
             <div className="flex gap-3 items-center">
                 <Link to="/projects">
                   <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
-                    Voir tous les projets
+                    View all projects
                   </Button>
                 </Link>
                 {userRole === "MANAGER" && (
                   <Link to="/add-service">
                     <Button icon={<PlusIcon className="w-5 h-5" />}>
-                      Nouveau service
+                      New service
                     </Button>
                   </Link>
                 )}
@@ -175,24 +175,24 @@ const Dashboard: React.FC = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <StatCard
-              title="APIs Connectées"
+              title="Connected APIs"
               value={stats.loading ? "..." : stats.servicesCount.toString()}
               icon={<ServerStackIcon className="w-6 h-6 text-primary" />}
-              trend={userRole === "DEVELOPER" ? "Partagées" : undefined}
+              trend={userRole === "DEVELOPER" ? "Shared" : undefined}
             />
             <StatCard
-              title="Tests Générés"
+              title="Generated Tests"
               value={stats.loading ? "..." : stats.totalTests.toLocaleString()}
               icon={<CheckBadgeIcon className="w-6 h-6 text-primary" />}
             />
             <StatCard
-              title="Score Moyen"
+              title="Average Score"
               value={stats.loading ? "..." : `${stats.averageSuccessRate}%`}
               icon={<SparklesIcon className="w-6 h-6 text-primary" />}
               trend={stats.averageSuccessRate >= 75 ? "Optimal" : stats.averageSuccessRate < 45 ? "Low" : "Normal"}
             />
             <StatCard
-              title="Exécutions aujourd'hui"
+              title="Today's Executions"
               value={stats.loading ? "..." : stats.todayExecutions.toString()}
               icon={<ClockIcon className="w-6 h-6 text-primary" />}
             />
@@ -205,37 +205,37 @@ const Dashboard: React.FC = () => {
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/20 rounded-full blur-3xl"></div>
               <div className="relative z-10">
                 <div className="mb-8">
-                  <h4 className="font-headline text-xl font-bold mb-2">Santé de vos APIs</h4>
-                  <p className="text-slate-400 text-xs">Indicateurs issus de vos dernières exécutions.</p>
+                  <h4 className="font-headline text-xl font-bold mb-2">Health of your APIs</h4>
+                  <p className="text-slate-400 text-xs">Indicators from your latest executions.</p>
                 </div>
                 <div className="space-y-6">
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <div className="flex-1">
-                      <p className="text-xs font-bold">Projets suivis</p>
+                      <p className="text-xs font-bold">Tracked projects</p>
                       <p className="text-[10px] text-slate-400">{stats.servicesCount} service{stats.servicesCount > 1 ? 's' : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 rounded-full bg-primary-fixed-dim"></div>
                     <div className="flex-1">
-                      <p className="text-xs font-bold">Taux de succès</p>
-                      <p className="text-[10px] text-slate-400">{stats.averageSuccessRate}% en moyenne</p>
+                      <p className="text-xs font-bold">Success rate</p>
+                      <p className="text-[10px] text-slate-400">{stats.averageSuccessRate}% on average</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4 opacity-50">
                     <div className="w-2 h-2 rounded-full bg-slate-500"></div>
                     <div className="flex-1">
-                      <p className="text-xs font-bold">Tests disponibles</p>
-                      <p className="text-[10px] text-slate-400">{stats.totalTests} au total</p>
+                      <p className="text-xs font-bold">Available tests</p>
+                      <p className="text-[10px] text-slate-400">{stats.totalTests} in total</p>
                     </div>
                   </div>
                 </div>
                 <div className="mt-10 p-4 bg-white/5 rounded-2xl backdrop-blur-md border border-white/10">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-bold text-slate-300">SCORE GLOBAL</span>
+                    <span className="text-[10px] font-bold text-slate-300">GLOBAL SCORE</span>
                     <span className="text-xs font-bold text-emerald-400">
-                      {stats.averageSuccessRate >= 80 ? "EXCELLENT" : "EN PROGRÈS"}
+                      {stats.averageSuccessRate >= 80 ? "EXCELLENT" : "IN PROGRESS"}
                     </span>
                   </div>
                   <div className="flex items-baseline space-x-2">
@@ -248,7 +248,7 @@ const Dashboard: React.FC = () => {
 
             {/* Dernières exécutions */}
             <div className="bg-surface-container-highest/40 p-6 rounded-3xl border border-primary/5">
-              <h4 className="font-bold text-on-surface text-sm mb-4">Dernières exécutions</h4>
+              <h4 className="font-bold text-on-surface text-sm mb-4">Latest Executions</h4>
               <RecentExecutionsList userId={userId} />
             </div>
           </div>
@@ -292,14 +292,14 @@ const RecentExecutionsList: React.FC<{ userId: string }> = ({ userId }) => {
   }, [userId]);
 
   if (loading) {
-    return <div className="text-center text-on-surface-variant py-4">Chargement...</div>;
+    return <div className="text-center text-on-surface-variant py-4">Loading...</div>;
   }
 
   if (executions.length === 0) {
     return (
       <div className="text-center py-8 text-on-surface-variant">
         <ClockIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">Aucune exécution récente</p>
+        <p className="text-sm">No recent executions</p>
       </div>
     );
   }
@@ -315,12 +315,12 @@ const RecentExecutionsList: React.FC<{ userId: string }> = ({ userId }) => {
             <div>
               <p className="text-xs font-bold">{exec.projectName}</p>
               <p className="text-[10px] text-on-surface-variant">
-                {new Date(exec.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                {new Date(exec.date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold">{exec.passedTests} <span className="text-on-surface-variant">passés</span></p>
+            <p className="text-xs font-bold">{exec.passedTests} <span className="text-on-surface-variant">passed</span></p>
             <p className="text-[10px] text-on-surface-variant">{exec.duration}</p>
           </div>
         </div>

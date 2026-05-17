@@ -21,11 +21,11 @@ interface NavItem {
 }
 
 const MANAGER_NAV: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Projets", href: "/projects", icon: ServerStackIcon },
+  { name: "Overview", href: "/dashboard", icon: HomeIcon },
+  { name: "Projects", href: "/projects", icon: ServerStackIcon },
   { name: "Api Runner  ", href: "/execute-rapide", icon: BoltIcon },
-  { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
+  { name: "Reports", href: "/reports", icon: PresentationChartLineIcon },
+  { name: "Settings", href: "/profile", icon: Cog6ToothIcon },
   { name: "Jenkins CI/CD", href: "/jenkins", icon: PlayCircleIcon },
 
 ];
@@ -126,15 +126,7 @@ const Sidebar: React.FC = () => {
       {/* Section du bas */}
       <div className="px-3 py-4 border-t border-slate-100 space-y-1">
         {/* Bouton Invite uniquement pour Manager */}
-        {isManager && (
-          <button
-            onClick={() => navigate("/projects")}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
-          >
-            <UserPlusIcon className="w-[18px] h-[18px]" />
-            <span>Inviter un membre</span>
-          </button>
-        )}
+        
 
         {/* Documentation */}
         <a

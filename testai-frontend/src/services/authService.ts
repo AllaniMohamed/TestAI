@@ -108,11 +108,13 @@ class AuthService {
       data,
     );
 
-    // Stocker les tokens
     if (response.data.accessToken) {
       sessionStorage.setItem("accessToken", response.data.accessToken);
       sessionStorage.setItem("refreshToken", response.data.refreshToken);
       sessionStorage.setItem("user", JSON.stringify(response.data.user));
+
+      // ⭐ Déclencher l'event pour que NotificationProvider se reconnecte
+      window.dispatchEvent(new Event("auth-changed"));
     }
 
     return response.data;
@@ -161,13 +163,13 @@ class AuthService {
     return response.data;
   }
 
-  /**
-   * Déconnexion
-   */
-  logout() {
+ logout() {
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("refreshToken");
     sessionStorage.removeItem("user");
+
+    // ⭐ Notifier le NotificationProvider pour déconnecter le WebSocket
+    window.dispatchEvent(new Event("auth-changed"));
   }
 
   /**

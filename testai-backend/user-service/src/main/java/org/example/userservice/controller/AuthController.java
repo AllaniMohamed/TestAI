@@ -103,13 +103,7 @@ public class AuthController {
         }
     }
 
-    /**
-     * Déconnexion (côté client uniquement, supprimer le token)
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout() {
-        return ResponseEntity.ok(Map.of("message", "Déconnexion réussie"));
-    }
+   
 
     /**
      * Demander la réinitialisation du mot de passe

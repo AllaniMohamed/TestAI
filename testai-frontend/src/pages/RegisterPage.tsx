@@ -31,29 +31,29 @@ const RegisterPage: React.FC = () => {
   const validate = () => {
     const newErrors: any = {};
 
-    // Nom
+    // Name
     if (formData.name.length < 2) {
-      newErrors.name = "Le nom doit faire au moins 2 caractères";
+      newErrors.name = "Name must be at least 2 characters";
     }
 
     // Email
     if (!formData.email.includes("@")) {
-      newErrors.email = "Email invalide";
+      newErrors.email = "Invalid email";
     }
 
-    // Mot de passe
+    // Password
     if (formData.password.length < 8) {
-      newErrors.password = "Le mot de passe doit faire au moins 8 caractères";
+      newErrors.password = "Password must be at least 8 characters";
     }
 
-    // Confirmation mot de passe
+    // Confirm password
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
-    // Téléphone (optionnel mais si rempli, doit être valide)
+    // Phone (optional but if filled, must be valid)
     if (formData.phoneNumber && formData.phoneNumber.length < 10) {
-      newErrors.phoneNumber = "Numéro de téléphone invalide";
+      newErrors.phoneNumber = "Invalid phone number";
     }
 
     setErrors(newErrors);
@@ -77,7 +77,7 @@ const RegisterPage: React.FC = () => {
         role: "MANAGER",
       });
 
-      // ⭐️ Rediriger vers la page d'attente (pas verify-email directement)
+      // ⭐️ Redirect to waiting page (not verify-email directly)
       navigate("/verification-pending", {
         state: {
           email: formData.email,
@@ -85,10 +85,10 @@ const RegisterPage: React.FC = () => {
         },
       });
     } catch (error: any) {
-      console.error("Erreur inscription:", error);
+      console.error("Registration error:", error);
       setServerError(
         error.response?.data?.message ||
-          "Une erreur est survenue lors de l'inscription. Veuillez réessayer.",
+          "An error occurred during registration. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -97,63 +97,61 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col md:flex-row items-center justify-center p-4 gap-12">
-      {/* Section Avantages */}
+      {/* Benefits Section */}
       <div className="hidden lg:block max-w-md">
         <h2 className="text-4xl font-bold text-gray-900 mb-8 leading-tight">
-          Pourquoi rejoindre <span className="text-primary">TestAI</span> ?
+          Why join <span className="text-primary">TestAI</span>?
         </h2>
         <ul className="space-y-6">
           <li className="flex gap-4">
             <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Gain de temps massif</p>
+              <p className="font-bold">Massive time savings</p>
               <p className="text-gray-600 text-sm">
-                Économisez des heures de rédaction manuelle de tests.
+                Save hours of manual test writing.
               </p>
             </div>
           </li>
           <li className="flex gap-4">
             <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Zéro oubli</p>
+              <p className="font-bold">Zero oversight</p>
               <p className="text-gray-600 text-sm">
-                L'IA teste tous les scénarios, même les plus improbables.
+                AI tests all scenarios, even the most unlikely ones.
               </p>
             </div>
           </li>
           <li className="flex gap-4">
             <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Prêt pour l'entreprise</p>
+              <p className="font-bold">Enterprise-ready</p>
               <p className="text-gray-600 text-sm">
-                Intégration Jenkins et rapports conformes ISO.
+                Jenkins integration and ISO-compliant reports.
               </p>
             </div>
           </li>
         </ul>
       </div>
 
-      {/* Formulaire d'inscription */}
+      {/* Registration Form */}
       <div className="w-full max-w-lg">
         <Link
           to="/"
           className="mb-8 flex items-center text-gray-500 hover:text-primary transition lg:hidden"
         >
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Retour
+          Back
         </Link>
 
         <Card className="shadow-2xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              Créer un compte
+              Create an account
             </h1>
-            <p className="text-gray-500 mt-2">
-              Démarrer votre essai gratuit de 14 jours.
-            </p>
+            
           </div>
 
-          {/* Erreur serveur */}
+          {/* Server error */}
           {serverError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{serverError}</p>
@@ -161,10 +159,10 @@ const RegisterPage: React.FC = () => {
           )}
 
           <form onSubmit={handleRegister} className="space-y-4">
-            {/* Nom */}
+            {/* Name */}
             <Input
-              label="Nom complet"
-              placeholder="Jean Dupont"
+              label="Full name"
+              placeholder="Ghada Ben Salah"
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -176,9 +174,9 @@ const RegisterPage: React.FC = () => {
 
             {/* Email */}
             <Input
-              label="Email professionnel"
+              label="Professional email"
               type="email"
-              placeholder="jean@entreprise.com"
+              placeholder="ghada@company.com"
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
@@ -188,9 +186,9 @@ const RegisterPage: React.FC = () => {
               required
             />
 
-            {/* Téléphone (optionnel) */}
+            {/* Phone (optional) */}
             <Input
-              label="Téléphone (optionnel)"
+              label="Phone number "
               type="tel"
               placeholder="+33612345678"
               value={formData.phoneNumber}
@@ -198,13 +196,14 @@ const RegisterPage: React.FC = () => {
                 setFormData({ ...formData, phoneNumber: e.target.value })
               }
               error={errors.phoneNumber}
-              icon={<PhoneIcon className="h-5 w-5" />}
+              icon={<PhoneIcon className="h-5 w-5"/>}
+              required
             />
 
-            {/* Entreprise (optionnel) */}
+            {/* Company (optional) */}
             <Input
-              label="Entreprise (optionnel)"
-              placeholder="Mon Entreprise"
+              label="Company "
+              placeholder="My Company"
               value={formData.company}
               onChange={(e) =>
                 setFormData({ ...formData, company: e.target.value })
@@ -212,10 +211,10 @@ const RegisterPage: React.FC = () => {
               icon={<BuildingOfficeIcon className="h-5 w-5" />}
             />
 
-            {/* Mots de passe */}
+            {/* Passwords */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Mot de passe"
+                label="Password"
                 type="password"
                 placeholder="••••••••"
                 value={formData.password}
@@ -227,7 +226,7 @@ const RegisterPage: React.FC = () => {
                 required
               />
               <Input
-                label="Confirmer"
+                label="Confirm"
                 type="password"
                 placeholder="••••••••"
                 value={formData.confirmPassword}
@@ -240,36 +239,21 @@ const RegisterPage: React.FC = () => {
               />
             </div>
 
-            {/* Conditions */}
-            <label className="flex items-start gap-2 cursor-pointer mb-6">
-              <input
-                type="checkbox"
-                required
-                className="mt-1 w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
-              />
-              <span className="text-sm text-gray-600">
-                J'accepte les{" "}
-                <a href="#" className="text-primary underline">
-                  conditions d'utilisation
-                </a>{" "}
-                et la politique de confidentialité.
-              </span>
-            </label>
-
-            {/* Bouton */}
+            
+            {/* Button */}
             <Button type="submit" className="w-full" loading={loading}>
-              Créer mon compte
+              Create my account
             </Button>
           </form>
 
-          {/* Lien connexion */}
+          {/* Login link */}
           <p className="mt-8 text-center text-gray-600">
-            Déjà inscrit ?{" "}
+            Already registered?{" "}
             <Link
               to="/login"
               className="font-bold text-primary hover:underline"
             >
-              Connectez-vous
+              Sign in
             </Link>
           </p>
         </Card>

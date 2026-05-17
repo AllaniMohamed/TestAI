@@ -35,7 +35,7 @@ const RegisterInvitationPage: React.FC = () => {
     setError('');
 
     try {
-      // ⭐ Utiliser l'endpoint spécial pour les invitations
+      // ⭐ Use the special invitation endpoint
       await authService.registerWithInvitation({
         email,
         name,
@@ -44,14 +44,14 @@ const RegisterInvitationPage: React.FC = () => {
         invitationToken,
       });
 
-      // Rediriger vers login
+      // Redirect to login
       navigate('/login', {
         state: {
-          message: 'Compte créé avec succès ! Connectez-vous pour accéder aux services partagés.',
+          message: 'Account created successfully! Sign in to access shared services.',
         },
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de l\'inscription');
+      setError(err.response?.data?.message || 'Registration error');
     } finally {
       setLoading(false);
     }
@@ -66,10 +66,10 @@ const RegisterInvitationPage: React.FC = () => {
             <CheckCircleIcon className="h-10 w-10 text-blue-600" />
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 mb-2">
-            Créer votre compte
+            Create your account
           </h1>
           <p className="text-gray-600">
-            Pour accéder au service <strong>{projectName}</strong>
+            To access the service <strong>{projectName}</strong>
           </p>
         </div>
 
@@ -91,7 +91,7 @@ const RegisterInvitationPage: React.FC = () => {
           {/* Name */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              Nom complet
+              Full name
             </label>
             <input
               type="text"
@@ -106,7 +106,7 @@ const RegisterInvitationPage: React.FC = () => {
           {/* Password */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              Mot de passe
+              Password
             </label>
             <input
               type="password"
@@ -122,7 +122,7 @@ const RegisterInvitationPage: React.FC = () => {
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              Téléphone
+              Phone
             </label>
             <input
               type="tel"
@@ -142,7 +142,7 @@ const RegisterInvitationPage: React.FC = () => {
 
           {/* Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800">
-            <strong>Note :</strong> Votre compte sera créé avec le rôle <strong>DEVELOPER</strong>
+            <strong>Note:</strong> Your account will be created with the <strong>DEVELOPER</strong> role.
           </div>
 
           {/* Submit */}
@@ -151,7 +151,7 @@ const RegisterInvitationPage: React.FC = () => {
             loading={loading}
             className="w-full"
           >
-            {loading ? 'Création...' : 'Créer mon compte'}
+            {loading ? 'Creating...' : 'Create my account'}
           </Button>
         </form>
       </div>

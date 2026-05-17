@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { notificationService } from "../services/api"; // ⭐ Import du service
+import { notificationService } from "../services/api";
 
 interface Notification {
   id: string;
@@ -34,46 +34,105 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [connected, setConnected] = useState(false);
 
-  const userStr = sessionStorage.getItem("user");
-  const user = userStr ? JSON.parse(userStr) : null;
-  const userId = user?.id;
-  // ⚠️ Le token est stocké sous "accessToken" dans votre app
-  const token = sessionStorage.getItem("accessToken");
+  // ⭐ Réactifs avec useState — lus depuis sessionStorage au montage
+  const [userId, setUserId] = useState<string | null>(() => {
+    try {
+      const userStr = sessionStorage.getItem("user");
+      return userStr ? JSON.parse(userStr)?.id : null;
+    } catch {
+      return null;
+    }
+  });
 
-  // Chargement initial des notifications via le service
+  const [token, setToken] = useState<string | null>(
+    () => sessionStorage.getItem("accessToken")
+  );
+
+  // ⭐ Écouter les changements auth (login / logout)
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      try {
+        const userStr = sessionStorage.getItem("user");
+        const newUserId = userStr ? JSON.parse(userStr)?.id : null;
+        const newToken = sessionStorage.getItem("accessToken");
+        setUserId(newUserId);
+        setToken(newToken);
+
+        // Si déconnexion, vider les notifications
+        if (!newUserId) {
+          setNotifications([]);
+          setConnected(false);
+        }
+      } catch (e) {
+        console.error("Erreur parsing user depuis sessionStorage", e);
+      }
+    };
+
+    // "storage" fonctionne entre onglets, "auth-changed" dans le même onglet
+    window.addEventListener("storage", handleAuthChanged);
+    window.addEventListener("auth-changed", handleAuthChanged);
+
+    return () => {
+      window.removeEventListener("storage", handleAuthChanged);
+      window.removeEventListener("auth-changed", handleAuthChanged);
+    };
+  }, []);
+
+  // ⭐ Chargement initial des notifications depuis l'API REST
   useEffect(() => {
     if (!userId) return;
-    notificationService.getUserNotifications(userId)
+
+    notificationService
+      .getUserNotifications(userId)
       .then(res => setNotifications(res.data))
-      .catch(err => console.error("Erreur chargement notifications", err));
+      .catch(err => console.error("Erreur chargement notifications:", err));
   }, [userId]);
 
-  // Connexion WebSocket STOMP
+  // ⭐ Connexion WebSocket STOMP
   useEffect(() => {
     if (!userId || !token) return;
+
+    console.log("🔌 Connexion WebSocket pour userId:", userId);
 
     const client = new Client({
       webSocketFactory: () => new SockJS("http://localhost:8089/ws"),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
+      reconnectDelay: 5000, // Reconnexion automatique toutes les 5s si coupure
       onConnect: () => {
         setConnected(true);
+        console.log("✅ WebSocket connecté");
+
         client.subscribe(
           `/user/${userId}/queue/notifications`,
           (message) => {
-            const notification: Notification = JSON.parse(message.body);
-            setNotifications(prev => [notification, ...prev]);
+            try {
+              const notification: Notification = JSON.parse(message.body);
+              console.log("🔔 Nouvelle notification reçue:", notification);
+              setNotifications(prev => [notification, ...prev]);
+            } catch (e) {
+              console.error("Erreur parsing notification WebSocket:", e);
+            }
           }
         );
       },
-      onDisconnect: () => setConnected(false),
-      onStompError: (frame) => console.error("STOMP error:", frame),
+      onDisconnect: () => {
+        setConnected(false);
+        console.log("❌ WebSocket déconnecté");
+      },
+      onStompError: (frame) => {
+        console.error("STOMP error:", frame);
+        setConnected(false);
+      },
     });
 
     client.activate();
-    return () => { client.deactivate(); };
-  }, [userId, token]);
+
+    return () => {
+      client.deactivate();
+    };
+  }, [userId, token]); // ⭐ Se reconnecte si userId ou token changent
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -84,7 +143,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
     } catch (error) {
-      console.error("Erreur marquage lecture", error);
+      console.error("Erreur marquage lecture:", error);
     }
   }, []);
 
@@ -94,7 +153,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await notificationService.markAllAsRead(userId);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (error) {
-      console.error("Erreur marquage tout lu", error);
+      console.error("Erreur marquage tout lu:", error);
     }
   }, [userId]);
 

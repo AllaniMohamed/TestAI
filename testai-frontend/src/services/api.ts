@@ -310,7 +310,7 @@ export const userService = {
   getAllUsers: (): Promise<AxiosResponse<User[]>> =>
     api.get("/user-service/api/users/all"),
 
-  getUserById: (userId: string): Promise<AxiosResponse<User>> =>
+  getUserById: (userId: string): Promise<AxiosResponse<UserProfile>> =>
     api.get(`/user-service/api/users/${userId}`),
 
   getCurrentUser: (): Promise<AxiosResponse<User>> =>
@@ -619,6 +619,19 @@ export interface ProjectExecutionResponse {
   executedAt: string;
   completedAt: string;
 }
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string | null;       // ← manquait dans User
+  company: string;
+  phoneNumber: string;
+  isActive: boolean;
+  createdAt: string;           // ← manquait dans User
+  lastLogin: string;           // ← manquait dans User
+}
+
 
 export interface TestExecution {
   id: string;
@@ -1054,6 +1067,7 @@ export type {
   SharedProject,
   InvitationInfo,
   ProjectCredentials,
+  
 };
 export interface RegisterWithInvitationRequest {
   email: string;

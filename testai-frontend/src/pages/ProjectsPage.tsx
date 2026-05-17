@@ -57,7 +57,7 @@ const AutomationModal: React.FC<{
       });
       onSaved();
     } catch (error) {
-      alert("Erreur lors de la sauvegarde de la configuration Jenkins.");
+      alert("Error saving Jenkins configuration.");
     } finally {
       setSaving(false);
     }
@@ -66,11 +66,11 @@ const AutomationModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-        <h2 className="text-xl font-bold mb-4">Configurer l'automation Jenkins</h2>
-        <p className="text-sm text-slate-500 mb-4">Projet : {projectName}</p>
+        <h2 className="text-xl font-bold mb-4">Configure Jenkins Automation</h2>
+        <p className="text-sm text-slate-500 mb-4">Project: {projectName}</p>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold mb-1">URL du job Jenkins</label>
+            <label className="block text-xs font-semibold mb-1">Jenkins job URL</label>
             <input
               type="text"
               value={jenkinsUrl}
@@ -79,7 +79,7 @@ const AutomationModal: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Planification (cron)</label>
+            <label className="block text-xs font-semibold mb-1">Schedule (cron)</label>
             <input
               type="text"
               value={schedule}
@@ -88,7 +88,7 @@ const AutomationModal: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Seuil de succès (%)</label>
+            <label className="block text-xs font-semibold mb-1">Success threshold (%)</label>
             <input
               type="number"
               min={0}
@@ -104,14 +104,14 @@ const AutomationModal: React.FC<{
             onClick={onClose}
             className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
           >
-            Annuler
+            Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50"
           >
-            {saving ? "Enregistrement..." : "Activer l'automation"}
+            {saving ? "Saving..." : "Enable automation"}
           </button>
         </div>
       </div>
@@ -158,7 +158,7 @@ const ProjectsPage: React.FC = () => {
         if (!Array.isArray(allProjects)) {
           console.error("Données invalides depuis getAllProjects :", allProjects);
           allProjects = [];
-          setError("Format de données invalide. Contactez l'administrateur.");
+          setError("Invalid data format. Contact the administrator.");
         }
         const userProjects = allProjects.filter((p) => p.userId === userId);
         mappedServices = userProjects.map((p) => ({
@@ -177,7 +177,7 @@ const ProjectsPage: React.FC = () => {
         if (!Array.isArray(sharedProjects)) {
           console.error("Données invalides depuis getSharedProjects :", sharedProjects);
           sharedProjects = [];
-          setError("Format de données invalide. Contactez l'administrateur.");
+          setError("Invalid data format. Contact the administrator.");
         }
         mappedServices = sharedProjects.map((sp) => ({
           id: sp.projectId,
@@ -198,7 +198,7 @@ const ProjectsPage: React.FC = () => {
       setServices(mappedServices);
     } catch (err) {
       console.error("Failed to fetch projects:", err);
-      setError("Impossible de charger les projets. Veuillez réessayer.");
+      setError("Unable to load projects. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -212,7 +212,7 @@ const ProjectsPage: React.FC = () => {
       await fetchData();
     } catch (error) {
       console.error("Erreur lors du toggle:", error);
-      alert("Impossible de modifier le statut du projet");
+      alert("Unable to change project status");
     }
   };
 
@@ -234,17 +234,17 @@ const ProjectsPage: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
               <h1 className="text-3xl font-headline font-bold tracking-tight">
-                {userRole === "DEVELOPER" ? "Projets partagés" : "Mes projets"}
+                {userRole === "DEVELOPER" ? "Shared Projects" : "My Projects"}
               </h1>
               <p className="text-on-surface-variant mt-1">
                 {userRole === "DEVELOPER"
-                  ? "Accédez aux API qui vous ont été partagées"
-                  : "Gérez l'ensemble de vos API et services"}
+                  ? "Access APIs shared with you"
+                  : "Manage all your APIs and services"}
               </p>
             </div>
             {userRole === "MANAGER" && (
               <Link to="/add-service">
-                <Button icon={<PlusIcon className="w-5 h-5" />}>Nouveau projet</Button>
+                <Button icon={<PlusIcon className="w-5 h-5" />}>New project</Button>
               </Link>
             )}
           </div>
@@ -256,7 +256,7 @@ const ProjectsPage: React.FC = () => {
             </span>
             <input
               type="text"
-              placeholder="Rechercher un projet..."
+              placeholder="Search a project..."
               className="pl-12 pr-6 py-2.5 w-full border border-outline-variant/30 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -274,7 +274,7 @@ const ProjectsPage: React.FC = () => {
             <div className="bg-error-container/20 p-6 rounded-xl border border-error/10 text-center">
               <p className="text-error font-medium mb-4">{error}</p>
               <Button onClick={() => window.location.reload()} variant="outline">
-                Réessayer
+                Retry
               </Button>
             </div>
           ) : filteredServices.length === 0 ? (
@@ -282,15 +282,15 @@ const ProjectsPage: React.FC = () => {
               <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-4">
                 <ServerStackIcon className="w-8 h-8 text-outline" />
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Aucun projet</h3>
+              <h3 className="text-xl font-bold text-on-surface mb-2">No projects</h3>
               <p className="text-on-surface-variant max-w-sm">
                 {userRole === "DEVELOPER"
-                  ? "Vous n'avez pas encore de projets partagés avec vous."
-                  : "Commencez par importer votre première API."}
+                  ? "You have no shared projects yet."
+                  : "Start by importing your first API."}
               </p>
               {userRole === "MANAGER" && (
                 <Link to="/add-service" className="mt-6">
-                  <Button>Créer un projet</Button>
+                  <Button>Create a project</Button>
                 </Link>
               )}
             </div>
@@ -301,7 +301,7 @@ const ProjectsPage: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Projets actifs
+                    Active projects
                     <Badge variant="success" className="ml-2">
                       {activeProjects.length}
                     </Badge>
@@ -324,7 +324,7 @@ const ProjectsPage: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-bold text-on-surface-variant mb-6 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                    Projets désactivés
+                    Disabled projects
                     <Badge variant="default" className="ml-2">
                       {inactiveProjects.length}
                     </Badge>
@@ -410,7 +410,7 @@ const ProjectCard: React.FC<{
                       ? "bg-orange-50 text-orange-600 border-orange-200"
                       : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-orange-50 hover:text-orange-500"
                   }`}
-                  title="Configurer l'automation Jenkins"
+                  title="Configure Jenkins Automation"
                 >
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
                     <rect width="24" height="24" rx="4" fill={automationEnabled ? "#D33833" : "#94a3b8"}/>
@@ -450,7 +450,7 @@ const ProjectCard: React.FC<{
 
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs">
-              <span className="font-medium text-on-surface-variant">Couverture des tests</span>
+              <span className="font-medium text-on-surface-variant">Test coverage</span>
               <span className="font-bold text-primary">88%</span>
             </div>
             <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
@@ -471,7 +471,7 @@ const ProjectCard: React.FC<{
               </Badge>
               {!isActive && (
                 <Badge variant="default" className="bg-slate-200 text-slate-700">
-                  Désactivé
+                  Disabled
                 </Badge>
               )}
             </div>

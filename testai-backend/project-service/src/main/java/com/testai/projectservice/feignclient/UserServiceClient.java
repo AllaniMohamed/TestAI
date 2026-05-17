@@ -41,10 +41,15 @@ public interface UserServiceClient {
             @PathVariable("email") String email,
             @RequestHeader("Authorization") String token
     );
+    @GetMapping("/api/users/email/{email}/public")
+    UserDTO getUserByEmailPublic(@PathVariable("email") String email);
 
     @PostMapping("/api/email/share-invitation")
     void sendShareInvitation(
             @RequestBody SendShareInvitationRequest request,
             @RequestHeader("Authorization") String token
     );
+    // UserServiceClient.java — ajouter une méthode sans header Authorization
+    @GetMapping("/api/users/{userId}/public")
+    UserDTO getUserByIdPublic(@PathVariable("userId") UUID userId);
 }

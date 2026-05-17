@@ -86,8 +86,8 @@ const ReportsPage: React.FC = () => {
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-on-surface">Analyses & Rapports</h1>
-              <p className="text-on-surface-variant">Performances globales de vos APIs sur la période sélectionnée.</p>
+              <h1 className="text-3xl font-headline font-bold text-on-surface">Analysis & Reports</h1>
+              <p className="text-on-surface-variant">Global performance of your APIs over the selected period.</p>
             </div>
             <div className="flex gap-3">
               {/* <div className="flex bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-1">
@@ -95,20 +95,20 @@ const ReportsPage: React.FC = () => {
                 <PeriodBtn active={period === '30d'} onClick={() => setPeriod('30d')}>30j</PeriodBtn>
                 <PeriodBtn active={period === '90d'} onClick={() => setPeriod('90d')}>90j</PeriodBtn>
               </div> */}
-              <Button variant="outline" icon={<ArrowDownTrayIcon className="w-5 h-5" />}>Exporter</Button>
+              <Button variant="outline" icon={<ArrowDownTrayIcon className="w-5 h-5" />}>Export</Button>
             </div>
           </div>
 
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-            <KPI icon={<ChartBarSquareIcon className="w-6 h-6" />} title="Total exécutions" value={globalStats.ALL?.toString() || '0'} />
-            <KPI icon={<ShieldCheckIcon className="w-6 h-6" />} title="Taux de réussite" value={globalStats.SUCCESS?.toFixed(1) + '%' || '0%'} />
-            <KPI icon={<BugAntIcon className="w-6 h-6" />} title="Bugs détectés" value={globalStats.BUGS?.toString() || '0'} />
+            <KPI icon={<ChartBarSquareIcon className="w-6 h-6" />} title="Total executions" value={globalStats.ALL?.toString() || '0'} />
+            <KPI icon={<ShieldCheckIcon className="w-6 h-6" />} title="Success rate" value={globalStats.SUCCESS?.toFixed(1) + '%' || '0%'} />
+            <KPI icon={<BugAntIcon className="w-6 h-6" />} title="Bugs detected" value={globalStats.BUGS?.toString() || '0'} />
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-            <Card title="Volume d'executions quotidiens">
+            <Card title="Daily execution volume">
               <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
@@ -125,7 +125,7 @@ const ReportsPage: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             </Card>
-            <Card title="Stabilité des services (%)">
+            <Card title="Service stability (%)">
                <div className="h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
@@ -147,16 +147,16 @@ const ReportsPage: React.FC = () => {
           {/* History Table */}
           <Card className="p-0 overflow-hidden">
             <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant/20">
-              <h3 className="text-lg font-headline font-bold">Historique des exécutions</h3>
+              <h3 className="text-lg font-headline font-bold">Execution history</h3>
             </div>
             <table className="w-full text-left">
               <thead className="bg-surface-container-low">
                 <tr>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Service</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Passed Tests</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Durée</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Date de dernière exécution</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Rapport</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Duration</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Last execution date</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Report</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
@@ -167,7 +167,7 @@ const ReportsPage: React.FC = () => {
                     <td className="px-6 py-4 text-on-surface-variant">{i.duration}</td>
                     <td className="px-6 py-4 text-on-surface-variant text-sm">{formatDate(i.date)}</td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-primary text-sm font-bold hover:underline" onClick={() => setSelectedReport(i.id)}>Ouvrir</button>
+                      <button className="text-primary text-sm font-bold hover:underline" onClick={() => setSelectedReport(i.id)}>Open</button>
                     </td>
                   </tr>
                 ))}
@@ -188,7 +188,7 @@ const ReportsPage: React.FC = () => {
   );
 };
 
-// Sous-composants (adaptés au thème)
+// Sub-components (theme adapted)
 const KPI: React.FC<{ icon: React.ReactNode, title: string, value: string }> = ({ icon, title, value }) => (
   <Card className="flex flex-col gap-2 border-l-4 border-l-primary">
     <div className="flex justify-between items-start">

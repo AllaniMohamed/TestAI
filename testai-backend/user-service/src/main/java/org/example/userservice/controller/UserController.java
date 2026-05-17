@@ -206,4 +206,14 @@ public class UserController {
             return ResponseEntity.badRequest().body(map);
         }
     }
+    // APRÈS (correct)
+    @GetMapping("/{id}/public")
+    public ResponseEntity<UserDTO> getUserByIdPublic(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @GetMapping("/email/{email}/public")
+    public ResponseEntity<UserDTO> getUserByEmailPublic(@PathVariable String email) {
+        return ResponseEntity.ok(userService.getUserByEmail(email));
+    }
 }

@@ -4,10 +4,11 @@ import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import { userService } from "../services/api";
 import { CameraIcon, UserCircleIcon, ShieldCheckIcon, KeyIcon } from "@heroicons/react/24/outline";
+import type { UserProfile } from "../services/api";
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");

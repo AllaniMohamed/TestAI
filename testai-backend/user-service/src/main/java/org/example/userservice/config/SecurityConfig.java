@@ -42,7 +42,10 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api-docs/**"
                         ).permitAll()
-                        // Endpoints d'administration
+                        .requestMatchers("/api/users/*/public").permitAll()
+                        .requestMatchers("/api/users/email/*/public").permitAll()
+                        .requestMatchers(" /api/users/avatars/**").permitAll()
+                        // Endpoints d'admianistration
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // ⭐ Endpoints utilisés par le project-service
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "MANAGER","DEVELOPER")
