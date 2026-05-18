@@ -20,8 +20,8 @@ interface NavItem {
 
 const ADMIN_NAV: NavItem[] = [
   { name: "Dashboard", href: "/", icon: HomeIcon },
-  { name: "Utilisateurs", href: "/users", icon: UserIcon },
-  { name: "Projets", href: "/projects-stats", icon: NewspaperIcon },
+  { name: "Users", href: "/users", icon: UserIcon },
+  { name: "Projects", href: "/projects-stats", icon: NewspaperIcon },
   { name: "Service Health", href: "/service-health", icon: ServerStackIcon },
 ];  
 

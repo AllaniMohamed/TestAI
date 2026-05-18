@@ -101,16 +101,16 @@ const TestExecutionPage: React.FC = () => {
           setIsRunning(false);
           setExecutionResult(result);
           setProgress(100);
-          addLog(`✅ Exécution terminée en ${result.totalDurationMs} ms.`, 'success');
-          addLog(`📊 Résultats : ${result.testsPassed} succès, ${result.testsFailed} échecs, ${result.testsError} erreurs.`);
-          addLog(`📈 Taux de succès : ${result.successRate.toFixed(1)}%`);
+          addLog(`✅ Execution completed in ${result.totalDurationMs} ms.`, 'success');
+          addLog(`📊 Results : ${result.testsPassed} passed, ${result.testsFailed} failed, ${result.testsError} errors.`);
+          addLog(`📈 Success rate : ${result.successRate.toFixed(1)}%`);
           if (result.failedEndpoints && result.failedEndpoints.length > 0) {
-            addLog(`⚠️ Endpoints avec échecs :`, 'error');
+            addLog(`⚠️ Endpoints with failures :`, 'error');
             result.failedEndpoints.forEach(ep => {
-              addLog(`   - ${ep.method} ${ep.path} : ${ep.failed} échec(s) sur ${ep.totalTests}`, 'error');
+              addLog(`   - ${ep.method} ${ep.path} : ${ep.failed} failure(s) out of ${ep.totalTests}`, 'error');
             });
           } else {
-            addLog(`🎉 Aucun échec ! Tous les tests sont passés.`, 'success');
+            addLog(`🎉 No failures ! All tests passed.`, 'success');
           }
         } else {
           // Progression approximative (basée sur le nombre de logs)
@@ -126,7 +126,7 @@ const TestExecutionPage: React.FC = () => {
   const runTests = async () => {
     const userId = getCurrentUserId();
     if (!userId) {
-      addLog('Utilisateur non identifié. Veuillez vous reconnecter.', 'error');
+      addLog('User not identified. Please log in again.', 'error');
       return;
     }
 
@@ -143,13 +143,13 @@ const TestExecutionPage: React.FC = () => {
       });
       const execId = startRes.data.executionId;
       setExecutionId(execId);
-      addLog(`🚀 Exécution démarrée (ID: ${execId})`);
-      addLog(`📋 ${endpoints.length} endpoints détectés.`);
-      addLog(`🌐 URL de base : ${projectUrl}`);
+      addLog(`🚀 Execution started (ID: ${execId})`);
+      addLog(`📋 ${endpoints.length} endpoints detected.`);
+      addLog(`🌐 Base URL : ${projectUrl}`);
       
       startPolling(execId);
     } catch (error: any) {
-      addLog(`❌ Erreur : ${error.message || 'Impossible de contacter le service d’exécution.'}`, 'error');
+      addLog(`❌ Error : ${error.message || 'Unable to contact the execution service.'}`, 'error');
       setIsRunning(false);
     }
   };
@@ -181,7 +181,7 @@ const TestExecutionPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest mb-1">
                 <ServerStackIcon className="w-4 h-4" />
-                <span>Exécution de tests</span>
+                <span>Test Execution</span>
               </div>
               <h1 className="text-3xl font-headline font-bold text-on-surface tracking-tight">{projectName}</h1>
             </div>
@@ -193,10 +193,10 @@ const TestExecutionPage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-4 space-y-6">
-              <Card title="Détails du projet">
+              <Card title="Project Details">
                 <div className="space-y-3">
-                  <div><p className="text-xs font-bold text-on-surface-variant uppercase">Nom</p><p className="text-on-surface font-medium">{projectName}</p></div>
-                  <div><p className="text-xs font-bold text-on-surface-variant uppercase">URL de base</p><p className="text-on-surface font-mono text-sm break-all">{projectUrl}</p></div>
+                  <div><p className="text-xs font-bold text-on-surface-variant uppercase">Name</p><p className="text-on-surface font-medium">{projectName}</p></div>
+                  <div><p className="text-xs font-bold text-on-surface-variant uppercase">Base URL</p><p className="text-on-surface font-mono text-sm break-all">{projectUrl}</p></div>
                   <div><p className="text-xs font-bold text-on-surface-variant uppercase">Endpoints</p>
                     <div className="max-h-64 overflow-y-auto space-y-1 mt-2">
                       {endpoints.map(ep => (
@@ -210,14 +210,14 @@ const TestExecutionPage: React.FC = () => {
                 </div>
               </Card>
               <Button className="w-full" onClick={runTests} loading={isRunning} disabled={isRunning || endpoints.length === 0} icon={<PlayIcon className="w-5 h-5" />}>
-                {isRunning ? 'Exécution en cours...' : 'Exécuter tous les tests'}
+                {isRunning ? 'Execution in progress...' : 'Run all tests'}
               </Button>
             </div>
 
             <div className="lg:col-span-8 space-y-6">
-              <Card title="Console d'exécution" className="overflow-hidden">
+              <Card title="Execution console" className="overflow-hidden">
                 <div ref={terminalRef} className="bg-inverse-surface rounded-xl p-5 font-mono text-sm h-[450px] overflow-y-auto shadow-inner">
-                  {logs.length === 0 ? <p className="text-on-primary-container/60 italic">En attente de lancement...</p> : logs.map((log, i) => {
+                  {logs.length === 0 ? <p className="text-on-primary-container/60 italic">Waiting for launch...</p> : logs.map((log, i) => {
                     let colorClass = 'text-on-primary-container';
                     if (log.includes('✅')) colorClass = 'text-emerald-400';
                     else if (log.includes('❌') || log.includes('⚠️')) colorClass = 'text-red-400';
@@ -236,15 +236,15 @@ const TestExecutionPage: React.FC = () => {
                   </div>
                   <div className="bg-surface-container-lowest p-4 rounded-xl border border-emerald-500/20 flex items-center gap-3">
                     <div className="p-2 bg-emerald-50 rounded-lg"><CheckCircleIcon className="w-6 h-6 text-emerald-600" /></div>
-                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Réussis</p><p className="text-2xl font-bold text-emerald-600">{executionResult.testsPassed}</p></div>
+                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Passed</p><p className="text-2xl font-bold text-emerald-600">{executionResult.testsPassed}</p></div>
                   </div>
                   <div className="bg-surface-container-lowest p-4 rounded-xl border border-red-500/20 flex items-center gap-3">
                     <div className="p-2 bg-red-50 rounded-lg"><XCircleIcon className="w-6 h-6 text-red-600" /></div>
-                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Échoués</p><p className="text-2xl font-bold text-red-600">{executionResult.testsFailed}</p></div>
+                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Failed</p><p className="text-2xl font-bold text-red-600">{executionResult.testsFailed}</p></div>
                   </div>
                   <div className="bg-surface-container-lowest p-4 rounded-xl border border-yellow-500/20 flex items-center gap-3">
                     <div className="p-2 bg-yellow-50 rounded-lg"><ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" /></div>
-                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Erreurs</p><p className="text-2xl font-bold text-yellow-600">{executionResult.testsError}</p></div>
+                    <div><p className="text-xs font-bold text-on-surface-variant uppercase">Errors</p><p className="text-2xl font-bold text-yellow-600">{executionResult.testsError}</p></div>
                   </div>
                 </div>
               )}

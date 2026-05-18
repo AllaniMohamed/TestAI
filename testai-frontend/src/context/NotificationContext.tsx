@@ -64,7 +64,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setConnected(false);
         }
       } catch (e) {
-        console.error("Erreur parsing user depuis sessionStorage", e);
+        console.error("Erreur parsing user from sessionStorage", e);
       }
     };
 
@@ -85,7 +85,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     notificationService
       .getUserNotifications(userId)
       .then(res => setNotifications(res.data))
-      .catch(err => console.error("Erreur chargement notifications:", err));
+      .catch(err => console.error("Error loading notifications:", err));
   }, [userId]);
 
   // ⭐ Connexion WebSocket STOMP
@@ -109,10 +109,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           (message) => {
             try {
               const notification: Notification = JSON.parse(message.body);
-              console.log("🔔 Nouvelle notification reçue:", notification);
+              console.log("🔔 New notification received:", notification);
               setNotifications(prev => [notification, ...prev]);
             } catch (e) {
-              console.error("Erreur parsing notification WebSocket:", e);
+              console.error("Error parsing notification WebSocket:", e);
             }
           }
         );
@@ -143,7 +143,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
     } catch (error) {
-      console.error("Erreur marquage lecture:", error);
+      console.error("Error marking notification as read:", error);
     }
   }, []);
 
@@ -153,7 +153,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await notificationService.markAllAsRead(userId);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (error) {
-      console.error("Erreur marquage tout lu:", error);
+      console.error("Error marking all notifications as read:", error);
     }
   }, [userId]);
 

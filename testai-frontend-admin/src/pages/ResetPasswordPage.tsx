@@ -26,17 +26,17 @@ const ResetPasswordPage: React.FC = () => {
     e.preventDefault();
 
     if (!token) {
-      setError("Token manquant. Veuillez demander un nouveau lien.");
+      setError("Token missing. Please request a new link.");
       return;
     }
 
     if (formData.newPassword.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères");
+      setError("The password must be at least 8 characters long");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError("The passwords do not match");
       return;
     }
 
@@ -56,14 +56,14 @@ const ResetPasswordPage: React.FC = () => {
       setTimeout(() => {
         navigate("/login", {
           state: {
-            message: "Mot de passe réinitialisé ! Vous pouvez vous connecter.",
+            message: "Password reset successfully! You can now log in.",
           },
         });
       }, 2000);
     } catch (error: any) {
       setError(
         error.response?.data?.message ||
-          "Une erreur est survenue. Le lien a peut-être expiré.",
+          "An error occurred. The link may have expired.",
       );
     } finally {
       setLoading(false);
@@ -80,13 +80,13 @@ const ResetPasswordPage: React.FC = () => {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Mot de passe réinitialisé !
+              Password Reset Successfully!
             </h1>
 
             <p className="text-gray-600">
-              Votre mot de passe a été modifié avec succès.
+              Your password has been updated successfully.
               <br />
-              Redirection vers la connexion...
+              Redirecting to login...
             </p>
           </Card>
         </div>
@@ -100,10 +100,10 @@ const ResetPasswordPage: React.FC = () => {
         <Card className="shadow-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              Nouveau mot de passe
+              New Password
             </h1>
             <p className="text-gray-500 mt-2">
-              Choisissez un mot de passe sécurisé
+              Choose a secure password
             </p>
           </div>
 
@@ -115,7 +115,7 @@ const ResetPasswordPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="Nouveau mot de passe"
+              label="New Password"
               type="password"
               placeholder="••••••••"
               required
@@ -127,7 +127,7 @@ const ResetPasswordPage: React.FC = () => {
             />
 
             <Input
-              label="Confirmer le mot de passe"
+              label="Confirm New Password"
               type="password"
               placeholder="••••••••"
               required
@@ -140,7 +140,7 @@ const ResetPasswordPage: React.FC = () => {
 
             <div className="pt-2">
               <Button type="submit" className="w-full" loading={loading}>
-                Réinitialiser le mot de passe
+                Reset Password
               </Button>
             </div>
           </form>

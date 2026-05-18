@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
           navigate("/verify-phone", { state: { email } });
         }, 2000);
       } else {
-        setError(errorMessage || "Email or password incorrect.");
+        setError(errorMessage || "Incorrect email or password.");
       }
     } finally {
       setLoading(false);

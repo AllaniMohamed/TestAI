@@ -8,8 +8,7 @@ import Input from '../components/common/Input';
 import { 
   DevicePhoneMobileIcon, 
   CheckCircleIcon,
-  ArrowPathIcon,
-  XMarkIcon
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import authService from '../services/authService';
 
@@ -59,7 +58,7 @@ const VerifyPhonePage: React.FC = () => {
 
   const handleResendCode = async () => {
     if (!email) {
-      setError('Email manquant.');
+      setError('Email missing.');
       return;
     }
 
@@ -70,13 +69,13 @@ const VerifyPhonePage: React.FC = () => {
       const response = await authService.resendPhoneVerification(email);
       // Message de succès temporaire
       setError(''); 
-      const successMsg = response.message || '✅ Nouveau code envoyé !';
+      const successMsg = response.message || '✅ New code sent !';
       setError('✅ ' + successMsg);
       setTimeout(() => setError(''), 3000);
     } catch (error: any) {
       setError(
         error.response?.data?.message || 
-        'Impossible de renvoyer le code.'
+        'Impossible to resend the code.'
       );
     } finally {
       setResending(false);
@@ -86,7 +85,7 @@ const VerifyPhonePage: React.FC = () => {
   const handleModalOk = () => {
     sessionStorage.removeItem('pendingEmail');
     navigate('/login', { 
-      state: { message: 'Compte activé ! Vous pouvez vous connecter.' } 
+      state: { message: 'Account activated! You can now log in.' } 
     });
   };
 
@@ -102,17 +101,17 @@ const VerifyPhonePage: React.FC = () => {
 
           {/* Titre */}
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            🎉 Félicitations !
+            🎉 Congratulations !
           </h2>
 
           {/* Message */}
           <div className="space-y-3 mb-8">
             <p className="text-lg text-gray-700 font-semibold">
-              Email et téléphone vérifiés
+              Email and phone verified
             </p>
             <p className="text-gray-600">
-              Votre compte TestAI est maintenant entièrement activé.
-              Vous pouvez vous connecter et commencer à utiliser la plateforme.
+              Your TestAI account is now fully activated.
+              You can log in and start using the platform.
             </p>
           </div>
 
@@ -121,7 +120,7 @@ const VerifyPhonePage: React.FC = () => {
             onClick={handleModalOk}
             className="w-full text-lg py-3"
           >
-            OK, se connecter
+            OK, login
           </Button>
         </div>
       </div>
@@ -143,14 +142,14 @@ const VerifyPhonePage: React.FC = () => {
           {/* Titre */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Vérifiez votre téléphone
+              Verify your phone number
             </h1>
             <p className="text-gray-600">
-              Un code à 6 chiffres a été envoyé par SMS
+              A 6-digit code has been sent by SMS
               {email && (
                 <>
                   <br />
-                  au numéro associé à <strong className="text-gray-900">{email}</strong>
+                  to the number associated with <strong className="text-gray-900">{email}</strong>
                 </>
               )}
             </p>
@@ -161,7 +160,7 @@ const VerifyPhonePage: React.FC = () => {
             {/* Code SMS */}
             <div>
               <Input
-                label="Code de vérification"
+                label="Verification code"
                 type="text"
                 placeholder="123456"
                 value={code}
@@ -184,7 +183,7 @@ const VerifyPhonePage: React.FC = () => {
               
               {!error && (
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  Entrez le code à 6 chiffres reçu par SMS
+                  Enter the 6-digit code received by SMS
                 </p>
               )}
             </div>
@@ -196,7 +195,7 @@ const VerifyPhonePage: React.FC = () => {
               loading={loading}
               disabled={code.length !== 6}
             >
-              Vérifier mon téléphone
+              Verify my phone number
             </Button>
 
             {/* Renvoyer le code */}
@@ -208,7 +207,7 @@ const VerifyPhonePage: React.FC = () => {
                 className="text-sm text-primary hover:underline disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
               >
                 <ArrowPathIcon className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
-                {resending ? 'Envoi en cours...' : 'Renvoyer le code'}
+                {resending ? 'Sending...' : 'Resend code'}
               </button>
             </div>
           </form>
@@ -219,7 +218,7 @@ const VerifyPhonePage: React.FC = () => {
               onClick={() => navigate('/login')}
               className="text-sm text-gray-500 hover:text-primary transition"
             >
-              Retour à la connexion
+              Return to login
             </button>
           </div>
         </Card>

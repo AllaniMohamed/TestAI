@@ -12,7 +12,7 @@ const VerifyEmailPage: React.FC = () => {
   const navigate = useNavigate();
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Vérification en cours...');
+  const [message, setMessage] = useState('Verifying...');
   
   // ⭐️ PROTECTION CONTRE LE DOUBLE APPEL (React Strict Mode)
   const hasVerified = useRef(false);
@@ -36,7 +36,7 @@ const VerifyEmailPage: React.FC = () => {
       
       console.log('✅ Réponse:', response);
       setStatus('success');
-      setMessage(response.message || 'Email vérifié avec succès !');
+      setMessage(response.message || 'Email verified with success !');
       
       // Redirection après 2 secondes
       setTimeout(() => {
@@ -44,7 +44,7 @@ const VerifyEmailPage: React.FC = () => {
           // Si téléphone déjà vérifié ou pas requis → Login
           navigate('/login', { 
             state: { 
-              message: '✅ Compte activé ! Vous pouvez vous connecter.' 
+              message: '✅ Compte active ! You can now log in.' 
             } 
           });
         } else {
@@ -60,16 +60,16 @@ const VerifyEmailPage: React.FC = () => {
       }, 2000);
 
     } catch (error: any) {
-      console.error('❌ Erreur vérification:', error);
+      console.error('❌ Verification error:', error);
       setStatus('error');
-      setMessage(error.response?.data?.message || error.message || 'Erreur de vérification');
+      setMessage(error.response?.data?.message || error.message || 'Verification error');
     }
   };
 
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setMessage('❌ Token manquant dans l\'URL');
+      setMessage('❌ Token missing in the URL');
       return;
     }
 
@@ -102,9 +102,9 @@ const VerifyEmailPage: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {status === 'loading' && 'Vérification en cours...'}
-            {status === 'success' && '✅ Email vérifié !'}
-            {status === 'error' && '❌ Erreur de vérification'}
+            {status === 'loading' && 'Verification in progress...'}
+            {status === 'success' && '✅ Email verified !'}
+            {status === 'error' && '❌ Verification error'}
           </h1>
 
           <p className="text-gray-600 mb-8">{message}</p>
@@ -112,7 +112,7 @@ const VerifyEmailPage: React.FC = () => {
           {status === 'success' && (
             <div className="space-y-4">
               <p className="text-sm text-blue-600">
-                Redirection automatique en cours...
+                Automatic redirection in progress...
               </p>
               <div className="w-full bg-blue-100 rounded-full h-2">
                 <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '70%' }}></div>
@@ -123,14 +123,14 @@ const VerifyEmailPage: React.FC = () => {
           {status === 'error' && (
             <div className="space-y-4">
               <Button onClick={() => navigate('/login')} className="w-full">
-                Retour à la connexion
+                Return to login
               </Button>
               
               <button
                 onClick={() => navigate('/verification-pending')}
                 className="text-sm text-primary hover:underline"
               >
-                Renvoyer l'email de vérification
+                Resend verification email
               </button>
             </div>
           )}

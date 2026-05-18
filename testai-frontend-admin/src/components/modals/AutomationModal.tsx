@@ -13,10 +13,10 @@ interface AutomationModalProps {
 }
 
 const DAYS_OPTIONS = [
-  { value: "DAILY",   label: "Tous les jours" },
-  { value: "MON-FRI", label: "Lundi → Vendredi" },
-  { value: "MON,WED,FRI", label: "Lun, Mer, Ven" },
-  { value: "MON",     label: "Lundi seulement" },
+  { value: "DAILY",   label: "Every day" },
+  { value: "MON-FRI", label: "Monday → Friday" },
+  { value: "MON,WED,FRI", label: "Mon, Wed, Fri" },
+  { value: "MON",     label: "Monday only" },
   { value: "SAT,SUN", label: "Weekend" },
 ];
 
@@ -85,7 +85,7 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">Automation Jenkins</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Jenkins Automation</h3>
               <p className="text-xs text-slate-500 truncate max-w-[200px]">{projectName}</p>
             </div>
           </div>
@@ -104,9 +104,9 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
             {/* Toggle principal */}
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div>
-                <p className="font-bold text-slate-800 text-sm">Exécution automatique</p>
+                <p className="font-bold text-slate-800 text-sm">Automatic Execution</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Jenkins exécutera ce projet selon le planning
+                  Jenkins will execute this project according to the schedule
                 </p>
               </div>
               <button
@@ -128,11 +128,11 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
                     <ClockIcon className="w-3.5 h-3.5" />
-                    Heure d'exécution
+                    Execution Hour
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label className="text-xs text-slate-400 mb-1 block">Heure (0-23)</label>
+                      <label className="text-xs text-slate-400 mb-1 block">Hour (00-23)</label>
                       <input
                         type="number"
                         min={0}
@@ -144,7 +144,7 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
                     </div>
                     <span className="text-2xl font-bold text-slate-400 mt-4">:</span>
                     <div className="flex-1">
-                      <label className="text-xs text-slate-400 mb-1 block">Minute (0-59)</label>
+                      <label className="text-xs text-slate-400 mb-1 block">Minute (00-59)</label>
                       <input
                         type="number"
                         min={0}
@@ -161,7 +161,7 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
                     <CalendarIcon className="w-3.5 h-3.5" />
-                    Jours d'exécution
+                    Execution Days
                   </label>
                   <div className="grid grid-cols-1 gap-2">
                     {DAYS_OPTIONS.map((opt) => (
@@ -185,10 +185,10 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
 
                 {/* Preview */}
                 <div className="bg-slate-900 rounded-xl p-3 text-xs font-mono text-green-400">
-                  <p className="text-slate-500 mb-1"># Execution programmée :</p>
-                  <p>Chaque jour → {DAYS_OPTIONS.find(d => d.value === days)?.label}</p>
-                  <p>À → {formatTime(hour, minute)}</p>
-                  <p className="text-slate-500 mt-1"># Cron Jenkins :</p>
+                  <p className="text-slate-500 mb-1"># Programmmed Execution :</p>
+                  <p>Every day → {DAYS_OPTIONS.find(d => d.value === days)?.label}</p>
+                  <p>At → {formatTime(hour, minute)}</p>
+                  <p className="text-slate-500 mt-1"># Jenkins Cron :</p>
                   <p>{minute} {hour} * * *</p>
                 </div>
               </>
@@ -200,7 +200,7 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
                 onClick={onClose}
                 className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
               >
-                Annuler
+                Cancel
               </button>
               <button
                 onClick={handleSave}
@@ -212,7 +212,7 @@ const AutomationModal: React.FC<AutomationModalProps> = ({
                 ) : (
                   <BoltIcon className="w-4 h-4" />
                 )}
-                {saving ? "Sauvegarde..." : "Sauvegarder"}
+                {saving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

@@ -66,7 +66,7 @@ const JenkinsPage: React.FC = () => {
                 CI/CD Automation
               </h1>
               <p className="text-on-surface-variant max-w-xl font-medium">
-                Gérez l'exécution automatique de vos projets.
+                Manage the automatic execution of your projects.
               </p>
             </div>
             <a
@@ -76,7 +76,7 @@ const JenkinsPage: React.FC = () => {
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
             >
               <BoltIcon className="w-4 h-4" />
-              Ouvrir Jenkins
+              Open Jenkins
             </a>
           </div>
 
@@ -84,18 +84,18 @@ const JenkinsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
               <p className="text-3xl font-bold text-primary">{enabledProjects.length}</p>
-              <p className="text-sm font-medium text-on-surface-variant mt-1">Projets automatisés</p>
+              <p className="text-sm font-medium text-on-surface-variant mt-1">Automated Projects</p>
             </div>
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
               <p className="text-3xl font-bold text-on-surface-variant">{disabledProjects.length}</p>
-              <p className="text-sm font-medium text-on-surface-variant mt-1">Sans automation</p>
+              <p className="text-sm font-medium text-on-surface-variant mt-1">Projects Without Automation</p>
             </div>
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <p className="text-sm font-bold text-emerald-600">Scheduler actif</p>
+                <p className="text-sm font-bold text-emerald-600">Scheduler active</p>
               </div>
-              <p className="text-xs text-on-surface-variant mt-1">Vérifie chaque minute</p>
+              <p className="text-xs text-on-surface-variant mt-1">Checks every minute</p>
             </div>
           </div>
 
@@ -123,7 +123,7 @@ const JenkinsPage: React.FC = () => {
                           <p className="font-bold text-on-surface">{p.name}</p>
                           <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-0.5">
                             <CalendarIcon className="w-3 h-3" />
-                            {cfg.days === "DAILY" ? "Tous les jours" : cfg.days} à{" "}
+                            {cfg.days === "DAILY" ? "Every day" : cfg.days} at{" "}
                             {String(cfg.hour ?? 2).padStart(2, "0")}:{String(cfg.minute ?? 0).padStart(2, "0")}
                           </p>
                         </div>
@@ -132,7 +132,7 @@ const JenkinsPage: React.FC = () => {
                         onClick={() => setSelectedProject(p)}
                         className="px-3 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
                       >
-                        Modifier
+                        Edit
                       </button>
                     </div>
                   );
@@ -146,7 +146,7 @@ const JenkinsPage: React.FC = () => {
             <div>
               <h2 className="font-headline font-bold text-lg text-on-surface-variant mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-on-surface-variant/30" />
-                Sans automation ({disabledProjects.length})
+                Without Automation ({disabledProjects.length})
               </h2>
               <div className="space-y-2">
                 {disabledProjects.map(p => (
@@ -157,7 +157,7 @@ const JenkinsPage: React.FC = () => {
                       className="px-3 py-1.5 text-xs font-bold text-on-surface-variant border border-outline-variant/30 rounded-lg hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-1"
                     >
                       <PlayIcon className="w-3 h-3" />
-                      Activer
+                      Activate
                     </button>
                   </div>
                 ))}
@@ -166,7 +166,7 @@ const JenkinsPage: React.FC = () => {
           )}
 
           {loading && (
-            <div className="text-center py-12 text-on-surface-variant">Chargement...</div>
+            <div className="text-center py-12 text-on-surface-variant">Loading...</div>
           )}
         </main>
       </div>

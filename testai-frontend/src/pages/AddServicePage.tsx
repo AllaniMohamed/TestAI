@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
-import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import { DocMode, AuthType } from "../types/types";
 import { projectService } from "../services/api";
@@ -12,7 +11,6 @@ import {
   ArrowPathIcon,
   PlusIcon,
   TrashIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const AddServicePage: React.FC = () => {
@@ -82,7 +80,7 @@ const AddServicePage: React.FC = () => {
         }
       }
       if (!userId) {
-        setError("Utilisateur non connecté. Veuillez vous reconnecter.");
+        setError("User not logged in. Please log in again.");
         setLoading(false);
         return;
       }
@@ -121,7 +119,7 @@ const AddServicePage: React.FC = () => {
       const response = await projectService.createProject(projectData);
       navigate(`/service/${response.data.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erreur lors de la création du projet");
+      setError(err.response?.data?.message || "Error occurred while creating the project");
     } finally {
       setLoading(false);
     }
@@ -334,7 +332,7 @@ const AddServicePage: React.FC = () => {
                         />
                         {!validDocUrl && (
                           <p className="text-error text-xs mt-1">
-                            URL de documentation invalide (doit se terminer par .json, .yaml, .yml)
+                            Documentation URL is invalid (must end with .json, .yaml, .yml)
                           </p>
                         )}
                       </div>

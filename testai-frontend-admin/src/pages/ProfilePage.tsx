@@ -32,7 +32,7 @@ const ProfilePage: React.FC = () => {
   const loadUserProfile = async () => {
     try {
       const userStr = sessionStorage.getItem("user");
-      if (!userStr) throw new Error("Utilisateur non connecté");
+      if (!userStr) throw new Error("User not logged in");
       const userData = JSON.parse(userStr);
       const userId = userData.id;
 
@@ -50,8 +50,8 @@ const ProfilePage: React.FC = () => {
         setAvatarBlobUrl(null);
       }
     } catch (error) {
-      console.error("Erreur chargement profil:", error);
-      setMessage("Erreur de chargement du profil");
+      console.error("Error loading profile:", error);
+      setMessage("Error loading profile");
     }
   };
 
@@ -80,7 +80,7 @@ const ProfilePage: React.FC = () => {
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setMessage("L'image doit faire moins de 5MB");
+        setMessage("The image must be less than 5MB");
         return;
       }
       setAvatarFile(file);
@@ -96,12 +96,12 @@ const ProfilePage: React.FC = () => {
     setMessage("");
     try {
       await userService.uploadAvatar(user.id, avatarFile);
-      setMessage("✅ Avatar mis à jour avec succès");
+      setMessage("✅ Avatar updated successfully");
       setAvatarFile(null);
       setAvatarPreview(null);
       await loadUserProfile();
     } catch (error: any) {
-      setMessage("❌ Erreur: " + (error.response?.data?.error || "Erreur inconnue"));
+      setMessage("❌ Error: " + (error.response?.data?.error || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -109,18 +109,18 @@ const ProfilePage: React.FC = () => {
 
   const handleDeleteAvatar = async () => {
     if (!user) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer votre avatar ?")) return;
+    if (!window.confirm("Are you sure you want to delete your avatar?")) return;
     setLoading(true);
     try {
       await userService.deleteAvatar(user.id);
-      setMessage("✅ Avatar supprimé");
+      setMessage("✅ Avatar deleted successfully");
       setAvatarPreview(null);
       setAvatarFile(null);
       if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
       setAvatarBlobUrl(null);
       await loadUserProfile();
-    } catch (error) {
-      setMessage("❌ Erreur suppression avatar");
+    } catch (error: any) {
+      setMessage("❌ Error deleting avatar");
     } finally {
       setLoading(false);
     }
@@ -133,10 +133,10 @@ const ProfilePage: React.FC = () => {
     try {
       // Seul le nom et l'entreprise sont modifiables
       await userService.updateProfile({ name, company });
-      setMessage("✅ Profil mis à jour");
+      setMessage("✅ Profile updated successfully");
       loadUserProfile();
-    } catch (error) {
-      setMessage("❌ Erreur mise à jour");
+    } catch (error: any) {
+      setMessage("❌ Error updating profile");
     } finally {
       setLoading(false);
     }
@@ -145,11 +145,11 @@ const ProfilePage: React.FC = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setMessage("❌ Les mots de passe ne correspondent pas");
+      setMessage("❌ The passwords do not match");
       return;
     }
     if (newPassword.length < 8) {
-      setMessage("❌ Le mot de passe doit comporter au moins 8 caractères");
+      setMessage("❌ The password must be at least 8 characters long");
       return;
     }
     setLoading(true);
@@ -157,12 +157,12 @@ const ProfilePage: React.FC = () => {
     try {
       // Appel backend à implémenter plus tard
       // await userService.changePassword(user.id, currentPassword, newPassword);
-      setMessage("✅ Mot de passe modifié avec succès");
+      setMessage("✅ Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      setMessage("❌ Erreur lors du changement de mot de passe");
+      setMessage("❌ Error updating password");
     } finally {
       setLoading(false);
     }
@@ -174,7 +174,7 @@ const ProfilePage: React.FC = () => {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <p>Chargement...</p>
+          <p>Loading...</p>
         </main>
       </div>
     </div>
