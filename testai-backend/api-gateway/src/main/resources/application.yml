@@ -39,6 +39,12 @@ spring:
             - Path=/api/users/**
           filters:
             - RewritePath=/api/users/(?<segment>.*), /api/users/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: userServiceCB
+                fallbackUri: forward:/fallback/user-service
+                statusCodes:
+                  - 500
         
         # ==========================================
         # PROJECT-SERVICE ROUTES
@@ -49,7 +55,13 @@ spring:
             - Path=/api/projects/**
           filters:
             - RewritePath=/api/projects/(?<segment>.*), /api/projects/$\{segment}
-        
+            - name: CircuitBreaker
+              args:
+                name: projectServiceCB
+                fallbackUri: forward:/fallback/project-service
+                statusCodes:
+                  - 500
+
         # ==========================================
         # ENDPOINT-SERVICE ROUTES
         # ==========================================
@@ -59,7 +71,13 @@ spring:
             - Path=/api/endpoints/**
           filters:
             - RewritePath=/api/endpoints/(?<segment>.*), /api/endpoints/$\{segment}
-        
+            - name: CircuitBreaker
+              args:
+                name: endpointServiceCB
+                fallbackUri: forward:/fallback/endpoint-service
+                statusCodes:
+                  - 500
+
         # ==========================================
         # AUTH ROUTES (via user-service)
         # ==========================================
@@ -69,6 +87,12 @@ spring:
             - Path=/api/auth/**
           filters:
             - RewritePath=/api/auth/(?<segment>.*), /api/auth/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: userServiceCB
+                fallbackUri: forward:/fallback/auth-service
+                statusCodes:
+                  - 500
 
         # ==========================================
         # TEST-SERVICE ROUTES
@@ -79,6 +103,12 @@ spring:
             - Path=/api/tests/**
           filters:
             - RewritePath=/api/tests/(?<segment>.*), /api/tests/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: testServiceCB
+                fallbackUri: forward:/fallback/test-service
+                statusCodes:
+                  - 500
 
         # ==========================================
         # AI-SERVICE ROUTES (Flask, no Eureka registration)
@@ -89,6 +119,12 @@ spring:
             - Path=/api/ai/**
           filters:
             - RewritePath=/api/ai/(?<segment>.*), /$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: aiServiceCB
+                fallbackUri: forward:/fallback/ai-service
+                statusCodes:
+                  - 500
 
         # ==========================================
         # EXECUTION-SERVICE ROUTES (Spring Boot, Eureka)
@@ -99,6 +135,12 @@ spring:
             - Path=/api/executions/**
           filters:
             - RewritePath=/api/executions/(?<segment>.*), /api/executions/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: executionServiceCB
+                fallbackUri: forward:/fallback/execution-service
+                statusCodes:
+                  - 500
 
         # ==========================================
         # ADMIN-SERVICE ROUTES (Spring Boot, Eureka)
@@ -108,7 +150,14 @@ spring:
           predicates:
             - Path=/api/admin/**
           filters:
-            - RewritePath=/api/admin/(?<segment>.*), /api/executions/$\{segment}
+            - RewritePath=/api/admin/(?<segment>.*), /api/admin/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: adminServiceCB
+                fallbackUri: forward:/fallback/admin-service
+                statusCodes:
+                  - 500
+
         # ==========================================
         # Notification-SERVICE ROUTES (Spring Boot, Eureka)
         # ==========================================
@@ -116,6 +165,15 @@ spring:
           uri: lb://notification-service
           predicates:
             - Path=/notification-service/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCB
+                fallbackUri: forward:/fallback/notification-service
+                statusCodes:
+                  - 500
+                  
+
 # Eureka Configuration
 eureka:
   client:
@@ -145,6 +203,58 @@ logging:
     org.springframework.security: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      endpointServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      projectServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      testServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      aiServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 5
+        sliding-window-size: 20
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+      executionServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      adminServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      notificationServiceCB:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
 
 ---
 # ==========================================
