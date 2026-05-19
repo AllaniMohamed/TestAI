@@ -21,7 +21,8 @@ public class ProjectDTO {
     private String apiKey;            // Pour APIKEY
     private String apiKeyHeader;      // Pour APIKEY (ex: "X-API-Key")
     private ApiCredentials.ApiKeyLocation apiKeyLocation; // Pour APIKEY
-    private String bearerToken;       // Pour BEARER
+    private String bearerToken;
+    private String manualEndpoints;
 
     public String getAuthUsername() {
         return authUsername;
@@ -143,5 +144,24 @@ public class ProjectDTO {
 
     public void setUserId(UUID userId) {
         this.userId = userId;
+    }
+    public String getManualEndpoints() {
+        return manualEndpoints;
+    }
+    public void setManualEndpoints(String manualEndpoints) {
+        this.manualEndpoints = manualEndpoints;
+    }
+
+    @lombok.Data
+    public static class ManualEndpointDTO {
+        private String  method;       // "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+        private String  path;
+        private String  description;
+        private String  tags;
+        private String  parameters;   // JSON array string
+        private String  requestBody;  // JSON Schema string
+        private String  responseBody; // JSON Schema string
+        private String  statusCodes;  // ex: "200,201,400"
+        private Boolean requiresAuth;
     }
 }

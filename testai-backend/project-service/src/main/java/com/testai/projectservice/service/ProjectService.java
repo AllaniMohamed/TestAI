@@ -16,6 +16,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,7 +44,8 @@ public class ProjectService {
     private SharedAccessRepository sharedAccessRepository;
     @Autowired
     private ExecutionServiceClient executionServiceClient;
-
+    @Autowired
+    private ObjectMapper objectMapper;
     @Transactional
     public Project createProject(ProjectDTO request) {
         // ÉTAPE 1 : Vérifier que l'utilisateur existe via Feign
@@ -113,12 +115,94 @@ public class ProjectService {
         log.info("✅ Credentials de projet cree avec succes", savedProject.getName(), savedProject.getId());
 
         // ⭐️ ÉTAPE 4 : Si DocMode = SWAGGER, scanner automatiquement les endpoints
-        if (request.getDocMode() == Project.DocsMode.SWAGGER && request.getDocSubmitMode().equals("url")) {
+        if (request.getDocMode() == Project.DocsMode.SWAGGER
+                && "url".equals(request.getDocSubmitMode())) {
+
             log.info("🔍 Scan automatique des endpoints Swagger...");
             scanProjectEndpoints(savedProject);
+
+        } else if (request.getDocMode() == Project.DocsMode.MANUAL
+                && request.getManualEndpoints() != null
+                && !request.getManualEndpoints().isBlank()) {
+
+            log.info("📝 Création des endpoints manuels...");
+            createManualEndpoints(savedProject, request.getManualEndpoints());
         }
 
         return savedProject;
+
+    }
+    private void createManualEndpoints(Project project, String manualEndpointsJson) {
+        try {
+            List<ProjectDTO.ManualEndpointDTO> endpoints = objectMapper.readValue(
+                    manualEndpointsJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<
+                            List<ProjectDTO.ManualEndpointDTO>>() {}
+            );
+
+            int created = 0;
+            int skipped = 0;
+
+            for (ProjectDTO.ManualEndpointDTO ep : endpoints) {
+
+                // Ignorer si path vide
+                if (ep.getPath() == null || ep.getPath().isBlank()) {
+                    log.warn("⚠️ Endpoint sans path ignoré (index {})", skipped);
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    EndpointServiceClient.CreateEndpointRequest req =
+                            new EndpointServiceClient.CreateEndpointRequest();
+
+                    req.setProjectId(project.getId());
+
+                    // Méthode HTTP — normaliser en majuscules, défaut GET
+                    req.setMethod(ep.getMethod() != null
+                            ? ep.getMethod().toUpperCase() : "GET");
+
+                    req.setPath(ep.getPath().trim());
+
+                    // Champs optionnels — null si non fournis
+                    req.setDescription(ep.getDescription());
+                    req.setTags(ep.getTags());
+                    req.setParameters(ep.getParameters());
+                    req.setRequestBody(ep.getRequestBody());
+                    req.setResponseBody(ep.getResponseBody());
+
+                    // Status codes — défaut "200" si absent
+                    req.setStatusCodes(
+                            ep.getStatusCodes() != null && !ep.getStatusCodes().isBlank()
+                                    ? ep.getStatusCodes()
+                                    : "200"
+                    );
+
+                    // requiresAuth — défaut false
+                    req.setRequiresAuth(
+                            ep.getRequiresAuth() != null && ep.getRequiresAuth()
+                    );
+
+                    req.setDiscoveryType("MANUAL");
+
+                    endpointServiceClient.createEndpoint(req);
+                    created++;
+                    log.info("✅ Endpoint créé : {} {}", req.getMethod(), req.getPath());
+
+                } catch (FeignException e) {
+                    log.error("❌ Échec création endpoint {} {} : {}",
+                            ep.getMethod(), ep.getPath(), e.getMessage());
+                    // On continue pour les autres endpoints
+                }
+            }
+
+            log.info("📊 Résultat : {} créé(s), {} ignoré(s) pour le projet {}",
+                    created, skipped, project.getId());
+
+        } catch (Exception e) {
+            log.error("❌ Erreur désérialisation manualEndpoints : {}", e.getMessage());
+            // Ne pas bloquer la création du projet
+        }
     }
     /**
      * ⭐️ Scanner automatiquement les endpoints d'un projet via endpoint-service

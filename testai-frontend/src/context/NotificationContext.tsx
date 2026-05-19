@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { notificationService } from "../services/api";
@@ -30,7 +36,9 @@ const NotificationContext = createContext<NotificationContextType>({
   connected: false,
 });
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [connected, setConnected] = useState(false);
 
@@ -44,8 +52,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   });
 
-  const [token, setToken] = useState<string | null>(
-    () => sessionStorage.getItem("accessToken")
+  const [token, setToken] = useState<string | null>(() =>
+    sessionStorage.getItem("accessToken"),
   );
 
   // ⭐ Écouter les changements auth (login / logout)
@@ -84,8 +92,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     notificationService
       .getUserNotifications(userId)
-      .then(res => setNotifications(res.data))
-      .catch(err => console.error("Erreur chargement notifications:", err));
+      .then((res) => setNotifications(res.data))
+      .catch((err) => console.error("Erreur chargement notifications:", err));
   }, [userId]);
 
   // ⭐ Connexion WebSocket STOMP
@@ -104,18 +112,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setConnected(true);
         console.log("✅ WebSocket connecté");
 
-        client.subscribe(
-          `/user/${userId}/queue/notifications`,
-          (message) => {
-            try {
-              const notification: Notification = JSON.parse(message.body);
-              console.log("🔔 Nouvelle notification reçue:", notification);
-              setNotifications(prev => [notification, ...prev]);
-            } catch (e) {
-              console.error("Erreur parsing notification WebSocket:", e);
-            }
+        client.subscribe(`/topic/notifications/${userId}`, (message) => {
+          try {
+            const notification: Notification = JSON.parse(message.body);
+            console.log("🔔 Nouvelle notification reçue:", notification);
+            setNotifications((prev) => [notification, ...prev]);
+          } catch (e) {
+            console.error("Erreur parsing notification WebSocket:", e);
           }
-        );
+        });
       },
       onDisconnect: () => {
         setConnected(false);
@@ -134,13 +139,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [userId, token]); // ⭐ Se reconnecte si userId ou token changent
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAsRead = useCallback(async (id: string) => {
     try {
       await notificationService.markAsRead(id);
-      setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
       );
     } catch (error) {
       console.error("Erreur marquage lecture:", error);
@@ -151,14 +156,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!userId) return;
     try {
       await notificationService.markAllAsRead(userId);
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (error) {
       console.error("Erreur marquage tout lu:", error);
     }
   }, [userId]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, connected }}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
+        connected,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

@@ -39,7 +39,7 @@ public class NotificationService {
 
         // 2. Envoyer en temps réel via WebSocket
         NotificationDTO dto = toDTO(notification);
-        String destination = "/user/" + request.getRecipientUserId() + "/queue/notifications";
+        String destination = "/topic/notifications/" +  request.getRecipientUserId();
         messagingTemplate.convertAndSend(destination, dto);
         log.info("📡 Notification WebSocket envoyée vers: {}", destination);
     }
