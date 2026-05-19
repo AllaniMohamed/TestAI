@@ -48,9 +48,9 @@ const VerificationPendingPage: React.FC = () => {
     setResending(true);
     try {
       await authService.resendEmailVerification(email);
-      alert('Email renvoyé avec succès !');
+      alert('Email resent successfully!');
     } catch (error) {
-      alert('Erreur lors du renvoi de l\'email');
+      alert('Error occurred while resending the email');
     } finally {
       setResending(false);
     }
@@ -77,20 +77,20 @@ const VerificationPendingPage: React.FC = () => {
 
           {/* Titre */}
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            📧 Email de vérification envoyé
+            📧 Email of verification sent
           </h1>
 
           {/* Message */}
           <p className="text-gray-600 mb-8">
-            Un email de vérification a été envoyé à :
+            A verification email has been sent to :
             <br />
             <strong className="text-gray-900">{email}</strong>
             <br /><br />
-            Veuillez cliquer sur le lien dans l'email pour continuer.
+            Please click on the link in the email to continue.
             <br /><br />
             <span className="text-sm text-blue-600">
-              {checking && '🔄 Vérification en cours...'}
-              {!checking && 'En attente de votre validation...'}
+              {checking && '🔄 Verification in progress...'}
+              {!checking && 'Waiting for your validation...'}
             </span>
           </p>
 
@@ -103,21 +103,21 @@ const VerificationPendingPage: React.FC = () => {
               className="w-full"
             >
               <ArrowPathIcon className="w-5 h-5 mr-2" />
-              Renvoyer l'email
+              Resend Email
             </Button>
 
             <button
               onClick={() => navigate('/login')}
               className="text-sm text-gray-500 hover:text-primary transition"
             >
-              Retour à la connexion
+              Return to login
             </button>
           </div>
 
           {/* Note */}
           <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-xs text-yellow-800">
-              💡 <strong>Astuce :</strong> Vérifiez vos spams si vous ne voyez pas l'email.
+              💡 <strong>Tips :</strong> Check your spam folder if you don't see the email.
             </p>
           </div>
         </Card>
@@ -149,11 +149,11 @@ const PhoneVerificationForm: React.FC<{ email: string }> = ({ email }) => {
       await authService.verifyPhone({ email, code });
       
       // Succès : Afficher modal puis rediriger
-      alert('🎉 Email et téléphone vérifiés ! Vous pouvez vous connecter.');
+      alert('🎉 Email and phone verified! You can now log in.');
       navigate('/login');
 
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Code incorrect');
+      setError(error.response?.data?.message || 'Incorrect code');
     } finally {
       setLoading(false);
     }
@@ -179,18 +179,18 @@ const PhoneVerificationForm: React.FC<{ email: string }> = ({ email }) => {
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
             <CheckCircleIcon className="w-6 h-6 text-green-600 shrink-0" />
             <div className="text-left">
-              <p className="font-semibold text-green-900">Email vérifié !</p>
-              <p className="text-sm text-green-700">Dernière étape : vérifiez votre téléphone</p>
+              <p className="font-semibold text-green-900">Email verified!</p>
+              <p className="text-sm text-green-700">Last step: verify your phone</p>
             </div>
           </div>
 
           {/* Titre */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Entrez le code SMS
+              Enter the SMS code
             </h1>
             <p className="text-gray-600">
-              Code à 6 chiffres envoyé au numéro associé à<br />
+              6-digit code sent to the number associated with<br />
               <strong>{email}</strong>
             </p>
           </div>
@@ -221,7 +221,7 @@ const PhoneVerificationForm: React.FC<{ email: string }> = ({ email }) => {
               loading={loading}
               disabled={code.length !== 6}
             >
-              Vérifier
+              Verify
             </Button>
 
             <div className="text-center">

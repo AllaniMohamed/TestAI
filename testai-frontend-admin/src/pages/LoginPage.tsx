@@ -68,9 +68,9 @@ const LoginPage: React.FC = () => {
         <Card className="shadow-2xl">
           {/* Logo */}
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold text-gray-900">Bon retour !</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome back!</h1>
             <p className="text-gray-500 mt-2">
-              Connectez-vous pour accéder à votre dashboard.
+              Login to access your dashboard.
             </p>
           </div>
 
@@ -92,16 +92,16 @@ const LoginPage: React.FC = () => {
           {/* Formulaire */}
           <form onSubmit={handleLogin}>
             <Input
-              label="Email professionnel"
+              label="Professional Email"
               type="email"
-              placeholder="votre@email.com"
+              placeholder="your@email.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               icon={<EnvelopeIcon className="h-5 w-5" />}
             />
             <Input
-              label="Mot de passe"
+              label="Password"
               type="password"
               placeholder="••••••••"
               required
@@ -117,19 +117,19 @@ const LoginPage: React.FC = () => {
                   className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
                 />
                 <span className="text-sm text-gray-600">
-                  Se souvenir de moi
+                  Remember me
                 </span>
               </label>
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-primary hover:underline"
               >
-                Mot de passe oublié ?
+                Forgot Password?
               </Link>
             </div>
 
             <Button type="submit" className="w-full" loading={loading}>
-              Se connecter
+              Sign In
             </Button>
           </form>
 
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">
-                Ou continuer avec
+                Or continue with
               </span>
             </div>
           </div>

@@ -46,19 +46,19 @@ const ProjectSharesPage: React.FC = () => {
       setProject(projectRes.data);
       setShares(sharesRes.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors du chargement');
+      setError(err.response?.data?.message || 'Error loading data');
     } finally {
       setLoading(false);
     }
   };
 
   const handleRevoke = async (sharedAccessId: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir révoquer cet accès ?')) return;
+    if (!window.confirm('Are you sure you want to revoke this access?')) return;
     try {
       await sharedAccessService.revokeAccess(sharedAccessId);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erreur lors de la révocation');
+      alert(err.response?.data?.message || 'Error occurred while revoking access');
     }
   };
 
@@ -68,7 +68,7 @@ const ProjectSharesPage: React.FC = () => {
       await sharedAccessService.updateAccessLevel(sharedAccessId, newLevel);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erreur lors du changement de niveau');
+      alert(err.response?.data?.message || 'Error occurred while changing access level');
     }
   };
 
@@ -120,11 +120,11 @@ const ProjectSharesPage: React.FC = () => {
           {/* Header */}
           <div className="mb-8 flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate(-1)} icon={<ArrowLeftIcon className="w-5 h-5" />}>
-              Retour
+              Return
             </Button>
             <div>
-              <h1 className="text-3xl font-headline font-bold text-on-surface">Gestion des accès</h1>
-              <p className="text-on-surface-variant">Projet : {project.name}</p>
+              <h1 className="text-3xl font-headline font-bold text-on-surface">Access Management</h1>
+              <p className="text-on-surface-variant">Project : {project.name}</p>
             </div>
           </div>
 
@@ -135,7 +135,7 @@ const ProjectSharesPage: React.FC = () => {
               <Card className="p-6">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <ClockIcon className="w-5 h-5 text-warning" />
-                  Invitations en attente ({pendingShares.length})
+                  Pending Invitations ({pendingShares.length})
                 </h2>
                 <div className="space-y-4">
                   {pendingShares.map(share => (
@@ -144,13 +144,13 @@ const ProjectSharesPage: React.FC = () => {
                         <EnvelopeIcon className="w-5 h-5 text-on-surface-variant" />
                         <div>
                           <p className="font-medium text-on-surface">{share.userEmail}</p>
-                          <p className="text-sm text-on-surface-variant">Invité le {new Date(share.invitedAt).toLocaleDateString('fr-FR')}</p>
+                          <p className="text-sm text-on-surface-variant">Invited on {new Date(share.invitedAt).toLocaleDateString('fr-FR')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="warning">En attente</Badge>
+                        <Badge variant="warning">Pending</Badge>
                         <Button variant="outline" size="sm" onClick={() => handleRevoke(share.id)} icon={<TrashIcon className="w-4 h-4" />}>
-                          Annuler
+                          Cancel
                         </Button>
                       </div>
                     </div>
@@ -164,7 +164,7 @@ const ProjectSharesPage: React.FC = () => {
               <Card className="p-6">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <CheckCircleIcon className="w-5 h-5 text-success" />
-                  Accès actifs ({activeShares.length})
+                  Active Access ({activeShares.length})
                 </h2>
                 <div className="space-y-4">
                   {activeShares.map(share => (
@@ -174,12 +174,12 @@ const ProjectSharesPage: React.FC = () => {
                         <div>
                           <p className="font-medium text-on-surface">{share.userName || share.userEmail}</p>
                           <p className="text-sm text-on-surface-variant">{share.userEmail}</p>
-                          <p className="text-xs text-on-surface-variant">Accepté le {new Date(share.activatedAt!).toLocaleDateString('fr-FR')}</p>
+                          <p className="text-xs text-on-surface-variant">Accepted on {new Date(share.activatedAt!).toLocaleDateString('fr-FR')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={share.accessLevel === 'READ_WRITE' ? 'success' : 'info'}>
-                          {share.accessLevel === 'READ_WRITE' ? 'Lecture/Écriture' : 'Lecture seule'}
+                          {share.accessLevel === 'READ_WRITE' ? 'Read/Write' : 'Read Only'}
                         </Badge>
                         <Button
                           variant="outline"
@@ -187,7 +187,7 @@ const ProjectSharesPage: React.FC = () => {
                           onClick={() => handleChangeAccessLevel(share.id, share.accessLevel)}
                           icon={<PencilSquareIcon className="w-4 h-4" />}
                         >
-                          Changer
+                          Change
                         </Button>
                         <Button
                           variant="outline"
@@ -196,7 +196,7 @@ const ProjectSharesPage: React.FC = () => {
                           onClick={() => handleRevoke(share.id)}
                           icon={<TrashIcon className="w-4 h-4" />}
                         >
-                          Révoquer
+                          Revoke
                         </Button>
                       </div>
                     </div>
@@ -210,7 +210,7 @@ const ProjectSharesPage: React.FC = () => {
               <Card className="p-6">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <XCircleIcon className="w-5 h-5 text-on-surface-variant" />
-                  Accès révoqués ({revokedShares.length})
+                  Revoked Access ({revokedShares.length})
                 </h2>
                 <div className="space-y-4">
                   {revokedShares.map(share => (
@@ -220,11 +220,11 @@ const ProjectSharesPage: React.FC = () => {
                         <div>
                           <p className="font-medium text-on-surface">{share.userEmail}</p>
                           <p className="text-sm text-on-surface-variant">
-                            Révoqué le {share.revokedAt ? new Date(share.revokedAt).toLocaleDateString('fr-FR') : ''}
+                            Revoked on {share.revokedAt ? new Date(share.revokedAt).toLocaleDateString('fr-FR') : ''}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="gray">Révoqué</Badge>
+                      <Badge variant="gray">Revoked</Badge>
                     </div>
                   ))}
                 </div>
@@ -235,8 +235,8 @@ const ProjectSharesPage: React.FC = () => {
             {shares.length === 0 && (
               <Card className="p-12 text-center">
                 <ShareIcon className="w-16 h-16 mx-auto mb-4 text-on-surface-variant/30" />
-                <h3 className="text-xl font-headline font-bold text-on-surface mb-2">Aucun partage</h3>
-                <p className="text-on-surface-variant">Ce projet n'a pas encore été partagé avec des développeurs.</p>
+                <h3 className="text-xl font-headline font-bold text-on-surface mb-2">No Shares</h3>
+                <p className="text-on-surface-variant">This project has not been shared with any developers yet.</p>
               </Card>
             )}
           </div>

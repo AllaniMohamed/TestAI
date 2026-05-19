@@ -162,7 +162,7 @@ const AddServicePage: React.FC = () => {
         } catch {}
       }
       if (!userId) {
-        setError("Utilisateur non connecté. Veuillez vous reconnecter.");
+        setError("User not logged in. Please log in again.");
         setLoading(false);
         return;
       }
@@ -219,7 +219,7 @@ const AddServicePage: React.FC = () => {
       navigate(`/service/${response.data.id}`);
 
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erreur lors de la création du projet");
+      setError(err.response?.data?.message || "Error occurred while creating the project");
     } finally {
       setLoading(false);
     }

@@ -158,14 +158,14 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
                         onClick={markAllAsRead}
                         className="text-xs text-indigo-600 font-semibold hover:text-indigo-800"
                       >
-                        Tout marquer comme lu
+                        Mark all as read
                       </button>
                     )}
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="p-8 text-center text-slate-400 text-sm">
-                        Aucune notification
+                        No notifications
                       </div>
                     ) : (
                       notifications.slice(0, 20).map(notif => (
@@ -213,7 +213,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
                 )}
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-gray-700">
-                    {user ? user.name : 'Chargement...'}
+                    {user ? user.name : 'Loading...'}
                   </p>
                   <p className="text-xs text-gray-500">{user ? user.role : ''}</p>
                 </div>

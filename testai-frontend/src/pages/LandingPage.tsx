@@ -3,14 +3,11 @@ import { Link } from 'react-router-dom';
 import {
   CheckCircleIcon,
   BoltIcon,
-  ChartPieIcon,
   CommandLineIcon,
   SparklesIcon,
   ShieldCheckIcon,
-  CpuChipIcon,
 } from '@heroicons/react/24/solid';
 import Navbar from '../components/layout/Navbar';
-import Button from '../components/common/Button';
 
 /* ─── tiny inline styles shared across sections ─── */
 const styles = `
@@ -271,7 +268,7 @@ const LandingPage: React.FC = () => {
             <div style={{ flex: '0 0 44%' }}>
               <div className="hero-badge">
                 <SparklesIcon style={{ width: 14, height: 14 }} />
-                <span>New: AI‑powered predictive analysis</span>
+                <span>New: AI ‑ powered predictive analysis</span>
               </div>
 
               <h1
@@ -346,7 +343,7 @@ const LandingPage: React.FC = () => {
 
               {/* protocol badges */}
               <div style={{ display: 'flex', gap: '16px', opacity: 0.55 }}>
-                {['RESTful', 'Integration tests', 'Rapid Execution'].map((p) => (
+                {['RESTful', 'Integration tests', 'Fast Execution'].map((p) => (
                   <span
                     key={p}
                     style={{

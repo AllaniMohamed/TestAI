@@ -70,7 +70,7 @@ const ReportsPage: React.FC = () => {
         const execStatsResponse = await executionService.getProjectExecutionStats(userId);
         setExecutionStats(execStatsResponse.data);
       } catch (error) {
-        console.error("Erreur lors de la récupération des statistiques globales:", error);
+        console.error("Error fetching global stats:", error);
       }
     };
 
@@ -90,11 +90,6 @@ const ReportsPage: React.FC = () => {
               <p className="text-on-surface-variant">Global performance of your APIs over the selected period.</p>
             </div>
             <div className="flex gap-3">
-              {/* <div className="flex bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-1">
-                <PeriodBtn active={period === '7d'} onClick={() => setPeriod('7d')}>7j</PeriodBtn>
-                <PeriodBtn active={period === '30d'} onClick={() => setPeriod('30d')}>30j</PeriodBtn>
-                <PeriodBtn active={period === '90d'} onClick={() => setPeriod('90d')}>90j</PeriodBtn>
-              </div> */}
               <Button variant="outline" icon={<ArrowDownTrayIcon className="w-5 h-5" />}>Export</Button>
             </div>
           </div>

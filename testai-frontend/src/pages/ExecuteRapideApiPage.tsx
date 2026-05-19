@@ -8,7 +8,6 @@ import {
   BoltIcon,
   ChevronDownIcon,
   TrashIcon,
-  SparklesIcon,
   PlusIcon,
   FolderOpenIcon,
   ArrowPathIcon,

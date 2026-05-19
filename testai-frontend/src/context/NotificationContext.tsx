@@ -72,7 +72,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
           setConnected(false);
         }
       } catch (e) {
-        console.error("Erreur parsing user depuis sessionStorage", e);
+        console.error("Erreur parsing user from sessionStorage", e);
       }
     };
 
@@ -148,7 +148,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
       );
     } catch (error) {
-      console.error("Erreur marquage lecture:", error);
+      console.error("Error marking notification as read:", error);
     }
   }, []);
 
@@ -158,7 +158,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       await notificationService.markAllAsRead(userId);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (error) {
-      console.error("Erreur marquage tout lu:", error);
+      console.error("Error marking all notifications as read:", error);
     }
   }, [userId]);
 

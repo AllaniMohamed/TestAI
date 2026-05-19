@@ -39,7 +39,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
         onClose();
       }, 2000);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors du partage');
+      setError(err.response?.data?.message || 'Error loading data');
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-2xl font-extrabold text-slate-900">
-            Partager le service
+            Share Project
           </h2>
           <button
             onClick={onClose}
@@ -74,7 +74,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
           {/* Email */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              Email du développeur
+              Developer Email
             </label>
             <input
               type="email"
@@ -89,7 +89,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
           {/* Access Level */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3">
-              Niveau d'accès
+              Access Level
             </label>
             <div className="space-y-3">
               <label className="flex items-start p-4 border-2 rounded-2xl cursor-pointer hover:bg-gray-50 transition has-[:checked]:border-primary has-[:checked]:bg-primary/5">
@@ -102,9 +102,9 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
                   className="mt-1 mr-3 accent-primary"
                 />
                 <div className="flex-1">
-                  <p className="font-bold text-slate-900">Lecture seule</p>
+                  <p className="font-bold text-slate-900">Read Only</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Consulter les tests et rapports
+                    View tests and reports
                   </p>
                 </div>
               </label>
@@ -119,9 +119,9 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
                   className="mt-1 mr-3 accent-primary"
                 />
                 <div className="flex-1">
-                  <p className="font-bold text-slate-900">Lecture et exécution</p>
+                  <p className="font-bold text-slate-900">Read and Execute</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Consulter et exécuter les tests
+                    View and run the tests
                   </p>
                 </div>
               </label>
@@ -138,7 +138,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
           {/* Success */}
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl text-sm font-medium">
-              ✅ Invitation envoyée avec succès !
+              ✅ Invitation sent successfully!
             </div>
           )}
 
@@ -150,7 +150,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
               variant="outline"
               className="flex-1"
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -159,7 +159,7 @@ const ShareProjectModal: React.FC<ShareProjectModalProps> = ({
               className="flex-1"
               icon={!loading && <PaperAirplaneIcon className="h-5 w-5" />}
             >
-              {loading ? 'Envoi...' : 'Envoyer l\'invitation'}
+              {loading ? 'Sending...' : 'Send Invitation'}
             </Button>
           </div>
         </form>

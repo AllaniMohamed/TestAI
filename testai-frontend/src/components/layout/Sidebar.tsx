@@ -7,7 +7,6 @@ import {
   PlayCircleIcon,
   Cog6ToothIcon,
   BookOpenIcon,
-  UserPlusIcon,
   ArrowRightOnRectangleIcon,
   BoltIcon,
 } from "@heroicons/react/24/outline";
@@ -147,7 +146,7 @@ const Sidebar: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-800 truncate">
-                {user?.name ?? "Utilisateur"}
+                {user?.name ?? "User"}
               </p>
               <p className="text-[10px] text-slate-400 truncate">{userRole}</p>
             </div>

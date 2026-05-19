@@ -104,7 +104,7 @@ const ManageSharesPage: React.FC = () => {
               className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface mb-6 font-bold transition group"
             >
               <ArrowLeftIcon className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-              Retour au service
+              Back to project
             </button>
 
             <div className="flex items-center gap-4">
@@ -113,7 +113,7 @@ const ManageSharesPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
-                  Partages du service
+                  Manage Shares
                 </h1>
                 <p className="text-on-surface-variant mt-2 font-medium">{projectName}</p>
               </div>
@@ -125,10 +125,10 @@ const ManageSharesPage: React.FC = () => {
             <Card className="p-16 text-center border-2 border-dashed border-outline-variant/30">
               <UsersIcon className="h-20 w-20 text-on-surface-variant/30 mx-auto mb-4" />
               <h3 className="text-2xl font-headline font-bold text-on-surface mb-2">
-                Aucun partage
+                No shares yet
               </h3>
               <p className="text-on-surface-variant max-w-md mx-auto">
-                Ce service n'est pas encore partagé avec des développeurs.
+                This service is not yet shared with developers.
               </p>
             </Card>
           ) : (
@@ -138,16 +138,16 @@ const ManageSharesPage: React.FC = () => {
                   <thead className="bg-surface-container-low">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                        Développeur
+                        Developer
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                        Accès
+                        Access
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                        Statut
+                        Status
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                        Invité le
+                        Invited on
                       </th>
                       <th className="px-6 py-4 text-right text-xs font-bold text-on-surface-variant uppercase tracking-wider">
                         Actions
@@ -191,7 +191,7 @@ const ManageSharesPage: React.FC = () => {
                               className="text-error hover:text-error/80 flex items-center gap-2 ml-auto font-bold transition group"
                             >
                               <TrashIcon className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                              Révoquer
+                              Revoke
                             </button>
                           )}
                         </td>

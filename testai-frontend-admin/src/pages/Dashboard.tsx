@@ -37,13 +37,13 @@ const Dashboard: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
                 <SparklesIcon className="w-4 h-4" />
-                <span>Espace de travail</span>
+                <span>Workspace</span>
               </div>
               <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
-                Tableau de bord
+                Dashboard
               </h1>
               <p className={`text-on-surface-variant ${userRole !== "ADMIN" ? "max-w-xl" : ""} font-medium`}>
-                Bienvenue, {userName}. Vue d'ensemble des statistiques de votre plateforme.
+                Welcome, {userName}. Overview of your platform's statistics.
               </p>
             </div>
           </div>
@@ -56,7 +56,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
-                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Utilisateurs</h2>
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Users</h2>
                 </div>
               </div>
             </Link>
@@ -68,7 +68,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
-                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Statistiques de tous les projets</h2>
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Projects Statistics</h2>
                 </div>
               </div>
             </Link>
@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <ChevronDoubleRightIcon className="w-5 h-5 text-primary group-hover:scale-125 transition-transform" />
-                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Santé des services</h2>
+                  <h2 className="text-lg font-medium text-on-surface group-hover:text-primary transition-colors">Service Health</h2>
                 </div>
               </div>
             </Link>

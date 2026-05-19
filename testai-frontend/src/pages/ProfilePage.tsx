@@ -78,11 +78,11 @@ const ProfilePage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        setMessage("Seules les images sont autorisées");
+        setMessage("Only image files are allowed");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setMessage("L'image doit faire moins de 5MB");
+        setMessage("Image must be less than 5MB");
         return;
       }
       setAvatarFile(file);
@@ -103,7 +103,7 @@ const ProfilePage: React.FC = () => {
       setAvatarPreview(null);
       await loadUserProfile();
     } catch (error: any) {
-      setMessage("❌ Erreur: " + (error.response?.data?.error || "Erreur inconnue"));
+      setMessage("❌ Error: " + (error.response?.data?.error || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -111,7 +111,7 @@ const ProfilePage: React.FC = () => {
 
   const handleDeleteAvatar = async () => {
     if (!user) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer votre avatar ?")) return;
+    if (!window.confirm("Are you sure you want to delete your avatar?")) return;
     setLoading(true);
     try {
       await userService.deleteAvatar(user.id);
@@ -122,7 +122,7 @@ const ProfilePage: React.FC = () => {
       setAvatarBlobUrl(null);
       await loadUserProfile();
     } catch (error) {
-      setMessage("❌ Erreur suppression avatar");
+      setMessage("❌ Error deleting avatar");
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ const ProfilePage: React.FC = () => {
       setMessage("✅ Profil mis à jour");
       loadUserProfile();
     } catch (error) {
-      setMessage("❌ Erreur mise à jour");
+      setMessage("❌ Error updating profile");
     } finally {
       setLoading(false);
     }
@@ -147,11 +147,11 @@ const ProfilePage: React.FC = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setMessage("❌ Les mots de passe ne correspondent pas");
+      setMessage("❌ The passwords do not match");
       return;
     }
     if (newPassword.length < 8) {
-      setMessage("❌ Le mot de passe doit comporter au moins 8 caractères");
+      setMessage("❌ The password must be at least 8 characters long");
       return;
     }
     setLoading(true);
@@ -159,12 +159,12 @@ const ProfilePage: React.FC = () => {
     try {
       // Appel backend à implémenter plus tard
       // await userService.changePassword(user.id, currentPassword, newPassword);
-      setMessage("✅ Mot de passe modifié avec succès");
+      setMessage("✅ Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      setMessage("❌ Erreur lors du changement de mot de passe");
+      setMessage("❌ Error occurred while changing password");
     } finally {
       setLoading(false);
     }
@@ -176,7 +176,7 @@ const ProfilePage: React.FC = () => {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <p>Chargement...</p>
+          <p>Loading...</p>
         </main>
       </div>
     </div>
