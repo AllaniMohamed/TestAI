@@ -190,18 +190,23 @@ public class ProjectController {
      * Lister tous les partages d'un projet
      * Accessible par le MANAGER propriétaire
      */
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @GetMapping("/{projectId}/shares")
-    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<List<SharedAccessDTO>> getProjectShares(
             @PathVariable UUID projectId,
             Authentication authentication
     ) {
-        // Vérifier que c'est le propriétaire
         UUID userId = getUserIdFromAuth(authentication);
         Project project = projectService.getProjectById(projectId);
-        if (!project.getUserId().equals(userId)) {
+
+        // Only enforce ownership for MANAGER
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !project.getUserId().equals(userId)) {
             return ResponseEntity.status(403).build();
         }
+
         List<SharedAccessDTO> shares = sharedAccessService.getProjectShares(projectId);
         return ResponseEntity.ok(shares);
     }

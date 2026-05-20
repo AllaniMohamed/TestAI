@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { AdminProjectStatsDTO } from "../../services/api";
-import { adminService } from "../../services/api";
+import type { AdminProjectStatsDTO, SharedAccess } from "../../services/api";
+import { adminService, sharedAccessService } from "../../services/api";
 import { saveAs } from "file-saver";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import Navbar from "../../components/layout/Navbar";
@@ -10,6 +10,8 @@ const AdminProjectPage: React.FC = () => {
     const [projectStats, setProjectStats] = useState<AdminProjectStatsDTO[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [sharedAccessList, setSharedAccessList] = useState<SharedAccess[]>([]);
+    const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
 
     function formatSuccessRate(rate: number): number {
         return parseFloat((rate * 100).toFixed(2));
@@ -28,6 +30,7 @@ const AdminProjectPage: React.FC = () => {
                 .then(() => {
                     // Refresh project stats after deletion
                     setProjectStats(prevStats => prevStats.filter(project => project.id !== projectId));
+                    setSharedAccessList(prevList => prevList.filter(share => share.projectId !== projectId));
                 })
                 .catch(err => {
                     alert("Failed to delete project: " + (err.message || "Unknown error"));
@@ -46,9 +49,31 @@ const AdminProjectPage: React.FC = () => {
         }
     };
 
+    const fetchSharedAccess = async () => {
+        try {
+            var sharesList: SharedAccess[] = [];
+            const promises = projectStats.map(project => {
+                return sharedAccessService.getProjectShares(project.id);
+            });
+            const responses = await Promise.all(promises);
+            responses.forEach(response => {
+                sharesList.push(...response.data as SharedAccess[]);
+            });
+            setSharedAccessList(sharesList);
+        } catch (err: any) {
+            console.error("Failed to fetch shared access list:", err);
+        }
+    }
+
     useEffect(() => {
         fetchProjectStats();
     }, []);
+
+    useEffect(() => {
+        if(projectStats.length > 0) {
+            fetchSharedAccess();
+        }
+    }, [projectStats]);
 
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
@@ -93,32 +118,139 @@ const AdminProjectPage: React.FC = () => {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            projectStats.map((project) => (
-                                                <tr key={project.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <button className="p-1 rounded-full hover:bg-red-200 transition-colors" onClick={() => handleDeleteProject(project.id)}>
-                                                            <TrashIcon className="w-4 h-4 text-red-500" />
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">{project.name}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.description}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-500 underline">
-                                                        {project.projectUrl}
-                                                    </td>
-                                                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${formatSuccessRate(project.successRate) >= 50 ? 'text-green-800' : 'text-red-800'}`}>{formatSuccessRate(project.successRate)}%</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="py-4 px-3 text-center whitespace-nowrap text-sm text-gray-500">
-                                                            {project.totalTests}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <div className="flex space-x-2">
-                                                            <button className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors" onClick={() => downloadReport(project.id, "full")}>Full</button>
-                                                            <button className="px-3 py-1 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors" onClick={() => downloadReport(project.id, "simple")}>Simple</button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                            projectStats.map((project) => {
+                                                const projectShares = sharedAccessList.filter(
+                                                    share => share.projectId === project.id
+                                                );
+
+                                                const isExpanded = expandedProjectId === project.id;
+
+                                                return (
+                                                    <React.Fragment key={project.id}>
+                                                        <tr
+                                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                                            onClick={() =>
+                                                                setExpandedProjectId(
+                                                                    isExpanded ? null : project.id
+                                                                )
+                                                            }
+                                                        >
+                                                            <td className="py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                <button
+                                                                    className="p-1 rounded-full hover:bg-red-200 transition-colors"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteProject(project.id);
+                                                                    }}
+                                                                >
+                                                                    <TrashIcon className="w-4 h-4 text-red-500" />
+                                                                </button>
+                                                            </td>
+
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">
+                                                                {project.name}
+                                                            </td>
+
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {project.description}
+                                                            </td>
+
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-500 underline">
+                                                                {project.projectUrl}
+                                                            </td>
+
+                                                            <td
+                                                                className={`px-6 py-4 whitespace-nowrap text-sm ${
+                                                                    formatSuccessRate(project.successRate) >= 50
+                                                                        ? "text-green-800"
+                                                                        : "text-red-800"
+                                                                }`}
+                                                            >
+                                                                {formatSuccessRate(project.successRate)}%
+                                                            </td>
+
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className="py-4 px-3 text-center whitespace-nowrap text-sm text-gray-500">
+                                                                    {project.totalTests}
+                                                                </span>
+                                                            </td>
+
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                <div className="flex space-x-2">
+                                                                    <button
+                                                                        className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            downloadReport(project.id, "full");
+                                                                        }}
+                                                                    >
+                                                                        Full
+                                                                    </button>
+
+                                                                    <button
+                                                                        className="px-3 py-1 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            downloadReport(project.id, "simple");
+                                                                        }}
+                                                                    >
+                                                                        Simple
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+
+                                                        {isExpanded && (
+                                                            <tr>
+                                                                <td colSpan={7} className="bg-gray-50 px-8 py-4">
+                                                                    {projectShares.length === 0 ? (
+                                                                        <p className="text-sm text-gray-500 italic">
+                                                                            No shared access found for this project.
+                                                                        </p>
+                                                                    ) : (
+                                                                        <div className="space-y-2">
+                                                                            {projectShares.map((share) => (
+                                                                                <div
+                                                                                    key={share.id}
+                                                                                    className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm"
+                                                                                >
+                                                                                    <div>
+                                                                                        <p className="text-sm font-medium text-gray-900">
+                                                                                            {share.userName}
+                                                                                        </p>
+
+                                                                                        <p className="text-xs text-gray-500">
+                                                                                            {share.userEmail}
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        <span
+                                                                                            className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                                                share.status === "ACTIVE"
+                                                                                                    ? "bg-green-100 text-green-700"
+                                                                                                    : share.status === "PENDING"
+                                                                                                    ? "bg-yellow-100 text-yellow-700"
+                                                                                                    : "bg-red-100 text-red-700"
+                                                                                            }`}
+                                                                                        >
+                                                                                            {share.status}
+                                                                                        </span>
+
+                                                                                        <span className="text-xs px-2 py-1 rounded-full font-medium text-blue-500 bg-blue-100">
+                                                                                            {share.accessLevel}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
