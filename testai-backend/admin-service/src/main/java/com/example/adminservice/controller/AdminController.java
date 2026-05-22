@@ -8,6 +8,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -22,42 +23,50 @@ public class AdminController {
     private final AdminService adminService;
 
     // USERS
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(userServiceClient.getAllUsers());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users/{id}/full")
     public ResponseEntity<UserEntity> getFullUserById(@PathVariable UUID id){
         return ResponseEntity.ok(userServiceClient.getFullUserById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users/{userId}/toggle")
     public ResponseEntity<Map<String, String>> setActive(@PathVariable UUID userId) {
         return ResponseEntity.ok(userServiceClient.toggleActive(userId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Map<String, String>> deleteUserById(@PathVariable UUID id){
         return ResponseEntity.ok(userServiceClient.deleteUserById(id));
     }
 
     // STATS
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/stats/{userId}/execution-global-stats")
     public ResponseEntity<Map<String,Long>> getUserProjectsGlobalStats(@PathVariable UUID userId){
         return ResponseEntity.ok(executionServiceClient.getUserProjectsGlobalStats(userId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/stats/{userId}/global-tests-rate")
     public ResponseEntity<Map<String, Map<String, Long>>> getUserProjectsGlobalTestsRate(@PathVariable UUID userId){
         return ResponseEntity.ok(executionServiceClient.getUserProjectsGlobalTestsRate(userId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/stats/{userId}/latest-project-execs")
     public ResponseEntity<List<Map<String, String>>> getUserProjectsLatestExecs(@PathVariable UUID userId){
         return ResponseEntity.ok(executionServiceClient.getUserProjectsLatestExecs(userId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/stats/projects/all")
     public ResponseEntity<?> getAllProjectsStats(){
         try{
@@ -68,6 +77,7 @@ public class AdminController {
     }
 
     // REPORTS
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/report/{projectId}")
     public ResponseEntity<?> generateProjectFullReport(@PathVariable UUID projectId){
         try {
@@ -84,6 +94,7 @@ public class AdminController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/report/{projectId}/simple")
     public ResponseEntity<?> generateProjectSimpleReport(@PathVariable UUID projectId){
         try{
@@ -100,27 +111,32 @@ public class AdminController {
     }
 
     // PROJECTS
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/projects/{projectId}/shares")
     public ResponseEntity<List<SharedAccessDTO>> getProjectShares(@PathVariable UUID projectId){
         return ResponseEntity.ok(projectServiceClient.getProjectShares(projectId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/projects/{userId}/projectsIds")
     public ResponseEntity<Set<UUID>> getUserProjects(@PathVariable UUID userId){
         return ResponseEntity.ok(projectServiceClient.getUserProjects(userId));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/projects/{id}")
     public ResponseEntity<ProjectEntity> getProjectById(@PathVariable UUID id){
         return ResponseEntity.ok(projectServiceClient.getProjectById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/projects/{id}")
     public ResponseEntity<Map<?,?>> deleteProjectById(@PathVariable UUID id){
         return ResponseEntity.ok(projectServiceClient.deleteProjectById(id));
     }
 
     // Services Health
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/health")
     public ResponseEntity<List<HealthDTO>> getServiceHealth(){
         try{

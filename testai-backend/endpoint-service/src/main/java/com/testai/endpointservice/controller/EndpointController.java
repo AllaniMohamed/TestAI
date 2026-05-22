@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,6 +34,7 @@ public class EndpointController {
      * Scanner les endpoints depuis une URL Swagger
      * POST /api/endpoints/scan
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @PostMapping("/scan")
     public ResponseEntity<ScanSwaggerResponse> scanSwagger(@RequestBody ScanSwaggerRequest request) {
         log.info("🔍 Demande de scan Swagger pour le projet {}", request.getProjectId());
@@ -60,6 +62,7 @@ public class EndpointController {
      * Créer un endpoint manuellement
      * POST /api/endpoints
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @PostMapping
     public ResponseEntity<?> createEndpoint(@RequestBody CreateEndpointRequest request) {
         log.info("📝 Création d'un endpoint manuel");
@@ -81,6 +84,7 @@ public class EndpointController {
      * Récupérer tous les endpoints d'un projet
      * GET /api/endpoints/project/{projectId}
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<EndpointDTO>> getEndpointsByProjectId(@PathVariable UUID projectId) {
         log.info("📋 Récupération des endpoints du projet {}", projectId);
@@ -93,6 +97,7 @@ public class EndpointController {
      * Récupérer tous les endpoints
      * GET /api/endpoints
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public ResponseEntity<List<EndpointDTO>> getAllEndpoints() {
         log.info("📋 Récupération de tous les endpoints");
@@ -105,6 +110,7 @@ public class EndpointController {
      * Récupérer un endpoint par son ID
      * GET /api/endpoints/{id}
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<?> getEndpointById(@PathVariable UUID id) {
         log.info("🔍 Récupération de l'endpoint {}", id);
@@ -122,6 +128,7 @@ public class EndpointController {
      * Récupérer les endpoints par méthode HTTP
      * GET /api/endpoints/method/{method}
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/method/{method}")
     public ResponseEntity<List<EndpointDTO>> getEndpointsByMethod(@PathVariable Endpoint.HttpMethod method) {
         log.info("📋 Récupération des endpoints avec la méthode {}", method);
@@ -134,6 +141,7 @@ public class EndpointController {
      * Récupérer les endpoints par type de découverte
      * GET /api/endpoints/discovery/{type}
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/discovery/{type}")
     public ResponseEntity<List<EndpointDTO>> getEndpointsByDiscoveryType(
             @PathVariable Endpoint.DiscoveryType type) {
@@ -147,6 +155,7 @@ public class EndpointController {
      * Mettre à jour un endpoint
      * PUT /api/endpoints/{id}
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/{id}")
     public ResponseEntity<?> updateEndpoint(
             @PathVariable UUID id,
@@ -170,6 +179,7 @@ public class EndpointController {
      * Supprimer un endpoint
      * DELETE /api/endpoints/{id}
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteEndpoint(@PathVariable UUID id) {
         log.info("🗑️ Suppression de l'endpoint {}", id);
@@ -193,6 +203,7 @@ public class EndpointController {
      * Supprimer tous les endpoints d'un projet
      * DELETE /api/endpoints/project/{projectId}
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @DeleteMapping("/project/{projectId}")
     public ResponseEntity<?> deleteEndpointsByProjectId(@PathVariable UUID projectId) {
         log.info("🗑️ Suppression de tous les endpoints du projet {}", projectId);
@@ -216,6 +227,7 @@ public class EndpointController {
      * Compter les endpoints d'un projet
      * GET /api/endpoints/project/{projectId}/count
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}/count")
     public ResponseEntity<Map<String, Object>> countEndpointsByProjectId(@PathVariable UUID projectId) {
         log.info("🔢 Comptage des endpoints du projet {}", projectId);
@@ -226,13 +238,15 @@ public class EndpointController {
                 "count", count
         ));
     }
-    
+
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}/tags")
     public ResponseEntity<List<String>> getTagsByProjectId(@PathVariable UUID projectId) {
         List<String> tags = endpointService.getDistinctTagsByProjectId(projectId);
         return ResponseEntity.ok(tags);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}/tag/{tag}")
     public ResponseEntity<List<EndpointDTO>> getEndpointsByProjectIdAndTag(
             @PathVariable UUID projectId,

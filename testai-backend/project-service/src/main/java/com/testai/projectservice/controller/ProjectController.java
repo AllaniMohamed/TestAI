@@ -320,6 +320,7 @@ public class ProjectController {
     /**
      * ⭐ Activer un projet
      */
+    @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
     @PostMapping("/{projectId}/activate")
     public ResponseEntity<Project> activateProject(@PathVariable UUID projectId) {
         UUID userId = getCurrentUserId();
@@ -330,6 +331,7 @@ public class ProjectController {
     /**
      * ⭐ Désactiver un projet
      */
+    @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
     @PostMapping("/{projectId}/deactivate")
     public ResponseEntity<Project> deactivateProject(@PathVariable UUID projectId) {
         UUID userId = getCurrentUserId();
@@ -340,6 +342,7 @@ public class ProjectController {
     /**
      * ⭐ Toggle activation (activer/désactiver)
      */
+    @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
     @PostMapping("/{projectId}/toggle-activation")
     public ResponseEntity<Project> toggleActivation(@PathVariable UUID projectId) {
         UUID userId = getCurrentUserId();
@@ -364,6 +367,7 @@ public class ProjectController {
      * Configurer l'automation d'un projet
      * PUT /api/projects/{id}/automation
      */
+    @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/{id}/automation")
     public ResponseEntity<?> updateAutomation(
             @PathVariable UUID id,
