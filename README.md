@@ -25,7 +25,7 @@ Qu'est-ce que TestAI ?
 TestAI est une plateforme SaaS innovante qui automatise et optimise les tests d'APIs REST en combinant :
 
 ✅ Scan automatique de documentation Swagger/OpenAPI
-🤖 Intelligence artificielle (GPT-4) pour générer des données de test réalistes
+🤖 Intelligence artificielle interne via adaptateur entraîné sur le modèle Qwen2.5-1.5B-Instruct pour générer des données de test réalistes
 🚀 Exécution automatisée des tests avec validation
 📊 Rapports détaillés avec métriques de qualité
 👥 Collaboration multi-rôles (Manager/Guest/Admin)
@@ -65,21 +65,29 @@ Architecture globale
         ┌────────────────────┼────────────────────┐
         │                    │                    │
         ▼                    ▼                    ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│ USER-SERVICE │   │PROJECT-SERVICE│   │ENDPOINT-SERVICE│
-│   (8081)     │   │    (8082)     │   │    (8083)     │
-└──────────────┘   └──────────────┘   └──────────────┘
-        │                    │                    │
-        └────────────────────┼────────────────────┘
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│ USER-SERVICE │   │PROJECT-SERVICE│   │ENDPOINT-SERVICE│ │ADMIN-SERVICE │
+│   (8081)     │   │    (8082)     │   │    (8083)     │ │    (8087)    │
+└──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
+        │                    │                    │                    │
+        └────────────────────┼────────────────────┴────────────────────┘
                              │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│ AI-SERVICE   │   │ TEST-SERVICE │   │EXECUTION-SERVICE│
-│  (Flask)     │   │    (8084)    │   │    (8085)     │
-│   (5000)     │   │              │   │               │
-└──────────────┘   └──────────────┘   └──────────────┘
+                 ┌───────────┴───────────┐
+                 │                       │
+                 ▼                       ▼
+         ┌──────────────┐        ┌────────────────┐
+         │NOTIFICATION- │        │ TEST-SERVICE   │
+         │ SERVICE      │        │   (8085)       │
+         │   (8089)     │        └────────────────┘
+         └──────────────┘               │
+                             ┌─────────┴─────────┐
+                             │                   │
+                             ▼                   ▼
+                      ┌──────────────┐     ┌──────────────┐
+                      │EXECUTION-    │     │AI-SERVICE /  │
+                      │ SERVICE      │     │generate-test-│
+                      │  (8086)      │     │ service (8084)│
+                      └──────────────┘     └──────────────┘
 Principe de l'architecture
 Architecture microservices modulaire où :
 
@@ -153,11 +161,26 @@ yamlspring:
           uri: lb://test-service
           predicates:
             - Path=/test-service/**
-        
+
         - id: execution-service
           uri: lb://execution-service
           predicates:
             - Path=/execution-service/**
+
+        - id: ai-service
+          uri: http://ai-service:8084
+          predicates:
+            - Path=/ai-service/**
+
+        - id: admin-service
+          uri: lb://ADMIN-SERVICE
+          predicates:
+            - Path=/admin-service/**
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification-service/**
 Exemple d'appel :
 bash# Frontend appelle
 GET http://localhost:8888/project-service/api/projects
@@ -350,8 +373,8 @@ Feign Clients :
 java@FeignClient(name = "test-service")
 TestServiceClient
 
-6. AI-SERVICE (Port 5000) - Flask
-Rôle : Génération intelligente de tests via IA (GPT-4)
+6. AI-SERVICE / generate-test-service (Port 8084) - Flask
+Rôle : Génération intelligente de tests via IA interne
 Responsabilités :
 
 Générer 6 types de tests pour chaque endpoint
@@ -361,7 +384,7 @@ Utiliser l'IA pour comprendre le domaine métier
 Technologies :
 
 Flask (Python)
-OpenAI API (GPT-4)
+Adaptateur entraîné sur le modèle Qwen2.5-1.5B-Instruct
 Pas de base de données (stateless)
 
 Types de tests générés :
@@ -457,25 +480,7 @@ Response: [
     ]
   }
 ]
-Exemple de prompt GPT-4 :
-Tu es un expert en génération de tests d'APIs REST.
 
-Endpoint: POST /api/users
-Schema: {
-  "type": "object",
-  "required": ["firstName", "lastName", "email"],
-  "properties": {
-    "firstName": {"type": "string"},
-    "lastName": {"type": "string"},
-    "email": {"type": "string", "format": "email"},
-    "age": {"type": "integer", "minimum": 18, "maximum": 120}
-  }
-}
-
-Génère 6 tests (POSITIVE, WRONG_TYPE, MISSING_FIELDS, VALIDATION, BOUNDARY, AUTH) au format JSON avec :
-- Des données RÉALISTES (vrais prénoms français, emails cohérents)
-- Le code HTTP attendu pour chaque test
-- Les payloads complets
 Communication sortante : Aucune (appelé par test-service)
 
 7. TEST-SERVICE (Port 8084)
@@ -528,7 +533,7 @@ DELETE /api/tests/{projectId}/{endpointId} - Supprimer tests endpoint
 Flux de génération :
 1. Frontend → POST /api/tests/generate avec liste d'endpoints
 2. test-service → Appelle ai-service (Flask) avec schémas
-3. ai-service → GPT-4 génère 6 tests par endpoint
+3. ai-service → Model Local génère 6 tests par endpoint
 4. ai-service → Retourne JSON avec tests
 5. test-service → Parse et stocke en DB
 6. test-service → Retourne résumé au frontend
@@ -537,7 +542,7 @@ Communication sortante :
 ai-service (Flask) : Générer tests via IA
 
 Feign Clients :
-java@FeignClient(name = "ai-service", url = "http://localhost:5000")
+java@FeignClient(name = "ai-service", url = "http://localhost:8084")
 GenerateTestClient
 
 8. EXECUTION-SERVICE (Port 8085)
@@ -675,10 +680,69 @@ Tableaux colorés, badges de statut
 Sections : Project Info, Endpoint Details, Test Executions
 Export via endpoint : GET /api/reports/endpoint/{endpointId}
 
+9. ADMIN-SERVICE (Port 8087)
+Rôle : Supervision et administration centrale
+Responsabilités :
+
+Gérer les utilisateurs (liste, détails, activation, suppression)
+Accéder aux métriques d'exécution et rapports PDF
+Gérer les projets et partages
+Fournir des endpoints d'administration sécurisés
+
+Technologies :
+
+Spring Boot 3.2
+PostgreSQL
+OpenFeign pour communiquer avec user-service, project-service et execution-service
+
+Endpoints clés :
+GET    /api/admin/users
+GET    /api/admin/users/{id}/full
+POST   /api/admin/users/{userId}/toggle
+DELETE /api/admin/users/{id}
+GET    /api/admin/stats/{userId}/execution-global-stats
+GET    /api/admin/stats/{userId}/global-tests-rate
+GET    /api/admin/stats/{userId}/latest-project-execs
+GET    /api/admin/projects/{projectId}/shares
+GET    /api/admin/projects/{userId}/projectsIds
+GET    /api/admin/projects/{id}
+DELETE /api/admin/projects/{id}
+
+10. NOTIFICATION-SERVICE (Port 8089)
+Rôle : Gestion des notifications et alertes utilisateur
+Responsabilités :
+
+Envoyer des notifications aux utilisateurs
+Lister et compter les notifications non lues
+Marquer les notifications comme lues
+Maintenir une base d'historique de notifications
+
+Technologies :
+
+Spring Boot 3.2
+PostgreSQL
+
+Endpoints clés :
+POST   /api/notifications/send
+GET    /api/notifications/user/{userId}
+GET    /api/notifications/user/{userId}/unread-count
+PUT    /api/notifications/{id}/read
+PUT    /api/notifications/user/{userId}/read-all
 
 💻 TECHNOLOGIES UTILISÉES
 Backend
-ServiceFrameworkLangageDatabaseeureka-serverSpring CloudJava 17-api-gatewaySpring Cloud GatewayJava 17-user-serviceSpring Boot 3.2Java 17PostgreSQLproject-serviceSpring Boot 3.2Java 17PostgreSQLendpoint-serviceSpring Boot 3.2Java 17PostgreSQLtest-serviceSpring Boot 3.2Java 17PostgreSQLexecution-serviceSpring Boot 3.2Java 17PostgreSQLai-serviceFlask 3.0Python 3.11-
+Service | Framework | Langage | Base de données
+eureka-server | Spring Cloud | Java 17 | -
+api-gateway | Spring Cloud Gateway | Java 17 | -
+user-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+project-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+endpoint-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+test-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+execution-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+admin-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+notification-service | Spring Boot 3.2 | Java 17 | PostgreSQL
+generate-test-service | Flask | Python 3.12 | -
+
 Librairies Spring
 xml<!-- Spring Cloud -->
 <dependency>
@@ -862,23 +926,55 @@ testai/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── ai-service/                       # Service IA (Flask)
-│   ├── app.py                        # Point d'entrée
-│   ├── services/
-│   │   └── test_generator.py        # Génération via GPT-4
-│   ├── requirements.txt
-│   └── Dockerfile
+├── admin-service/                    # Service d'administration
+│   ├── src/main/java/
+│   ├── src/main/resources/
+│   ├── Dockerfile
+│   └── pom.xml
 │
-└── frontend/                         # React App
+├── notification-service/             # Service de notifications
+│   ├── src/main/java/
+│   ├── src/main/resources/
+│   ├── Dockerfile
+│   └── pom.xml
+│
+├── generate-test-service/            # Service IA / génération de tests
+│   ├── app.py                        # Point d'entrée
+│   ├── config.py
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── base-model/
+│   ├── converters/
+│   ├── generators/
+│   ├── models/
+│   ├── pipeline/
+│   ├── put-post-adapter/
+│   └── utils/
+│
+├── testai-frontend/                  # Interface utilisateur principale
+│   ├── src/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── types/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+│
+└── testai-frontend-admin/            # Interface d'administration
     ├── src/
     │   ├── components/
+    │   ├── context/
     │   ├── pages/
     │   ├── services/
-    │   │   └── api.ts               # Axios config + endpoints
+    │   ├── types/
     │   ├── App.tsx
     │   └── main.tsx
-    ├── Dockerfile
     ├── package.json
+    ├── tsconfig.json
     └── vite.config.ts
 
 🔗 COMMUNICATION INTER-SERVICES
@@ -925,20 +1021,21 @@ project-service
     ├── user-service (vérifier users)
     ├── endpoint-service (scanner/récupérer endpoints)
     ├── test-service (supprimer tests)
-    └── execution-service (supprimer exécutions)
+    ├── execution-service (supprimer exécutions)
+    └── notification-service (envoyer alertes)
 
 endpoint-service
     └── test-service (supprimer tests)
 
 test-service
-    └── ai-service (générer tests via GPT-4)
+    └── ai-service / generate-test-service (générer tests via Qwen2.5-1.5B-Instruct)
 
 execution-service
     ├── project-service (récupérer projet + credentials)
     ├── endpoint-service (récupérer endpoints)
     └── test-service (récupérer tests)
 
-ai-service (Flask)
+ai-service / generate-test-service (Flask)
     └── (aucune dépendance - appelé par test-service)
 Circuit Breaker & Résilience
 Utilise Resilience4j pour gérer les pannes :
@@ -1257,9 +1354,9 @@ services:
 
   # AI Service (Flask)
   ai-service:
-    build: ./ai-service
+    build: ./generate-test-service
     ports:
-      - "5000:5000"
+      - "8084:8084"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
@@ -1300,8 +1397,8 @@ Ordre de démarrage
 1. postgres
 2. eureka-server (attend health check)
 3. api-gateway (attend eureka)
-4. user-service, project-service, endpoint-service, test-service, execution-service
-5. ai-service
+4. user-service, project-service, endpoint-service, test-service, execution-service, admin-service, notification-service
+5. ai-service / generate-test-service
 6. frontend
 
 🛠️ GUIDE DE DÉVELOPPEMENT
@@ -1311,7 +1408,7 @@ Java 17+
 Maven 3.8+
 Node.js 18+
 Docker & Docker Compose
-Python 3.11+ (pour ai-service)
+Python 3.12+ (pour generate-test-service)
 PostgreSQL 15+
 
 Setup local
@@ -1357,7 +1454,7 @@ mvn spring-boot:run
 
 # ... autres services
 5. Lancer AI Service (Flask)
-bashcd ai-service
+cd generate-test-service
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -1411,7 +1508,7 @@ Workflow :
 2. Frontend → test-service avec endpointId
 3. test-service récupère schémas depuis endpoint-service
 4. test-service → ai-service (Flask) avec schémas
-5. ai-service → GPT-4 génère 6 tests réalistes
+5. ai-service → Qwen2.5-1.5B-Instruct génère 6 tests réalistes
 6. test-service stocke tests en DB
 7. Frontend affiche les 6 tests générés
 Exemple de différence :
@@ -1620,11 +1717,15 @@ Swagger UI : http://localhost:8081/swagger-ui.html
 Eureka Dashboard : http://localhost:8761
 
 
-👥 CONTRIBUTEURS
+👨‍💻 TECHNOLOGIES UTILISES
 
 Backend : Architecture microservices Spring Boot
 Frontend : React + TypeScript
-AI Service : Flask + OpenAI GPT-4
+AI Service : Flask + adaptateur Qwen2.5-1.5B-Instruct
 DevOps : Docker + Docker Compose
 
 
+👥 CONTRIBUTEURS
+
+Ghada Fatnassi
+Allani Mohamed

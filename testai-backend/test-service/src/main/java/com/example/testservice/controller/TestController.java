@@ -6,6 +6,7 @@ import com.example.testservice.service.TestService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,28 +21,33 @@ public class TestController {
     @Autowired
     private GenerateTestClient generateTestClient;
 
+    @PreAuthorize("hasRole('MANAGER')")
     @PostMapping("/generate")
     public ResponseEntity<List<TestResponse>> generateTests(@RequestBody List<EndpointDTO> endpoints){
         List<TestResponse> response = testService.generateTests(endpoints);
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasAnyRole('DEVELOPER','MANAGER')")
     @GetMapping
     public ResponseEntity<List<Test>> getAllTests(){
         return ResponseEntity.ok(testService.getAllTests());
     }
 
+    @PreAuthorize("hasAnyRole('DEVELOPER','MANAGER')")
     @GetMapping("/{projectId}")
     public ResponseEntity<List<Test>> getAllTestsByProjectId(@PathVariable UUID projectId){
         return ResponseEntity.ok(testService.getAllTestsByProjectId(projectId));
     }
 
+    @PreAuthorize("hasAnyRole('DEVELOPER','MANAGER')")
     @GetMapping("/{projectId}/{endpointId}")
     public ResponseEntity<Test> getTestsByProjectIdAndEndpointId(@PathVariable UUID projectId, @PathVariable UUID endpointId){
         Test test = testService.getTestsByProjectIdAndEndpointId(projectId, endpointId);
         return ResponseEntity.ok(test);
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/update")
     public ResponseEntity<String> updateTest(@RequestBody Test newTest){
         Test response = testService.updateTest(newTest);
@@ -53,6 +59,7 @@ public class TestController {
         }
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @DeleteMapping("/{projectId}")
     public ResponseEntity<Map<String, String>> deleteTestsByProjectId(@PathVariable UUID projectId){
         Map<String, String> response = testService.deleteByProjectId(projectId);
@@ -64,6 +71,7 @@ public class TestController {
         }
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @DeleteMapping("/{projectId}/{endpointId}")
     public ResponseEntity<Map<String, String>> deleteByProjectIdAndEndpointId(@PathVariable UUID projectId, @PathVariable UUID endpointId){
         Map<String, String> response = testService.deleteByProjectIdAndEndpointId(projectId, endpointId);
@@ -75,16 +83,19 @@ public class TestController {
         }
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("/headers")
     public ResponseEntity<Map<String, Object>> getHeaders(){
         return ResponseEntity.ok(generateTestClient.getHeaders());
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @PostMapping("/headers")
     public ResponseEntity<Map<String, Object>> setHeaders(@RequestBody Map<String, Object> newHeaders){
         return ResponseEntity.ok(generateTestClient.setHeaders(newHeaders));
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("reset_headers")
     public ResponseEntity<Map<String, Object>> resetHeaders(){
         return ResponseEntity.ok(generateTestClient.resetHeaders());

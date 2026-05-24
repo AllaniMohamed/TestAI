@@ -542,6 +542,11 @@ public class UserService {
         }
 
         // Vérifier compte actif
+        if (!user.getIsActive() && user.getPhoneVerified()) {
+            throw new RuntimeException("Votre compte est désactivé. Contactez votre admin.");
+        }
+
+        // Vérifier compte actif
         if (!user.getIsActive()) {
             throw new RuntimeException("Compte en cours d'activation. Veuillez vérifier votre email" +
                     (PHONE_VERIFICATION_ENABLED ? " et téléphone." : "."));

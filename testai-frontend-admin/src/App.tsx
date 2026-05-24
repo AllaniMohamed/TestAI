@@ -19,6 +19,7 @@ import UsersPage from "./pages/admin/UsersPage";
 import ServiceHealthPage from "./pages/admin/ServiceHealthPage";
 import AdminProjectPage from "./pages/admin/AdminProjectPage";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ToastProvider } from "./context/ToastContext";
 
 // Garde de route
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,6 +43,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 const App: React.FC = () => {
   return (
   <NotificationProvider>
+    <ToastProvider>
     <Router>
       <Routes>
         {/* ─── Routes publiques ─── */}
@@ -94,6 +96,7 @@ const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </ToastProvider>
   </NotificationProvider>
   );
 };
