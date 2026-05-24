@@ -18,6 +18,7 @@ public class StatsController {
     private final StatisticService statisticService;
 
     @GetMapping("/{projectId}/success-rate")
+    
     public ResponseEntity<Map<String, Long>> getProjectSuccessRate(@PathVariable UUID projectId){
         try{
             Map<TestExecution.TestStatus, Long> map = statisticService.getProjectSuccessRate(projectId);

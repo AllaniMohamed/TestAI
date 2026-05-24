@@ -362,4 +362,49 @@ public class KeycloakService {
             throw new RuntimeException("Erreur lors de la mise à jour du mot de passe: " + e.getMessage());
         }
     }
+
+    /**
+     * Invalider la session Keycloak via le refresh token
+     */
+    public void logoutUser(String refreshToken) {
+        try {
+            String url = keycloakUrl + "/realms/" + realm + "/protocol/openid-connect/logout";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("client_id", clientId);
+            body.add("client_secret", clientSecret);
+            body.add("refresh_token", refreshToken);
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("✅ Session Keycloak invalidée avec succès");
+            } else {
+                log.warn("⚠️ Réponse inattendue de Keycloak lors du logout: {}", response.getStatusCode());
+            }
+
+        } catch (HttpClientErrorException e) {
+            // 400 = refresh token déjà expiré ou invalide → OK, on considère déjà déconnecté
+            if (e.getStatusCode().value() == 400) {
+                log.info("ℹ️ Refresh token déjà expiré ou invalide, session considérée terminée");
+            } else {
+                log.error("❌ Erreur HTTP lors du logout Keycloak: status={}, body={}",
+                        e.getStatusCode(), e.getResponseBodyAsString());
+                throw new RuntimeException("Erreur lors de la déconnexion: " + e.getResponseBodyAsString(), e);
+            }
+        } catch (Exception e) {
+            log.error("❌ Erreur lors du logout Keycloak: {}", e.getMessage());
+            throw new RuntimeException("Erreur lors de la déconnexion", e);
+        }
+    }
 }

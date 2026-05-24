@@ -566,6 +566,14 @@ public class UserService {
                 userDTO
         );
     }
+    /**
+     * Déconnexion — invalide la session Keycloak via le refresh token
+     */
+    public void logout(String refreshToken) {
+        log.info("Déconnexion utilisateur - invalidation session Keycloak");
+        keycloakService.logoutUser(refreshToken);
+        log.info("✅ Session Keycloak invalidée");
+    }
 
     /**
      * Renvoyer le code SMS

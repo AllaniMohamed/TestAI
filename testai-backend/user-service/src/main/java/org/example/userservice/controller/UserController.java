@@ -216,4 +216,31 @@ public class UserController {
     public ResponseEntity<UserDTO> getUserByEmailPublic(@PathVariable String email) {
         return ResponseEntity.ok(userService.getUserByEmail(email));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Refresh token requis"
+            ));
+        }
+
+        try {
+            userService.logout(refreshToken);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "✅ Déconnexion réussie"
+            ));
+        } catch (Exception e) {
+            log.error("Erreur lors du logout: {}", e.getMessage());
+            // On retourne quand même 200 : côté client on nettoie le storage dans tous les cas
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Déconnexion effectuée"
+            ));
+        }
+    }
 }

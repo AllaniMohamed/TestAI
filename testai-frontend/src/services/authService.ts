@@ -1,8 +1,7 @@
-// src/services/authService.ts
-
 import axios from "axios";
+import axiosInstance from "./axiosInstance";
 
-const API_URL =  "http://localhost:8888/user-service/api";
+const API_URL = "http://localhost:8888/user-service/api";
 
 export interface RegisterData {
   name: string;
@@ -12,7 +11,6 @@ export interface RegisterData {
   company?: string;
   role?: string;
 }
-
 
 export interface LoginData {
   email: string;
@@ -34,15 +32,7 @@ export interface AuthResponse {
   };
 }
 
-export interface VerifyPhoneData {
-  email: string;
-  code: string;
-}
-
 class AuthService {
-  /**
-   * Inscription
-   */
   async register(data: RegisterData) {
     const response = await axios.post(`${API_URL}/auth/register`, {
       name: data.name,
@@ -50,14 +40,11 @@ class AuthService {
       password: data.password,
       phoneNumber: data.phoneNumber,
       company: data.company,
-      role: data.role || "MANAGER", // Par défaut MANAGER
+      role: data.role || "MANAGER",
     });
     return response.data;
   }
 
-  /**
-   * Vérifier l'email avec le token
-   */
   async verifyEmail(token: string) {
     const response = await axios.get(`${API_URL}/auth/verify-email`, {
       params: { token },
@@ -65,79 +52,41 @@ class AuthService {
     return response.data;
   }
 
-  /**
-   * Vérifier le code téléphone
-   */
-  async verifyPhone(data: VerifyPhoneData) {
+  async verifyPhone(data: { email: string; code: string }) {
     const response = await axios.post(`${API_URL}/auth/verify-phone`, data);
     return response.data;
   }
 
-  /**
-   * Renvoyer l'email de vérification
-   */
   async resendEmailVerification(email: string) {
-    const response = await axios.post(
-      `${API_URL}/auth/resend-email-verification`,
-      {
-        email,
-      },
-    );
+    const response = await axios.post(`${API_URL}/auth/resend-email-verification`, { email });
     return response.data;
   }
 
-  /**
-   * Renvoyer le code SMS
-   */
   async resendPhoneVerification(email: string) {
-    const response = await axios.post(
-      `${API_URL}/auth/resend-phone-verification`,
-      {
-        email,
-      },
-    );
+    const response = await axios.post(`${API_URL}/auth/resend-phone-verification`, { email });
     return response.data;
   }
 
-  /**
-   * Connexion
-   */
   async login(data: LoginData): Promise<AuthResponse> {
-    const response = await axios.post<AuthResponse>(
-      `${API_URL}/auth/login`,
-      data,
-    );
+    // Login utilise axios brut (pas d'intercepteur — pas de token à injecter)
+    const response = await axios.post<AuthResponse>(`${API_URL}/auth/login`, data);
 
     if (response.data.accessToken) {
       sessionStorage.setItem("accessToken", response.data.accessToken);
       sessionStorage.setItem("refreshToken", response.data.refreshToken);
       sessionStorage.setItem("user", JSON.stringify(response.data.user));
-
-      // ⭐ Déclencher l'event pour que NotificationProvider se reconnecte
       window.dispatchEvent(new Event("auth-changed"));
     }
 
     return response.data;
   }
 
-  /**
-   * Mot de passe oublié
-   */
   async forgotPassword(email: string) {
-    const response = await axios.post(`${API_URL}/auth/forgot-password`, {
-      email,
-    });
+    const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
     return response.data;
   }
 
-  /**
-   * Réinitialiser le mot de passe
-   */
-  async resetPassword(
-    token: string,
-    newPassword: string,
-    confirmPassword: string,
-  ) {
+  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
     const response = await axios.post(`${API_URL}/auth/reset-password`, {
       token,
       newPassword,
@@ -147,67 +96,44 @@ class AuthService {
   }
 
   /**
-   * Rafraîchir le token
+   * Déconnexion — invalide la session Keycloak puis vide le storage
    */
-  async refreshToken() {
+  async logout(): Promise<void> {
     const refreshToken = sessionStorage.getItem("refreshToken");
-    if (!refreshToken) throw new Error("No refresh token");
 
-    const response = await axios.post<AuthResponse>(`${API_URL}/auth/refresh`, {
-      refreshToken,
-    });
+    if (refreshToken) {
+      try {
+        // axiosInstance injecte automatiquement le Bearer token
+        await axiosInstance.post("/users/logout", { refreshToken });
+      } catch (error) {
+        console.warn("Logout serveur échoué, nettoyage local quand même", error);
+      }
+    }
 
-    sessionStorage.setItem("accessToken", response.data.accessToken);
-    sessionStorage.setItem("refreshToken", response.data.refreshToken);
-
-    return response.data;
-  }
-
- logout() {
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("refreshToken");
     sessionStorage.removeItem("user");
-
-    // ⭐ Notifier le NotificationProvider pour déconnecter le WebSocket
     window.dispatchEvent(new Event("auth-changed"));
   }
 
-  /**
-   * Récupérer l'utilisateur connecté
-   */
-  getCurrentUser() {
-    const userStr = sessionStorage.getItem("user");
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-    return null;
+  async checkVerificationStatus(email: string) {
+    const response = await axios.get(`${API_URL}/auth/check-verification-status`, {
+      params: { email },
+    });
+    return response.data;
   }
 
-  /**
-   * Vérifier si l'utilisateur est connecté
-   */
-  isAuthenticated() {
+  getCurrentUser() {
+    const userStr = sessionStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  isAuthenticated(): boolean {
     return !!sessionStorage.getItem("accessToken");
   }
 
-  /**
-   * Récupérer le token
-   */
-  getToken() {
+  getToken(): string | null {
     return sessionStorage.getItem("accessToken");
-  }
-
-  /**
-   * Vérifier le statut de vérification (polling)
-   */
-  async checkVerificationStatus(email: string) {
-    const response = await axios.get(
-      `${API_URL}/auth/check-verification-status`,
-      {
-        params: { email },
-      },
-    );
-    return response.data;
   }
 }
 
