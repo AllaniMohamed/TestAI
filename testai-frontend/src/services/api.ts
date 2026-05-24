@@ -241,6 +241,21 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
+      // Circuit breaker / fallback from API Gateway returns 503
+      if (error.response.status === 503 || error.response.status === 504
+        || error.response.status === 500 || error.response.status === 404) {
+        try {
+          // Emit a UI event which the React app listens to
+          window.dispatchEvent(
+            new CustomEvent("ui-toast", {
+              detail: { message: "Feature is temporarily unavailable" },
+            }),
+          );
+        } catch (e) {
+          console.error("Cannot dispatch ui-toast event", e);
+        }
+      }
+
       switch (error.response.status) {
         case 401:
           console.error("Authentification expirée");
@@ -252,20 +267,20 @@ api.interceptors.response.use(
         case 403:
           console.error("Accès refusé");
           break;
-
-        case 404:
-          console.error("Ressource non trouvée");
-          break;
-
-        case 500:
-          console.error("Erreur serveur interne");
-          break;
-
+        
         default:
           console.error("Erreur:", error.response.status);
       }
     } else if (error.request) {
       console.error("Pas de réponse du serveur");
+      // network errors -> show a friendly toast
+      try {
+        window.dispatchEvent(
+          new CustomEvent("ui-toast", {
+            detail: { message: "Feature is temporarily unavailable" },
+          }),
+        );
+      } catch (e) {}
     } else {
       console.error("Erreur:", error.message);
     }

@@ -241,6 +241,19 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
+      // Circuit breaker / fallback from API Gateway returns 503
+      if (error.response.status === 503) {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("ui-toast", {
+              detail: { message: "Feature is temporarily unavailable" },
+            }),
+          );
+        } catch (e) {
+          console.error("Cannot dispatch ui-toast event", e);
+        }
+      }
+
       switch (error.response.status) {
         case 401:
           console.error("Authentification expirée");
@@ -266,6 +279,13 @@ api.interceptors.response.use(
       }
     } else if (error.request) {
       console.error("Pas de réponse du serveur");
+      try {
+        window.dispatchEvent(
+          new CustomEvent("ui-toast", {
+            detail: { message: "Feature is temporarily unavailable" },
+          }),
+        );
+      } catch (e) {}
     } else {
       console.error("Erreur:", error.message);
     }
