@@ -79,14 +79,20 @@ public class StatisticService {
     public List<Map<String, String>> getProjectExecHistory(UUID userId){
         Set<UUID> projectIds = projectServiceClient.getUserProjects(userId);
         List<Map<String, String>> historyList = new ArrayList<>();
-        for (UUID uuid: projectIds){
-            ProjectExecution projectExecution = projectExecutionRepository.findByProjectIdOrderByExecutedAtDesc(uuid).get(0);
+
+        for (UUID uuid : projectIds){
+            List<ProjectExecution> executions = projectExecutionRepository
+                    .findByProjectIdOrderByExecutedAtDesc(uuid);
+
+            if (executions.isEmpty()) continue;
+
+            ProjectExecution projectExecution = executions.get(0);
             Map<String, String> history = new HashMap<>();
             history.put("projectName", projectExecution.getProjectName());
-            history.put("passedTests", projectExecution.getTestsPassed().toString() + '/' + projectExecution.getTotalTests().toString());
-            history.put("duration", String.valueOf(projectExecution.getTotalDurationMs()/1000.0)+'s');
+            history.put("passedTests", projectExecution.getTestsPassed() + "/" + projectExecution.getTotalTests());
+            history.put("duration", (projectExecution.getTotalDurationMs() / 1000.0) + "s");
             history.put("date", projectExecution.getExecutedAt().toString());
-            history.put("id",uuid.toString());
+            history.put("id", uuid.toString());
             historyList.add(history);
         }
         return historyList;

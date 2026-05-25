@@ -12,7 +12,7 @@ const API_BASE_URL = "http://localhost:8888";
 // Instance Axios avec configuration CORS
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  // pas de timeout — les appels longs (execution, génération) ne seront pas coupés
   headers: {
     "Content-Type": "application/json",
   },
@@ -474,12 +474,8 @@ export const testService = {
   ): Promise<AxiosResponse<Test[]>> =>
     api.get(`/test-service/api/tests/${projectId}/${endpointId}`),
 
-  generate: (
-    endpoints: Partial<Endpoint[]>,
-  ): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
-    api.post("/test-service/api/tests/generate", endpoints as EndpointDTO[], {
-      timeout: 300000,
-    }),
+  generate: (endpoints: Partial<Endpoint[]>): Promise<AxiosResponse<GeneratedTestStatus[]>> =>
+  api.post("/test-service/api/tests/generate", endpoints as EndpointDTO[]),
 
   update: (test: Partial<Test>): Promise<AxiosResponse<string>> =>
     api.put(`/test-service/api/tests/update`, test),

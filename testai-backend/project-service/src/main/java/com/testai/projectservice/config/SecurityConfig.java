@@ -34,7 +34,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Toutes les requêtes nécessitent un token JWT valide
-                        .requestMatchers("/api/projects/shared-access/link" , "/api/invitations/**").permitAll()
+                        .requestMatchers("/api/projects/shared-access/link" , "/api/invitations/**","/api/projects/*/projectIds" ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
