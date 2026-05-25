@@ -243,7 +243,7 @@ api.interceptors.response.use(
     if (error.response) {
       // Circuit breaker / fallback from API Gateway returns 503
       if (error.response.status === 503 || error.response.status === 504
-        || error.response.status === 404) {
+        || error.response.status === 404 || error.response.status === 400) {
         try {
           // Emit a UI event which the React app listens to
           window.dispatchEvent(
