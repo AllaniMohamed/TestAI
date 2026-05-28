@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TestIA User Guide - API Testing Automation Platform</title>
+  <style>
+    /* ── Design tokens ───────────────────────────────────────────────── */
+    :root {
+      --primary:          #3525cd;
+      --primary-light:    #4f46e5;
+      --primary-dark:     #2e1a6f;
+      --primary-subtle:   #eef0ff;
+      --secondary:        #10b981;
+      --danger:           #ef4444;
+      --danger-subtle:    #fff1f1;
+      --warning:          #f97316;
+      --warning-subtle:   #fff7ed;
+      --info:             #0ea5e9;
+      --info-subtle:      #f0f9ff;
+      --success:          #10b981;
+      --success-subtle:   #f0fdf4;
+
+      --bg:               #f8f9fe;
+      --surface:          #ffffff;
+      --surface-alt:      #f4f5fd;
+      --border:           #e4e7f8;
+      --border-strong:    #cdd1f0;
+
+      --text-primary:     #111827;
+      --text-secondary:   #4b5563;
+      --text-muted:       #6b7280;
+
+      --radius-sm:        6px;
+      --radius-md:        10px;
+      --radius-lg:        16px;
+      --radius-xl:        20px;
+
+      --shadow-xs:        0 1px 3px rgba(53,37,205,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-sm:        0 2px 8px rgba(53,37,205,.08), 0 1px 3px rgba(0,0,0,.05);
+      --shadow-md:        0 4px 20px rgba(53,37,205,.10), 0 2px 6px rgba(0,0,0,.06);
+      --shadow-lg:        0 8px 32px rgba(53,37,205,.12), 0 4px 10px rgba(0,0,0,.06);
+
+      --font-sans:        'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono:        'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+
+      --nav-width:        260px;
+      --content-max:      820px;
+      --header-h:         70px;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    /* ── Google Font import ──────────────────────────────────────────── */
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* ── Body & layout ───────────────────────────────────────────────── */
+    body {
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-primary);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    /* ── Sticky header ───────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+      gap: 1rem;
+    }
+
+    header .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      border: none;
+    }
+
+    header .header-logo-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: white;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(53,37,205,.30);
+    }
+
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -.01em;
+    }
+
+    header p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* ── Page shell ──────────────────────────────────────────────────── */
+    .page-shell {
+      display: flex;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+      gap: 2.5rem;
+      align-items: flex-start;
+    }
+
+    /* ── Sidebar nav ─────────────────────────────────────────────────── */
+    nav {
+      width: var(--nav-width);
+      flex-shrink: 0;
+      position: sticky;
+      top: calc(var(--header-h) + 1.5rem);
+      max-height: calc(100vh - var(--header-h) - 3rem);
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    nav::-webkit-scrollbar { width: 4px; }
+    nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+    nav h2 {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .10em;
+      color: var(--text-muted);
+      margin-bottom: 0.85rem;
+      padding: 0 0.5rem;
+      border: none;
+      display: block;
+    }
+
+    nav ul {
+      list-style: none;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: background .15s, color .15s;
+      border: none;
+    }
+
+    nav a:hover {
+      background: var(--primary-subtle);
+      color: var(--primary);
+    }
+
+    nav a:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    /* ── Main content ────────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 3rem 3.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Sections ────────────────────────────────────────────────────── */
+    section {
+      margin-bottom: 4rem;
+      padding-bottom: 4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    /* ── Headings ────────────────────────────────────────────────────── */
+    h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.25rem;
+      letter-spacing: -.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      border: none;
+    }
+
+    h2::after {
+      content: '';
+      display: block;
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: 0.75rem;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 2.25rem;
+      margin-bottom: 0.85rem;
+      letter-spacing: -.01em;
+    }
+
+    h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 1.5rem;
+      margin-bottom: 0.6rem;
+      letter-spacing: -.01em;
+    }
+
+    /* ── Body text ───────────────────────────────────────────────────── */
+    p {
+      margin-bottom: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.75;
+    }
+
+    ul, ol {
+      margin-left: 1.6rem;
+      margin-bottom: 1.5rem;
+      color: var(--text-secondary);
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+      line-height: 1.7;
+    }
+
+    strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(79,70,229,.25);
+      transition: border-color .15s, color .15s;
+    }
+
+    a:hover { border-bottom-color: var(--primary); }
+
+    a:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    /* ── Code & pre ──────────────────────────────────────────────────── */
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.84em;
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    pre {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      background: #0f1117;
+      color: #c9d1d9;
+      padding: 1.5rem 1.75rem;
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      border: 1px solid #21262d;
+      position: relative;
+    }
+
+    pre::before {
+      content: '';
+      position: absolute;
+      top: 0.75rem;
+      left: 1rem;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff5f57;
+      box-shadow: 14px 0 0 #febc2e, 28px 0 0 #28c840;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+      font-weight: 400;
+    }
+
+    /* ── Highlight span ──────────────────────────────────────────────── */
+    .highlight {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    /* ── Badges ──────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3em 0.75em;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      margin-right: 0.4rem;
+    }
+
+    .badge-primary  { background: var(--primary-subtle);  color: var(--primary); }
+    .badge-success  { background: var(--success-subtle);  color: #059669; }
+    .badge-warning  { background: var(--warning-subtle);  color: #c2410c; }
+    .badge-danger   { background: var(--danger-subtle);   color: #dc2626; }
+    .badge-info     { background: var(--info-subtle);     color: #0284c7; }
+
+    /* ── Cards ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .card h4 { margin-top: 0; }
+
+    /* ── Feature grid ────────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .feature-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+    }
+
+    .feature-box:hover {
+      border-color: var(--primary-light);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-2px);
+    }
+
+    .feature-box h4 {
+      margin-top: 0.25rem;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    .feature-box p {
+      font-size: 0.85rem;
+      margin-bottom: 0;
+    }
+
+    .icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      line-height: 1;
+    }
+
+    /* ── Step blocks ─────────────────────────────────────────────────── */
+    .step {
+      display: flex;
+      gap: 0.875rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      padding: 0.9rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-radius: var(--radius-md);
+    }
+
+    .step strong {
+      display: block;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    /* ── Callout boxes ───────────────────────────────────────────────── */
+    .warning-box,
+    .info-box,
+    .success-box {
+      display: flex;
+      gap: 0.875rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    .warning-box {
+      background: var(--warning-subtle);
+      border: 1px solid rgba(249,115,22,.2);
+      border-left: 3px solid var(--warning);
+      color: #7c2d12;
+    }
+
+    .warning-box strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: #c2410c;
+    }
+
+    .info-box {
+      background: var(--info-subtle);
+      border: 1px solid rgba(14,165,233,.2);
+      border-left: 3px solid var(--info);
+      color: #075985;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: #0284c7;
+    }
+
+    .success-box {
+      background: var(--success-subtle);
+      border: 1px solid rgba(16,185,129,.2);
+      border-left: 3px solid var(--success);
+      color: #065f46;
+    }
+
+    .success-box strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: #059669;
+    }
+
+    /* ── Tables ──────────────────────────────────────────────────────── */
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .table th {
+      background: var(--primary);
+      color: white;
+      padding: 0.85rem 1.1rem;
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .table td {
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    .table tbody tr:last-child td { border-bottom: none; }
+
+    .table tbody tr:hover { background: var(--surface-alt); }
+
+    /* ── Tab group (cosmetic only) ───────────────────────────────────── */
+    .tab-group {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.375rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 2px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.6rem 1.1rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* ── Button/input demo elements ──────────────────────────────────── */
+    .button-example {
+      background: var(--primary);
+      color: white;
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+      transition: background .15s, box-shadow .15s, transform .1s;
+    }
+
+    .button-example:hover {
+      background: var(--primary-dark);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+
+    .button-example.secondary {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    .button-example.secondary:hover {
+      background: var(--primary-subtle);
+    }
+
+    .input-example {
+      display: block;
+      width: 100%;
+      max-width: 380px;
+      padding: 0.65rem 0.875rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+      transition: border-color .15s, box-shadow .15s;
+      background: var(--surface);
+    }
+
+    .input-example:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 2.5rem 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      line-height: 1.8;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      margin-top: 0;
+    }
+
+    footer p + p { margin-top: 0.25rem; }
+
+    /* ── Back-to-top button ──────────────────────────────────────────── */
+    #back-to-top {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 300;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+
+    #back-to-top.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    #back-to-top:hover { background: var(--primary-dark); }
+
+    #back-to-top:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .page-shell {
+        flex-direction: column;
+        padding: 1.5rem 1rem 4rem;
+        gap: 1.5rem;
+      }
+
+      nav {
+        width: 100%;
+        position: static;
+        max-height: none;
+      }
+
+      nav ul {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 2px;
+      }
+
+      main {
+        padding: 2rem 1.5rem;
+        border-radius: var(--radius-lg);
+      }
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 0 1rem; }
+      header p { display: none; }
+
+      main { padding: 1.5rem 1.1rem; }
+
+      h2 { font-size: 1.3rem; }
+      h3 { font-size: 1rem; }
+
+      .grid { grid-template-columns: 1fr; }
+
+      nav ul { grid-template-columns: 1fr 1fr; }
+
+      .table { font-size: 0.82rem; }
+      .table th, .table td { padding: 0.65rem 0.75rem; }
+
+      pre { font-size: 0.78rem; padding: 1.5rem 1rem 1rem; }
+
+      #back-to-top { bottom: 1rem; right: 1rem; }
+    }
+
+    /* ── Focus visible global ────────────────────────────────────────── */
+    :focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="header-logo" href="#">
+      <div class="header-logo-badge">🧪</div>
+      <div>
+        <h1>TestIA User Guide</h1>
+        <p>API Testing Automation Platform</p>
+      </div>
+    </a>
+  </header>
+
+  <div class="page-shell">
+    <nav aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#getting-started">🚀 Getting Started</a></li>
+        <li><a href="#authentication">🔐 Authentication &amp; Registration</a></li>
+        <li><a href="#dashboard">📊 Dashboard Overview</a></li>
+        <li><a href="#projects">📁 Projects &amp; Services</a></li>
+        <li><a href="#api-execution">▶️ Test Execution</a></li>
+        <li><a href="#sharing">👥 Project Sharing</a></li>
+        <li><a href="#reports">📊 Reports &amp; Analytics</a></li>
+        <li><a href="#jenkins">⚙️ CI/CD Automation</a></li>
+        <li><a href="#profile">👤 User Profile</a></li>
+        <li><a href="#notifications">🔔 Notifications</a></li>
+        <li><a href="#troubleshooting">🆘 Troubleshooting</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <!-- GETTING STARTED -->
+      <section id="getting-started">
+        <h2>🚀 Getting Started</h2>
+        
+        <p>TestIA is an intelligent API testing and automation platform that helps you automatically generate, execute, and manage tests for your REST APIs. Whether you're a developer or a project manager, TestIA streamlines your testing workflow.</p>
+
+        <h3>What You Can Do with TestIA</h3>
+        <div class="grid">
+          <div class="feature-box">
+            <div class="icon">📚</div>
+            <h4>Manage APIs</h4>
+            <p>Register your REST APIs using Swagger/OpenAPI documentation or manually add endpoints.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">🧪</div>
+            <h4>Generate Tests</h4>
+            <p>Automatically generate comprehensive test cases for your API endpoints.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">▶️</div>
+            <h4>Execute Tests</h4>
+            <p>Run tests manually or on a schedule using CI/CD integration with Jenkins.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">📊</div>
+            <h4>Track Results</h4>
+            <p>View detailed reports, success rates, and performance metrics for your APIs.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">👥</div>
+            <h4>Share Projects</h4>
+            <p>Collaborate with developers by sharing projects with granular access control.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">⚡</div>
+            <h4>Quick Testing</h4>
+            <p>Execute ad-hoc API tests with custom parameters and authentication.</p>
+          </div>
+        </div>
+
+        <h3>User Roles</h3>
+        <div class="card">
+          <h4><span class="badge badge-primary">MANAGER</span></h4>
+          <p>Project managers can create projects, generate tests, view reports, share projects with developers, and manage team access.</p>
+        </div>
+        <div class="card">
+          <h4><span class="badge badge-success">DEVELOPER</span></h4>
+          <p>Developers can view shared projects, execute tests, and use quick API testing. They cannot create or manage projects.</p>
+        </div>
+      </section>
+
+      <!-- AUTHENTICATION & REGISTRATION -->
+      <section id="authentication">
+        <h2>🔐 Authentication &amp; Registration</h2>
+
+        <h3>Creating an Account</h3>
+        <ol>
+          <li>Visit the TestIA website and click <span class="highlight">Register</span></li>
+          <li>Fill in your account details:
+            <ul>
+              <li><strong>Full Name:</strong> Your complete name (minimum 2 characters)</li>
+              <li><strong>Email:</strong> A valid email address</li>
+              <li><strong>Password:</strong> At least 8 characters</li>
+              <li><strong>Confirm Password:</strong> Must match the password above</li>
+              <li><strong>Phone Number:</strong> Optional 10+ digit phone number</li>
+              <li><strong>Company:</strong> Optional company name</li>
+            </ul>
+          </li>
+          <li>Click <span class="highlight">Create Account</span></li>
+          <li>You will be redirected to a verification waiting page</li>
+        </ol>
+
+        <h3>Email Verification</h3>
+        <p>After registration, you will receive a verification email. This email is sent to your registered email address and is valid for a limited time.</p>
+        <ol>
+          <li>Check your email inbox (including spam folder)</li>
+          <li>Click the verification link in the email</li>
+          <li>Your email will be marked as verified</li>
+          <li>Proceed to phone verification or login</li>
+        </ol>
+
+        <div class="warning-box">
+          <strong>Email Not Received?</strong>
+          If you don't receive the verification email within a few minutes, click <span class="highlight">Resend Verification Email</span> on the verification page.
+        </div>
+
+        <h3>Phone Verification</h3>
+        <p>Phone verification adds an extra layer of security to your account.</p>
+        <ol>
+          <li>On the phone verification page, enter the code sent to your phone</li>
+          <li>The code is valid for a limited time</li>
+          <li>If you don't receive the code, click <span class="highlight">Resend Phone Code</span></li>
+          <li>After successful verification, you can log in</li>
+        </ol>
+
+        <h3>Logging In</h3>
+        <ol>
+          <li>Go to the login page</li>
+          <li>Enter your email address</li>
+          <li>Enter your password</li>
+          <li>Click <span class="highlight">Sign In</span></li>
+          <li>You will be redirected to the dashboard</li>
+        </ol>
+
+        <div class="info-box">
+          <strong>Remember Me:</strong> To stay logged in on this device, your session is stored securely in your browser.
+        </div>
+
+        <h3>Forgot Password</h3>
+        <ol>
+          <li>Click <span class="highlight">Forgot Password?</span> on the login page</li>
+          <li>Enter your registered email address</li>
+          <li>Click <span class="highlight">Send Reset Link</span></li>
+          <li>Check your email for a password reset link (valid for 1 hour)</li>
+          <li>Click the link and enter your new password</li>
+          <li>Log in with your new password</li>
+        </ol>
+
+        <h3>Account Registration via Invitation</h3>
+        <p>Managers can invite developers to collaborate on projects through the sharing system. When invited:</p>
+        <ol>
+          <li>You will receive an invitation email</li>
+          <li>Click the link in the email</li>
+          <li>Create a new account using your details</li>
+          <li>You will have access to the shared project after account creation</li>
+        </ol>
+      </section>
+
+      <!-- DASHBOARD -->
+      <section id="dashboard">
+        <h2>📊 Dashboard Overview</h2>
+
+        <p>The dashboard is your main hub for monitoring your API testing activities. It displays key statistics and recent activity at a glance.</p>
+
+        <h3>Dashboard Components</h3>
+
+        <h4>Key Statistics Cards</h4>
+        <div class="grid">
+          <div class="card">
+            <h4>Services Count</h4>
+            <p>Total number of API projects you manage (for managers) or have access to (for developers).</p>
+          </div>
+          <div class="card">
+            <h4>Total Tests</h4>
+            <p>Combined number of test cases generated across all your projects.</p>
+          </div>
+          <div class="card">
+            <h4>Success Rate</h4>
+            <p>Overall percentage of tests that passed across your projects. This is a weighted average based on recent executions.</p>
+          </div>
+          <div class="card">
+            <h4>Today's Executions</h4>
+            <p>Number of test executions that have run today, including manual runs and automated Jenkins jobs.</p>
+          </div>
+        </div>
+
+        <h3>Dashboard Features</h3>
+        <div class="step">
+          <strong>Access Quick Actions</strong>
+          The dashboard provides quick links to common tasks like creating a new project or viewing recent reports.
+        </div>
+        <div class="step">
+          <strong>View Recent Activity</strong>
+          See a timeline of recent events such as test generations, executions, and team invitations.
+        </div>
+        <div class="step">
+          <strong>Monitor Performance</strong>
+          Visual charts show trends in test success rates over time, helping you identify patterns and issues.
+        </div>
+
+        <h3>Role-Based Dashboard</h3>
+        <p><strong>For Managers:</strong> You see statistics for all projects you own and can create new projects directly from the dashboard.</p>
+        <p><strong>For Developers:</strong> You see statistics for projects shared with you and can quickly access those projects to run tests.</p>
+
+        <div class="info-box">
+          <strong>Auto-Refresh:</strong> Dashboard statistics update periodically as tests complete and projects are updated.
+        </div>
+      </section>
+
+      <!-- PROJECTS & SERVICES -->
+      <section id="projects">
+        <h2>📁 Projects &amp; Services Management</h2>
+
+        <h3>Understanding Projects</h3>
+        <p>In TestIA, a "Project" (also called a "Service") represents a single REST API that you want to test. Each project contains endpoints that are automatically discovered from your API documentation or added manually.</p>
+
+        <h3>Viewing Your Projects</h3>
+        <ol>
+          <li>Click <span class="highlight">Services</span> in the navigation menu</li>
+          <li>You will see a list of all projects you own (managers) or have access to (developers)</li>
+          <li>Each project shows:
+            <ul>
+              <li><strong>Project Name:</strong> The API name you gave it</li>
+              <li><strong>URL:</strong> The base URL of the API</li>
+              <li><strong>Status:</strong> Active or inactive indicator</li>
+              <li><strong>Endpoints:</strong> Number of API endpoints</li>
+              <li><strong>Success Rate:</strong> Percentage of passing tests with color coding</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Searching Projects</h3>
+        <p>Use the search box at the top of the projects list to filter by project name. The search works in real-time as you type.</p>
+
+        <h3>Creating a New Project</h3>
+        <p>Only managers can create new projects. Follow these steps:</p>
+
+        <h4>Step 1: Choose Documentation Mode</h4>
+        <div class="card">
+          <p>You can add a project in two ways:</p>
+          <ul>
+            <li><strong>Swagger/OpenAPI:</strong> Upload API documentation from a Swagger URL or file</li>
+            <li><strong>Manual:</strong> Manually add each endpoint with detailed configuration</li>
+          </ul>
+        </div>
+
+        <h4>Step 2: Fill Basic Information</h4>
+        <div class="step">
+          <strong>Project Name</strong>
+          Give your API a descriptive name (e.g., "User Management API").
+        </div>
+        <div class="step">
+          <strong>Description</strong>
+          Optional description of what this API does or any special notes.
+        </div>
+        <div class="step">
+          <strong>Service URL</strong>
+          The base URL of your API (e.g., https://api.example.com/v1). Must be a valid HTTP/HTTPS URL.
+        </div>
+
+        <h4>Step 3: Add API Documentation (Swagger Mode)</h4>
+        <div class="card">
+          <p>Choose how to provide your Swagger documentation:</p>
+          <ul>
+            <li><strong>From URL:</strong> Provide the direct link to your Swagger JSON file (e.g., https://api.example.com/v3/api-docs.json)</li>
+            <li><strong>From File:</strong> Upload a Swagger/OpenAPI YAML or JSON file from your computer</li>
+          </ul>
+          <p>The documentation URL must end with .json, .yaml, or .yml</p>
+        </div>
+
+        <h4>Step 4: Configure Authentication</h4>
+        <p>Select the authentication method your API uses:</p>
+        <div class="grid">
+          <div class="card">
+            <h4><span class="badge badge-success">None</span></h4>
+            <p>API requires no authentication.</p>
+          </div>
+          <div class="card">
+            <h4><span class="badge badge-info">Basic Auth</span></h4>
+            <p>Provide username and password. The system will encode these as Basic authentication headers.</p>
+          </div>
+          <div class="card">
+            <h4><span class="badge badge-info">API Key</span></h4>
+            <p>Provide your API key. Specify whether it goes in the header (default) or as a query parameter.</p>
+          </div>
+          <div class="card">
+            <h4><span class="badge badge-info">Bearer Token</span></h4>
+            <p>Provide a JWT or Bearer token for OAuth-based APIs.</p>
+          </div>
+        </div>
+
+        <h4>Step 5: Manual Endpoints (Manual Mode Only)</h4>
+        <p>If using Manual mode, you must define each endpoint:</p>
+        <ul>
+          <li><strong>HTTP Method:</strong> GET, POST, PUT, DELETE, or PATCH</li>
+          <li><strong>Endpoint Path:</strong> e.g., /users, /users/{id}</li>
+          <li><strong>Description:</strong> What this endpoint does</li>
+          <li><strong>Tags:</strong> Comma-separated categories (e.g., users, auth)</li>
+          <li><strong>Parameters:</strong> JSON format query/path parameters</li>
+          <li><strong>Request Body:</strong> JSON Schema for POST/PUT requests</li>
+          <li><strong>Response Body:</strong> JSON Schema for expected responses</li>
+          <li><strong>Status Codes:</strong> Comma-separated valid HTTP status codes (e.g., 200,201,400)</li>
+          <li><strong>Requires Auth:</strong> Toggle if this endpoint needs authentication</li>
+        </ul>
+
+        <div class="step">
+          <strong>Add Multiple Endpoints</strong>
+          Click the <span class="highlight">+ Add Endpoint</span> button to add more endpoints to your manual project.
+        </div>
+
+        <h4>Step 6: Save Project</h4>
+        <p>Click <span class="highlight">Save Project</span> to create your project. The system will validate all information and show any errors.</p>
+
+        <div class="success-box">
+          <strong>Project Created Successfully!</strong>
+          Your project is now ready. You can start generating and executing tests immediately.
+        </div>
+
+        <h3>Project Details Page</h3>
+        <p>Click on any project to open its details page with multiple tabs:</p>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tab</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Endpoints</strong></td>
+              <td>View all API endpoints, their methods, paths, and descriptions. Generate tests for selected endpoints.</td>
+            </tr>
+            <tr>
+              <td><strong>Tests</strong></td>
+              <td>View generated test cases with details, expected outcomes, and execution history.</td>
+            </tr>
+            <tr>
+              <td><strong>Execution</strong></td>
+              <td>Execute tests manually. See real-time logs and results as tests run.</td>
+            </tr>
+            <tr>
+              <td><strong>History</strong></td>
+              <td>View past test executions with timestamps, results, and performance metrics.</td>
+            </tr>
+            <tr>
+              <td><strong>Reports</strong></td>
+              <td>Detailed analytics including success rates, performance charts, and trend analysis.</td>
+            </tr>
+            <tr>
+              <td><strong>Settings</strong></td>
+              <td>Edit project details, update credentials, and configure sharing options.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- TEST EXECUTION -->
+      <section id="api-execution">
+        <h2>▶️ Test Execution &amp; API Testing</h2>
+
+        <h3>Running Tests for a Project</h3>
+        <ol>
+          <li>Navigate to your project from the Services list</li>
+          <li>Click the <span class="highlight">Execution</span> tab</li>
+          <li>You will see all endpoints for this project</li>
+          <li>Click <span class="highlight">▶️ Run Tests</span> to start execution</li>
+          <li>The system will execute all tests and show real-time logs</li>
+          <li>Once complete, view detailed results including:
+            <ul>
+              <li>Total tests run</li>
+              <li>Number of passed tests</li>
+              <li>Number of failed tests</li>
+              <li>Overall success rate percentage</li>
+              <li>Detailed logs for each test</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Understanding Test Results</h3>
+        <div class="card">
+          <h4><span class="badge badge-success">✓ Passed</span></h4>
+          <p>The API endpoint returned the expected response code and body matched the schema.</p>
+        </div>
+        <div class="card">
+          <h4><span class="badge badge-danger">✗ Failed</span></h4>
+          <p>The endpoint failed validation. Check the logs to see exactly what went wrong (wrong status code, invalid response format, timeout, etc.).</p>
+        </div>
+        <div class="card">
+          <h4><span class="badge badge-warning">⚠ Warning</span></h4>
+          <p>The test executed but encountered non-critical issues (slow response time, unexpected fields in response).</p>
+        </div>
+
+        <h3>Quick API Execution</h3>
+        <p>Test any API endpoint on-the-fly without creating a full project. Navigate to <span class="highlight">Quick API Execution</span>.</p>
+
+        <h4>Sending a Request</h4>
+        <ol>
+          <li>Enter the API endpoint URL</li>
+          <li>Choose the HTTP method (GET, POST, PUT, DELETE, PATCH)</li>
+          <li>Add headers, query parameters, and request body as needed</li>
+          <li>Configure authentication if required</li>
+          <li>Click <span class="highlight">Execute</span></li>
+        </ol>
+
+        <h4>Configuring Authentication for Quick Tests</h4>
+        <div class="card">
+          <p><strong>Auth Type:</strong> Select from None, Bearer Token, Basic Auth, or API Key</p>
+          <ul>
+            <li><strong>Bearer Token:</strong> Paste your JWT or Bearer token</li>
+            <li><strong>Basic Auth:</strong> Enter username and password (automatically encoded)</li>
+            <li><strong>API Key:</strong> Provide the key and specify header name or query parameter</li>
+          </ul>
+        </div>
+
+        <h4>Understanding the Response</h4>
+        <p>After execution, you see:</p>
+        <ul>
+          <li><strong>Status Code:</strong> HTTP response status (200, 404, 500, etc.)</li>
+          <li><strong>Response Headers:</strong> Metadata about the response</li>
+          <li><strong>Response Body:</strong> The actual response content (JSON, XML, HTML, etc.)</li>
+          <li><strong>Execution Time:</strong> How long the request took</li>
+        </ul>
+
+        <div class="success-box">
+          <strong>Save Request:</strong> You can save frequently used API requests for quick access later.
+        </div>
+
+        <h3>Understanding Test Logs</h3>
+        <p>When tests execute, detailed logs show:</p>
+        <pre>[12:34:56] Starting test execution for 5 endpoints
+[12:34:57] ✅ GET /users - 200 OK (145ms)
+[12:34:58] ✅ GET /users/1 - 200 OK (98ms)
+[12:34:59] ❌ POST /users - Expected 201 Created, got 400 Bad Request
+[12:35:00] ✅ DELETE /users/1 - 204 No Content (52ms)
+[12:35:01] Execution complete: 4 passed, 1 failed, 80% success rate</pre>
+
+        <p>Each log entry includes a timestamp, status indicator, endpoint info, and the result.</p>
+      </section>
+
+      <!-- PROJECT SHARING -->
+      <section id="sharing">
+        <h2>👥 Project Sharing &amp; Team Collaboration</h2>
+
+        <p>Share projects with team members (developers) to collaborate on API testing. Managers can control what each developer can do.</p>
+
+        <h3>Sharing a Project</h3>
+        <ol>
+          <li>Open your project and click the <span class="highlight">Settings</span> tab</li>
+          <li>Find the <span class="highlight">Sharing</span> section</li>
+          <li>Click <span class="highlight">Share with Developers</span></li>
+          <li>A modal will appear</li>
+          <li>Enter the developer's email address</li>
+          <li>Choose the access level:
+            <ul>
+              <li><strong>Read Only:</strong> View project and results, cannot generate or execute tests</li>
+              <li><strong>Read &amp; Execute:</strong> View project, execute tests, but cannot modify project settings</li>
+            </ul>
+          </li>
+          <li>Click <span class="highlight">Send Invitation</span></li>
+        </ol>
+
+        <div class="info-box">
+          <strong>Invitation Process:</strong> An invitation email will be sent to the developer. They must accept the invitation to gain access.
+        </div>
+
+        <h3>Managing Shares</h3>
+        <p>To modify or revoke access to a shared project:</p>
+        <ol>
+          <li>Open your project and click <span class="highlight">Settings</span></li>
+          <li>Find the <span class="highlight">Manage Shares</span> section</li>
+          <li>You will see a list of all developers this project is shared with</li>
+          <li>For each developer, you can:
+            <ul>
+              <li><strong>Change Access Level:</strong> Toggle between Read Only and Read &amp; Execute</li>
+              <li><strong>Revoke Access:</strong> Click the trash icon to immediately remove access</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Viewing Shared Projects (For Developers)</h3>
+        <p>If you are a developer and have been granted access to projects:</p>
+        <ol>
+          <li>Navigate to <span class="highlight">Shared Projects</span></li>
+          <li>You will see all projects shared with you</li>
+          <li>Each project shows the manager's name, when it was shared, and your access level</li>
+          <li>Click on a shared project to:
+            <ul>
+              <li>View endpoints and tests</li>
+              <li>Execute tests (if you have Read &amp; Execute access)</li>
+              <li>View reports and history</li>
+            </ul>
+          </li>
+        </ol>
+
+        <div class="warning-box">
+          <strong>Access Restrictions:</strong> If you only have Read Only access, you cannot generate new tests or execute them. Contact the project manager to request higher access levels.
+        </div>
+
+        <h3>Share Status</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Pending</strong></td>
+              <td>Invitation sent but not yet accepted. Developer needs to verify email and create account.</td>
+            </tr>
+            <tr>
+              <td><strong>Active</strong></td>
+              <td>Developer has accepted the invitation and has active access to the project.</td>
+            </tr>
+            <tr>
+              <td><strong>Revoked</strong></td>
+              <td>Access has been removed. Developer can no longer view this project.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- REPORTS & ANALYTICS -->
+      <section id="reports">
+        <h2>📊 Reports &amp; Analytics</h2>
+
+        <h3>Accessing Reports</h3>
+        <p>To view detailed analytics about your API testing:</p>
+        <ol>
+          <li>Click <span class="highlight">Reports</span> in the main navigation</li>
+          <li>You will see global statistics for all your projects</li>
+        </ol>
+
+        <h3>Global Statistics</h3>
+        <p>The reports page shows overall metrics across all your projects:</p>
+        <div class="grid">
+          <div class="card">
+            <h4>Total Executions</h4>
+            <p>Combined number of all test executions run to date.</p>
+          </div>
+          <div class="card">
+            <h4>Global Success Rate</h4>
+            <p>Percentage of all tests that have passed across your portfolio.</p>
+          </div>
+          <div class="card">
+            <h4>Execution Trend</h4>
+            <p>Graph showing execution activity over the last 30 days.</p>
+          </div>
+          <div class="card">
+            <h4>Success Rate Trend</h4>
+            <p>Line chart showing how your success rate has changed over time.</p>
+          </div>
+        </div>
+
+        <h3>Project-Level Reports</h3>
+        <p>For detailed metrics on a specific project:</p>
+        <ol>
+          <li>Open the project from Services</li>
+          <li>Click the <span class="highlight">Reports</span> tab</li>
+          <li>View this project's specific statistics and trends</li>
+        </ol>
+
+        <h3>Understanding Report Charts</h3>
+        <p><strong>Bar Charts:</strong> Show execution counts and pass/fail distribution by date. Use these to identify days with issues.</p>
+        <p><strong>Line Charts:</strong> Show trends over time. Upward trends in success rate indicate improvements, while downward trends suggest potential issues.</p>
+        <p><strong>Pie Charts:</strong> Display the breakdown of passing vs failing tests at a glance.</p>
+
+        <h3>Downloading Reports</h3>
+        <p>Click the <span class="highlight">⬇ Download Report</span> button to export report data as a file for presentations or records.</p>
+
+        <div class="info-box">
+          <strong>Data Retention:</strong> Historical data is retained for at least 90 days, allowing you to track trends and identify patterns over time.
+        </div>
+      </section>
+
+      <!-- JENKINS CI/CD -->
+      <section id="jenkins">
+        <h2>⚙️ CI/CD Automation with Jenkins</h2>
+
+        <h3>What is Jenkins Integration</h3>
+        <p>Jenkins integration allows you to automatically execute your API tests on a schedule or as part of your CI/CD pipeline. Instead of manually running tests, TestIA can trigger them automatically at specified times or frequencies.</p>
+
+        <h3>Accessing Jenkins Configuration</h3>
+        <ol>
+          <li>Click <span class="highlight">Jenkins</span> in the navigation menu</li>
+          <li>You will see all your projects with Jenkins automation controls</li>
+        </ol>
+
+        <h3>Enabling Automation for a Project</h3>
+        <ol>
+          <li>Find your project in the Jenkins page</li>
+          <li>Click <span class="highlight">Configure Automation</span> for that project</li>
+          <li>A modal will appear with configuration options</li>
+        </ol>
+
+        <h3>Configuring Automation</h3>
+        <div class="card">
+          <h4>Enable Automation</h4>
+          <p>Toggle this switch to enable or disable automated execution for this project.</p>
+        </div>
+        <div class="card">
+          <h4>Schedule Frequency</h4>
+          <p>Choose when tests should run:</p>
+          <ul>
+            <li><strong>Daily:</strong> Run every day at a specified time</li>
+            <li><strong>Weekly:</strong> Run on specific days of the week</li>
+            <li><strong>Monthly:</strong> Run on specific dates</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Time Setting</h4>
+          <p>Set the hour (0-23) and minute (0-59) when the tests should execute. Use 24-hour time format.</p>
+          <p>Example: 14:30 means 2:30 PM</p>
+        </div>
+
+        <h3>Automation Status</h3>
+        <p>The Jenkins page shows your projects in two sections:</p>
+        <ul>
+          <li><strong>Enabled Projects:</strong> Automation is active and tests will run on schedule</li>
+          <li><strong>Disabled Projects:</strong> Automation is off or not configured</li>
+        </ul>
+
+        <h3>Monitoring Automated Execution</h3>
+        <ol>
+          <li>Navigate to your project's <span class="highlight">History</span> tab</li>
+          <li>Automated executions will be labeled as "Automated" or "Jenkins"</li>
+          <li>View detailed results just like manually executed tests</li>
+          <li>Check notifications for alerts when automated runs complete</li>
+        </ol>
+
+        <div class="info-box">
+          <strong>Notifications:</strong> You will receive notifications when automated test runs complete, whether they passed or failed.
+        </div>
+
+        <h3>Direct Jenkins Access</h3>
+        <p>To manage Jenkins directly (advanced users), click the <span class="highlight">Open Jenkins</span> button to access the Jenkins dashboard at <code>localhost:9090</code>.</p>
+
+        <div class="warning-box">
+          <strong>Timezone:</strong> Automation schedules use your server's timezone. Ensure your time settings account for this when scheduling tests.
+        </div>
+      </section>
+
+      <!-- USER PROFILE -->
+      <section id="profile">
+        <h2>👤 User Profile &amp; Settings</h2>
+
+        <h3>Accessing Your Profile</h3>
+        <ol>
+          <li>Click your avatar icon in the top navigation bar</li>
+          <li>Select <span class="highlight">Profile Settings</span></li>
+          <li>You will see your profile management page</li>
+        </ol>
+
+        <h3>Editing Profile Information</h3>
+        <p>You can update the following information:</p>
+
+        <h4>Basic Information</h4>
+        <ul>
+          <li><strong>Full Name:</strong> Your display name in the system</li>
+          <li><strong>Email:</strong> Your account email (typically not editable for security)</li>
+          <li><strong>Company:</strong> Your organization name</li>
+          <li><strong>Phone Number:</strong> Your contact phone number</li>
+          <li><strong>Role:</strong> Display-only field showing your role (MANAGER or DEVELOPER)</li>
+        </ul>
+
+        <div class="step">
+          <strong>Save Changes</strong>
+          After updating any field, click the <span class="highlight">Save Profile</span> button to apply changes.
+        </div>
+
+        <h3>Managing Your Avatar</h3>
+        <ol>
+          <li>Click on your current avatar image or the camera icon</li>
+          <li>Select an image from your computer</li>
+          <li>The image must be in a common format (PNG, JPG, GIF, WebP)</li>
+          <li>File size must be under 5MB</li>
+          <li>Click <span class="highlight">Upload</span> to save</li>
+        </ol>
+
+        <h3>Changing Your Password</h3>
+        <ol>
+          <li>Scroll to the <span class="highlight">Change Password</span> section</li>
+          <li>Enter your current password for verification</li>
+          <li>Enter your new password (minimum 8 characters)</li>
+          <li>Confirm your new password by entering it again</li>
+          <li>Click <span class="highlight">Update Password</span></li>
+          <li>You will be logged out and must log in with your new password</li>
+        </ol>
+
+        <div class="warning-box">
+          <strong>Password Security:</strong> Use a strong password with a mix of uppercase, lowercase, numbers, and special characters. Never share your password with anyone.
+        </div>
+
+        <h3>Account Security Information</h3>
+        <p>Your profile shows important security details:</p>
+        <ul>
+          <li><strong>Email Verified:</strong> Shows whether your email has been verified</li>
+          <li><strong>Phone Verified:</strong> Shows whether your phone number has been verified</li>
+          <li><strong>Last Login:</strong> When you last accessed your account</li>
+          <li><strong>Account Created:</strong> The date your account was created</li>
+        </ul>
+
+        <h3>Logging Out</h3>
+        <ol>
+          <li>Click your avatar in the top navigation</li>
+          <li>Select <span class="highlight">Logout</span></li>
+          <li>You will be returned to the login page</li>
+          <li>Your session will be cleared for security</li>
+        </ol>
+      </section>
+
+      <!-- NOTIFICATIONS -->
+      <section id="notifications">
+        <h2>🔔 Notifications &amp; Activity</h2>
+
+        <h3>Notification Types</h3>
+        <p>TestIA sends you notifications for important events:</p>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Invitation Sent</strong></td>
+              <td>Someone shared a project with you or invited you to join.</td>
+            </tr>
+            <tr>
+              <td><strong>Invitation Accepted</strong></td>
+              <td>Someone accepted your project sharing invitation.</td>
+            </tr>
+            <tr>
+              <td><strong>Access Revoked</strong></td>
+              <td>Your access to a shared project has been removed.</td>
+            </tr>
+            <tr>
+              <td><strong>Test Generated</strong></td>
+              <td>Tests have been automatically generated for your project.</td>
+            </tr>
+            <tr>
+              <td><strong>Test Executed</strong></td>
+              <td>A manual test execution has completed.</td>
+            </tr>
+            <tr>
+              <td><strong>Automated Execution Done</strong></td>
+              <td>A scheduled Jenkins execution has completed.</td>
+            </tr>
+            <tr>
+              <td><strong>Generation Complete</strong></td>
+              <td>Endpoint or test generation process has finished.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Viewing Notifications</h3>
+        <ol>
+          <li>Click the bell icon (<span class="icon">🔔</span>) in the top navigation</li>
+          <li>You will see your notification panel with all recent notifications</li>
+          <li>Click on a notification to view details or take action</li>
+          <li>Unread notifications appear highlighted</li>
+        </ol>
+
+        <h3>Managing Notifications</h3>
+        <div class="step">
+          <strong>Mark as Read</strong>
+          Click on a notification to mark it as read. Read notifications become less prominent.
+        </div>
+        <div class="step">
+          <strong>Mark All as Read</strong>
+          Use the "Mark All as Read" option to clear your notification list.
+        </div>
+
+        <div class="info-box">
+          <strong>Notification Timing:</strong> Notifications appear in real-time when events occur. The system also tracks your notification history.
+        </div>
+      </section>
+
+      <!-- TROUBLESHOOTING -->
+      <section id="troubleshooting">
+        <h2>🆘 Troubleshooting &amp; Tips</h2>
+
+        <h3>Common Issues &amp; Solutions</h3>
+
+        <div class="card">
+          <h4>Can't Log In</h4>
+          <p><strong>Problem:</strong> "Incorrect email or password" error</p>
+          <ul>
+            <li>Double-check your email spelling</li>
+            <li>Ensure Caps Lock is off</li>
+            <li>If you forgot your password, use <span class="highlight">Forgot Password?</span> on the login page</li>
+            <li>Verify that your email is verified (check your email inbox for verification link)</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Email Verification Not Received</h4>
+          <p><strong>Problem:</strong> No verification email in inbox</p>
+          <ul>
+            <li>Check your spam/junk folder</li>
+            <li>Wait a few minutes - emails may take time to arrive</li>
+            <li>On the verification page, click <span class="highlight">Resend Verification Email</span></li>
+            <li>Check if your email provider is blocking test emails</li>
+            <li>Verify you entered your email correctly during registration</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Phone Verification Code Not Working</h4>
+          <p><strong>Problem:</strong> Code expired or incorrect</p>
+          <ul>
+            <li>Codes are only valid for 5 minutes - request a new one if expired</li>
+            <li>Ensure you're entering the code exactly as received</li>
+            <li>Codes are case-sensitive if they contain letters</li>
+            <li>Click <span class="highlight">Resend Code</span> to request a fresh code</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Project Not Loading or Tests Failing</h4>
+          <p><strong>Problem:</strong> Project page won't load or all tests fail</p>
+          <ul>
+            <li>Verify the API service URL is correct and accessible</li>
+            <li>Check that the authentication credentials are valid</li>
+            <li>Ensure the API is currently running and online</li>
+            <li>Check your network connection</li>
+            <li>Try refreshing the page (F5 or Ctrl+R)</li>
+            <li>Check if API has CORS headers configured to allow requests from TestIA</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Test Execution Timeout</h4>
+          <p><strong>Problem:</strong> Tests take too long or timeout</p>
+          <ul>
+            <li>Your API may be responding slowly - check the response time in logs</li>
+            <li>Verify your internet connection speed</li>
+            <li>Check if the API server has high load</li>
+            <li>Ensure no firewall is blocking connections to the API</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Shared Projects Not Appearing</h4>
+          <p><strong>Problem:</strong> Can't see projects shared with me</p>
+          <ul>
+            <li>Ensure your email has been verified</li>
+            <li>Check your email for sharing invitations</li>
+            <li>Accept the sharing invitation in the email</li>
+            <li>Try logging out and back in to refresh permissions</li>
+            <li>If already accepted, check <span class="highlight">Shared Projects</span> section (not your own projects)</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>Jenkins Automation Not Triggering</h4>
+          <p><strong>Problem:</strong> Scheduled tests aren't running</p>
+          <ul>
+            <li>Ensure automation is enabled for the project in Jenkins settings</li>
+            <li>Verify the schedule time is in the future</li>
+            <li>Check your timezone configuration</li>
+            <li>Confirm the Jenkins service is running</li>
+            <li>Check the Jenkins page for any error messages or warnings</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h4>API Authentication Issues</h4>
+          <p><strong>Problem:</strong> Tests fail with authentication errors (401, 403)</p>
+          <ul>
+            <li>Verify API key, token, or credentials are correct</li>
+            <li>Check that credentials haven't expired (especially tokens)</li>
+            <li>Ensure the correct authentication type is selected</li>
+            <li>For Bearer tokens, ensure they include the "Bearer " prefix</li>
+            <li>Check API documentation for exact authentication header format</li>
+          </ul>
+        </div>
+
+        <h3>Best Practices &amp; Tips</h3>
+
+        <div class="success-box">
+          <strong>Tip: Organize Projects by Microservice</strong>
+          Create separate projects for each microservice to make results easier to track and share with specific team members.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Keep Endpoints Documentation Updated</strong>
+          Regularly update your Swagger/OpenAPI documentation to ensure tests stay current with your API changes.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Use Meaningful Names</strong>
+          Give projects and endpoints clear, descriptive names to make reports and test results easy to understand.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Schedule Off-Peak Testing</strong>
+          Configure Jenkins automation to run during off-peak hours to avoid impacting production API performance.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Regular Backups</strong>
+          Periodically download reports to maintain historical records of your API quality metrics.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Review Failed Tests Promptly</strong>
+          When tests fail, investigate immediately to identify whether it's an API issue or test configuration problem.
+        </div>
+
+        <div class="success-box">
+          <strong>Tip: Rotate API Credentials Regularly</strong>
+          Update stored API keys and tokens periodically for security. After rotating, update them in TestIA.
+        </div>
+
+        <h3>Need More Help?</h3>
+        <p>This guide covers the main features of TestIA. For more detailed help:</p>
+        <ul>
+          <li>Hover over question marks or info icons throughout the application</li>
+          <li>Check endpoint descriptions in your projects for specific API details</li>
+          <li>Review API documentation (Swagger/OpenAPI) for endpoint specifications</li>
+          <li>Contact your team administrator if you don't have expected access</li>
+        </ul>
+
+        <div class="info-box">
+          <strong>Feedback:</strong> Your feedback helps improve TestIA. Report issues or request features directly through the application.
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    <p>&copy; 2024 TestIA - API Testing Automation Platform. All rights reserved.</p>
+    <p>For support or questions, contact your system administrator.</p>
+    <p style="margin-top: 1rem; opacity: 0.8;">This user guide covers all major features and workflows of the TestIA platform.</p>
+  </footer>
+
+  <!-- Back-to-top button -->
+  <button id="back-to-top" aria-label="Back to top" title="Back to top">↑</button>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('back-to-top');
+      window.addEventListener('scroll', function () {
+        if (window.scrollY > 400) {
+          btn.classList.add('visible');
+        } else {
+          btn.classList.remove('visible');
+        }
+      }, { passive: true });
+      btn.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+  </script>
+
+</body>
+</html>
