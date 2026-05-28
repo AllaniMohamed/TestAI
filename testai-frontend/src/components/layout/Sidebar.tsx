@@ -129,7 +129,7 @@ const Sidebar: React.FC = () => {
 
         {/* Documentation */}
         <a
-          href="https://docs.anthropic.com"
+          href="https://allanimohamed.github.io/TestAI-guide/"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
