@@ -52,6 +52,7 @@ import {
   RocketLaunchIcon,
   PlusIcon,
   TagIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import {
   PieChart,
@@ -182,6 +183,39 @@ const MAGIC_STYLES = `
   .magic-shimmer-text { background:linear-gradient(90deg,#c084fc,#818cf8,#38bdf8,#818cf8,#c084fc);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:magicShimmer 2.5s linear infinite }
   .progress-animated { background:linear-gradient(90deg,#7c3aed,#6366f1,#3b82f6,#6366f1,#7c3aed);background-size:200% auto;animation:progressSlide 1.5s linear infinite }
 `;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS — tag extraction
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the primary tag of an endpoint.
+ * Priority: explicit tags field → first path segment after /api/
+ */
+function getEndpointTag(endpoint: Endpoint): string {
+  // 1) Use the explicit tags field if present
+  if (endpoint.tags) {
+    const first = endpoint.tags.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  // 2) Fall back to the path: strip leading /api/ and take first segment
+  const path = endpoint.path ?? "";
+  const stripped = path.replace(/^\/api(\/v\d+)?/, ""); // strip /api or /api/v1
+  const segment = stripped.split("/").filter(Boolean)[0] ?? "general";
+  return segment.replace(/[{}]/g, ""); // remove path param braces
+}
+
+/**
+ * Groups endpoints by their primary tag.
+ */
+function groupByTag(endpoints: Endpoint[]): Record<string, Endpoint[]> {
+  return endpoints.reduce((g, ep) => {
+    const tag = getEndpointTag(ep);
+    if (!g[tag]) g[tag] = [];
+    g[tag].push(ep);
+    return g;
+  }, {} as Record<string, Endpoint[]>);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ADD ENDPOINT MODAL (manual mode)
@@ -811,6 +845,9 @@ const ServiceDetailsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabId>("endpoints");
 
+  // ── Responsive sidebar ─────────────────────────────────────────────────────
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Data
   const [project, setProject]                 = useState<Project | null>(null);
   const [endpoints, setEndpoints]             = useState<Endpoint[]>([]);
@@ -830,7 +867,7 @@ const ServiceDetailsPage: React.FC = () => {
   const [expandedEndpointId, setExpandedEndpointId] = useState<string | null>(null);
   const [expandedTestId, setExpandedTestId]       = useState<string | null>(null);
   const [showShareModal, setShowShareModal]       = useState(false);
-  const [showAddEndpointModal, setShowAddEndpointModal] = useState(false);  // ← NEW
+  const [showAddEndpointModal, setShowAddEndpointModal] = useState(false);
 
   // Generation
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
@@ -980,7 +1017,6 @@ const ServiceDetailsPage: React.FC = () => {
       setEndpointsCount(cr.data.count || er.data.length);
       await refreshTests();
       await refreshStats();
-      // Load recent executions for the stats sidebar
       try {
         const execRes = await executionService.getProjectExecutions(id!);
         setExecutions(execRes.data);
@@ -1179,22 +1215,29 @@ const ServiceDetailsPage: React.FC = () => {
   const canDelete        = isOwner;
   const canShare         = isOwner;
   const canRescan        = isOwner;
-  const canAddEndpoint   = isOwner && project?.docMode === "MANUAL";   // ← NEW
+  const canAddEndpoint   = isOwner && project?.docMode === "MANUAL";
   const canExecuteTests  = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
   const canGenerateTests = isOwner || (userRole === "DEVELOPER" && accessLevel === "READ_WRITE");
 
   // ── Groupings ──────────────────────────────────────────────────────────────
-  const groupedEndpoints = endpoints.reduce((g, ep) => {
-    const tag = ep.tags?.split(",")[0]?.trim() || "General";
-    if (!g[tag]) g[tag] = [];
-    g[tag].push(ep); return g;
-  }, {} as Record<string, Endpoint[]>);
+  // FIX 1: group endpoints by their explicit tag (or smart path segment)
+  const groupedEndpoints = groupByTag(endpoints);
 
-  const groupedTests = tests.reduce((g, t) => {
-    const path = t.endpointPath?.split(" ")[1]?.trim();
-    const tag  = path?.split("/")[1]?.split("?")[0] || "General";
-    if (!g[tag]) g[tag] = []; g[tag].push(t); return g;
-  }, {} as Record<string, Test[]>);
+  // FIX 2: group tests by endpoint tag — resolve tag via the endpoint lookup
+  const endpointMap = React.useMemo(
+    () => endpoints.reduce((m, ep) => { m[ep.id] = ep; return m; }, {} as Record<string, Endpoint>),
+    [endpoints]
+  );
+
+  const groupedTests = React.useMemo(() => {
+    return tests.reduce((g, t) => {
+      const ep  = endpointMap[t.endpointId];
+      const tag = ep ? getEndpointTag(ep) : (t.endpointPath?.split(" ")[1]?.split("/").filter(Boolean)[0] ?? "general");
+      if (!g[tag]) g[tag] = [];
+      g[tag].push(t);
+      return g;
+    }, {} as Record<string, Test[]>);
+  }, [tests, endpointMap]);
 
   const testsByEndpoint = tests.reduce((m, t) => {
     if (!m[t.endpointId]) m[t.endpointId] = [];
@@ -1215,40 +1258,63 @@ const ServiceDetailsPage: React.FC = () => {
   const passRatePct = successRate.TOTAL > 0 ? Math.round((successRate.SUCCESS / successRate.TOTAL) * 100) : null;
   const passBarColor = passRatePct === null ? "#e2e8f0" : passRatePct >= 85 ? "#10b981" : passRatePct >= 65 ? "#eab308" : "#ef4444";
 
-  function tagEndpointsByPath(eps: Endpoint[]): Record<string, Endpoint[]> {
-    return eps.reduce((g, ep) => { const tag = ep.path?.split("/")[1]?.trim() || "General"; if (!g[tag]) g[tag] = []; g[tag].push(ep); return g; }, {} as Record<string, Endpoint[]>);
-  }
+  // FIX 3: reports tab — group tested endpoints by their real tag too
+  const groupedTestedEndpoints = React.useMemo(() => groupByTag(testedEndpoints), [testedEndpoints]);
 
   const showMagicButton = canGenerateTests && canExecuteTests && endpoints.length > 0 && magicState.phase === "idle";
 
   // ── Loading / error ────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-surface"><Navbar /><div className="flex"><Sidebar /><main className="flex-1 ml-64 flex items-center justify-center min-h-screen"><ArrowPathIcon className="w-10 h-10 text-primary animate-spin" /></main></div></div>
+    <div className="min-h-screen bg-surface">
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <div className="flex">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 ml-0 md:ml-64 flex items-center justify-center min-h-screen">
+          <ArrowPathIcon className="w-10 h-10 text-primary animate-spin" />
+        </main>
+      </div>
+    </div>
   );
   if (error || !project) return (
-    <div className="min-h-screen bg-surface"><Navbar /><div className="flex"><Sidebar /><main className="flex-1 ml-64 p-8"><div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center"><p className="text-red-600 font-medium mb-4">{error || "Project not found"}</p><Button onClick={() => navigate("/projects")} variant="outline">Back</Button></div></main></div></div>
+    <div className="min-h-screen bg-surface">
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <div className="flex">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 ml-0 md:ml-64 p-8">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p className="text-red-600 font-medium mb-4">{error || "Project not found"}</p>
+            <Button onClick={() => navigate("/projects")} variant="outline">Back</Button>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      {/* Navbar with hamburger toggle for mobile */}
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-6 md:p-12 max-w-7xl mx-auto w-full">
+        {/* Sidebar — receives open/close props for mobile */}
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        {/* Main content: no left margin on mobile, md:ml-64 on desktop */}
+        <main className="flex-1 ml-0 md:ml-64 p-4 md:p-6 lg:p-12 max-w-7xl mx-auto w-full">
 
           {/* ════ HEADER ════ */}
           <div className="flex flex-col gap-6 mb-8">
             <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant font-medium">
               <button onClick={() => navigate("/projects")} className="hover:text-primary transition-colors">Projects</button>
               <span className="text-on-surface-variant/40">/</span>
-              <span className="text-on-surface font-semibold">{project.name}</span>
+              <span className="text-on-surface font-semibold truncate max-w-[200px]">{project.name}</span>
             </nav>
 
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="flex flex-col gap-2.5 flex-1 min-w-[280px]">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="text-2xl font-bold tracking-tight">{project.name}</h2>
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">{project.name}</h2>
                   <Badge variant="info">{project.docMode}</Badge>
                   <Badge variant="default">{project.authType}</Badge>
                 </div>
@@ -1266,14 +1332,14 @@ const ServiceDetailsPage: React.FC = () => {
                 )}
               </div>
               {canShare && (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   <Button variant="outline" size="sm" icon={<UsersIcon className="w-4 h-4" />} onClick={() => navigate(`/service/${id}/shares`)}>Manage Shares</Button>
                   <Button variant="outline" size="sm" icon={<ShareIcon className="w-4 h-4" />} onClick={() => setShowShareModal(true)}>Share</Button>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-outline-variant/20 text-xs text-on-surface-variant">
+            <div className="flex flex-wrap items-center gap-4 md:gap-6 pt-4 border-t border-outline-variant/20 text-xs text-on-surface-variant">
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /><span>{endpointsCount} endpoint{endpointsCount!==1?"s":""}</span></div>
               <div className="flex items-center gap-1.5"><BeakerIcon className="w-3.5 h-3.5 opacity-50" /><span>{totalTestsCount} tests generated</span></div>
               <div className="flex items-center gap-1.5"><ClockIcon className="w-3.5 h-3.5 opacity-50" /><span>{executions.length > 0 ? `Last run: ${new Date(executions[0].executedAt).toLocaleString("en-US")}` : "No executions yet"}</span></div>
@@ -1282,8 +1348,8 @@ const ServiceDetailsPage: React.FC = () => {
           </div>
 
           {/* ════ TABS ════ */}
-          <div className="border-b border-outline-variant/30 mb-8">
-            <nav className="flex space-x-1 overflow-x-auto">
+          <div className="border-b border-outline-variant/30 mb-8 overflow-x-auto">
+            <nav className="flex space-x-1 min-w-max">
               <TabItem active={activeTab==="endpoints"} label="Endpoints"  icon={<ListBulletIcon className="w-4 h-4" />}            onClick={() => setActiveTab("endpoints")} />
               <TabItem active={activeTab==="tests"}     label="Tests"      icon={<BeakerIcon className="w-4 h-4" />}                onClick={() => setActiveTab("tests")} />
               <TabItem active={activeTab==="execution"} label="Execution"  icon={<PlayIcon className="w-4 h-4" />}                  onClick={() => setActiveTab("execution")} disabled={!canExecuteTests} />
@@ -1307,7 +1373,6 @@ const ServiceDetailsPage: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {/* ── Add Endpoint button (MANUAL mode + owner only) ── */}
                     {canAddEndpoint && (
                       <Button
                         variant="outline"
@@ -1339,7 +1404,7 @@ const ServiceDetailsPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-on-surface-variant">
                           <FolderOpenIcon className="w-4 h-4" />
-                          <h3 className="font-bold">{tag}</h3>
+                          <h3 className="font-bold capitalize">{tag}</h3>
                           <span className="text-xs font-mono">({eps.length})</span>
                         </div>
                         {canGenerateTests && (
@@ -1390,7 +1455,6 @@ const ServiceDetailsPage: React.FC = () => {
                 <div className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm space-y-4">
                   <h3 className="font-bold text-sm text-on-surface">Project Stats</h3>
 
-                  {/* Endpoint coverage */}
                   <div>
                     <div className="flex justify-between text-xs mb-1.5">
                       <span className="text-on-surface-variant">Endpoint Coverage</span>
@@ -1404,7 +1468,6 @@ const ServiceDetailsPage: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Pass rate */}
                   <div>
                     <div className="flex justify-between text-xs mb-1.5">
                       <span className="text-on-surface-variant">Pass Rate</span>
@@ -1422,7 +1485,6 @@ const ServiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quick numbers grid */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-primary/5 rounded-lg p-2.5 text-center">
                       <p className="font-black text-xl text-primary">{endpointsCount}</p>
@@ -1513,12 +1575,13 @@ const ServiceDetailsPage: React.FC = () => {
               {tests.length === 0 ? (
                 <EmptyState icon={<BeakerIcon className="w-12 h-12" />} title="No tests available" description="Generate tests from the Endpoints tab." />
               ) : (
+                // FIX 2: use groupedTests (keyed by endpoint tag, not path prefix)
                 Object.entries(groupedTests).map(([tag, gTests]) => (
                   <div key={tag} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-on-surface-variant">
                         <NewspaperIcon className="w-4 h-4" />
-                        <h3 className="font-bold">{tag}</h3>
+                        <h3 className="font-bold capitalize">{tag}</h3>
                         <span className="text-xs font-mono">({gTests.length})</span>
                       </div>
                       {canGenerateTests && (
@@ -1550,19 +1613,19 @@ const ServiceDetailsPage: React.FC = () => {
               <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Execution Console</h3>
+                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">Execution Console</h3>
                     <p className="text-sm text-slate-600">Run all tests and track progress in real time</p>
                   </div>
-                  <BoltIcon className="w-10 h-10 text-indigo-500" />
+                  <BoltIcon className="w-10 h-10 text-indigo-500 shrink-0" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
                   <div className="bg-white rounded-lg p-4 border border-indigo-100"><p className="text-xs font-semibold text-slate-500 uppercase mb-1">Endpoints with tests</p><p className="text-3xl font-bold text-indigo-600">{endpointsWithTests.length}</p><p className="text-xs text-slate-500 mt-1">out of {endpoints.length} total</p></div>
                   <div className="bg-white rounded-lg p-4 border border-indigo-100"><p className="text-xs font-semibold text-slate-500 uppercase mb-1">Available tests</p><p className="text-3xl font-bold text-emerald-600">{totalTestsCount}</p><p className="text-xs text-slate-500 mt-1">ready to execute</p></div>
                   <div className="bg-white rounded-lg p-4 border border-indigo-100"><p className="text-xs font-semibold text-slate-500 uppercase mb-1">Status</p><div className="flex items-center gap-2 mt-2">{isExecuting ? <><div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" /><span className="text-sm font-semibold text-green-600">Running</span></> : <><div className="w-3 h-3 rounded-full bg-slate-300" /><span className="text-sm font-semibold text-slate-600">Ready</span></>}</div></div>
                 </div>
                 <div className="mt-6 flex justify-center">
                   <button onClick={handleExecuteAllProject} disabled={isExecuting || endpointsWithTests.length === 0}
-                    className={`flex items-center gap-3 px-8 py-4 rounded-xl text-base font-bold transition-all shadow-lg ${isExecuting || endpointsWithTests.length === 0 ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"}`}>
+                    className={`flex items-center gap-3 px-6 md:px-8 py-4 rounded-xl text-base font-bold transition-all shadow-lg ${isExecuting || endpointsWithTests.length === 0 ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 active:scale-95"}`}>
                     {isExecuting ? <><ArrowPathIcon className="w-6 h-6 animate-spin" />Executing...</> : <><PlayIcon className="w-6 h-6" />Execute entire project ({totalTestsCount} tests)</>}
                   </button>
                 </div>
@@ -1598,7 +1661,7 @@ const ServiceDetailsPage: React.FC = () => {
                             <div><p className="text-sm font-bold">{new Date(exec.executedAt).toLocaleDateString("en-US")}</p><p className="text-xs text-on-surface-variant">{new Date(exec.executedAt).toLocaleTimeString("en-US")}</p></div>
                             <Badge variant={exec.status === "COMPLETED" ? "success" : exec.status === "RUNNING" ? "warning" : "danger"}>{exec.status}</Badge>
                           </div>
-                          <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">{isYou ? "👤 You" : "👥 User"}</span>
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${exec.executionContext === "ci_cd" ? "bg-orange-100 text-orange-700" : exec.executionContext === "scheduled" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"}`}>{ctxLabel}</span>
                           </div>
@@ -1618,7 +1681,7 @@ const ServiceDetailsPage: React.FC = () => {
                         <Card>
                           <div className="flex flex-wrap items-center justify-between mb-4">
                             <h4 className="font-bold text-slate-900">Execution Details</h4>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">{selectedExecution.executedBy === currentUserId ? "👤 You" : executorName ? `👥 ${executorName}` : "👥 User"}</span>
                               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${selectedExecution.executionContext === "ci_cd" ? "bg-orange-100 text-orange-700" : selectedExecution.executionContext === "scheduled" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"}`}>{selectedExecution.executionContext === "ci_cd" ? "CI/CD" : selectedExecution.executionContext === "scheduled" ? "Jenkins" : "Manual"}</span>
                             </div>
@@ -1634,7 +1697,7 @@ const ServiceDetailsPage: React.FC = () => {
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
-                          <div className="flex justify-center gap-6 text-xs mt-2">
+                          <div className="flex justify-center gap-6 text-xs mt-2 flex-wrap">
                             {[{label:"Passed",count:selectedExecution.testsPassed,color:"bg-green-500"},{label:"Failed",count:selectedExecution.testsFailed,color:"bg-red-500"},{label:"Errors",count:selectedExecution.testsError,color:"bg-amber-500"}].map((d) => (
                               <div key={d.label} className="flex items-center gap-1.5"><div className={`w-2.5 h-2.5 rounded-full ${d.color}`} /><span>{d.label} ({d.count})</span></div>
                             ))}
@@ -1686,7 +1749,7 @@ const ServiceDetailsPage: React.FC = () => {
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="flex justify-center gap-6 text-sm mt-2">
+                    <div className="flex justify-center gap-6 text-sm mt-2 flex-wrap">
                       {projectStats.map((d) => <div key={d.name} className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{backgroundColor:d.color}} /><span>{d.name} ({d.value}%)</span></div>)}
                     </div>
                   </div>
@@ -1705,12 +1768,18 @@ const ServiceDetailsPage: React.FC = () => {
                   </div>
                 </Card>
               </div>
+
+              {/* FIX 3: group tested endpoints by their real tag */}
               <div className="space-y-3">
-                {Object.entries(tagEndpointsByPath(testedEndpoints)).map(([tag, eps]: [string, Endpoint[]]) => (
+                {Object.entries(groupedTestedEndpoints).map(([tag, eps]) => (
                   <div key={tag} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-on-surface-variant"><NewspaperIcon className="w-4 h-4" /><h3 className="font-bold">{tag}</h3><span className="text-xs font-mono">({eps.length})</span></div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-on-surface-variant">
+                        <NewspaperIcon className="w-4 h-4" />
+                        <h3 className="font-bold capitalize">{tag}</h3>
+                        <span className="text-xs font-mono">({eps.length})</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Button icon={<DocumentArrowDownIcon className="w-4 h-4" />} variant="outline" onClick={() => handleDownloadTagReport("simple", tag)} className="font-normal text-xs">Simple Category Report</Button>
                         <Button variant="outline" icon={<DocumentArrowDownIcon className="w-4 h-4" />} onClick={() => handleDownloadTagReport("full", tag)} className="font-normal text-xs">Full Category Report</Button>
                       </div>
@@ -1773,7 +1842,6 @@ const ServiceDetailsPage: React.FC = () => {
         <ShareProjectModal projectId={id!} projectName={project.name} onClose={() => setShowShareModal(false)} onSuccess={() => { loadProjectData(); setShowShareModal(false); }} />
       )}
 
-      {/* ── Add Endpoint Modal (MANUAL mode) ── */}
       {showAddEndpointModal && (
         <AddEndpointModal
           projectId={id!}
@@ -1784,6 +1852,14 @@ const ServiceDetailsPage: React.FC = () => {
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -1809,13 +1885,16 @@ const EndpointAccordion: React.FC<{ endpoint: Endpoint; isExpanded: boolean; onT
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${mc}`}>{endpoint.method}</span>
-          <div className="text-left"><p className="font-mono text-sm text-on-surface">{endpoint.path}</p><p className="text-xs text-on-surface-variant">{endpoint.description || "No description"}</p></div>
+        <div className="flex items-center gap-4 flex-wrap flex-1 min-w-0">
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center shrink-0 ${mc}`}>{endpoint.method}</span>
+          <div className="text-left min-w-0">
+            <p className="font-mono text-sm text-on-surface truncate">{endpoint.path}</p>
+            <p className="text-xs text-on-surface-variant">{endpoint.description || "No description"}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {hasTests && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{testCount} test{testCount>1?"s":""}</span>}
-          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><span className="text-xs text-on-surface-variant">Active</span></div>
+        <div className="flex items-center gap-3 shrink-0 ml-2">
+          {hasTests && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full hidden sm:inline">{testCount} test{testCount>1?"s":""}</span>}
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><span className="text-xs text-on-surface-variant hidden sm:inline">Active</span></div>
         </div>
       </button>
       {isExpanded && (
@@ -1872,13 +1951,23 @@ const TestAccordion: React.FC<{ test: Test; isExpanded: boolean; onToggle: () =>
     <>
       <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl overflow-hidden shadow-sm">
         <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors group">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center ${mc}`}>{method}</span>
-            <p className="font-mono text-sm">{test.endpointPath}</p>
+          <div className="flex items-center gap-4 flex-wrap flex-1 min-w-0">
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center shrink-0 ${mc}`}>{method}</span>
+            <p className="font-mono text-sm truncate">{test.endpointPath}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex gap-1">{TEST_SECTIONS.filter(({key}) => parsed[key]).map(({key,label}) => (<span key={key} className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant">{label.split(" ").slice(1).join(" ")||label}</span>))}</div>
-            <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><span className="text-xs text-on-surface-variant">Active</span></div>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            {/* FIX: show FULL label, not sliced */}
+            <div className="hidden sm:flex gap-1 flex-wrap">
+              {TEST_SECTIONS.filter(({key}) => parsed[key]).map(({key, label}) => (
+                <span key={key} className="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-bold text-on-surface-variant whitespace-nowrap">
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs text-on-surface-variant hidden sm:inline">Active</span>
+            </div>
           </div>
         </button>
         {isExpanded && (
@@ -1928,8 +2017,10 @@ const TestedEndpointAccordion: React.FC<{ endpoint: Endpoint; getReport: (t:"sim
           <span className={`px-2.5 py-1 rounded-full text-[10px] font-black w-14 text-center shrink-0 ${mc}`}>{endpoint.method}</span>
           <p className="font-mono text-sm truncate flex-1">{endpoint.path}</p>
         </div>
-        <Button variant="outline" icon={<DocumentArrowDownIcon className="w-5 h-5" />} onClick={() => getReport("simple", endpoint.id)} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high shrink-0"><span className="text-xs font-medium text-black">Simple</span></Button>
-        <Button variant="outline" icon={<DocumentArrowDownIcon className="w-5 h-5" />} onClick={() => getReport("full", endpoint.id)} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high shrink-0"><span className="text-xs font-medium text-black">Full</span></Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" icon={<DocumentArrowDownIcon className="w-5 h-5" />} onClick={() => getReport("simple", endpoint.id)} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high shrink-0"><span className="text-xs font-medium text-black">Simple</span></Button>
+          <Button variant="outline" icon={<DocumentArrowDownIcon className="w-5 h-5" />} onClick={() => getReport("full", endpoint.id)} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg hover:bg-surface-container-high shrink-0"><span className="text-xs font-medium text-black">Full</span></Button>
+        </div>
       </div>
     </div>
   );

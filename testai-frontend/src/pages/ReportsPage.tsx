@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/common/Card';
@@ -12,7 +12,6 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Label } from 'recharts';
 import { executionService } from '../services/api';
 import type { ProjectExecutionStats } from '../services/api';
-import { useEffect } from 'react';
 import ReportPreview from '../components/modals/ReportPreview';
 
 interface ReportData {
@@ -36,10 +35,7 @@ function formatDate(dateStr: string): string {
 
 const formatReportData = (data: Record<string, unknown>) => {
   return Object.entries(data)
-    // 1. Sort by date (earliest → latest)
     .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
-    
-    // 2. Then map/format
     .map(([date, stats]) => ({
       date: new Date(date).toLocaleDateString('en-GB', { 
         day: 'numeric', 
@@ -52,11 +48,13 @@ const formatReportData = (data: Record<string, unknown>) => {
 };
 
 const ReportsPage: React.FC = () => {
-  // const [period, setPeriod] = useState('30d');
   const [globalStats, setGlobalStats] = useState<Record<string, number>>({});
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [executionStats, setExecutionStats] = useState<ProjectExecutionStats[]>([]);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
+
+  // ⭐ Responsive sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchGlobalStats = async () => {
@@ -79,15 +77,15 @@ const ReportsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-6 md:p-10 max-w-7xl mx-auto w-full">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 ml-0 md:ml-64 p-4 md:p-10 max-w-7xl mx-auto w-full">
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 md:mb-10">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-on-surface">Analysis & Reports</h1>
-              <p className="text-on-surface-variant">Global performance of your APIs over the selected period.</p>
+              <h1 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Analysis & Reports</h1>
+              <p className="text-on-surface-variant text-sm md:text-base">Global performance of your APIs over the selected period.</p>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" icon={<ArrowDownTrayIcon className="w-5 h-5" />}>Export</Button>
@@ -95,16 +93,16 @@ const ReportsPage: React.FC = () => {
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-            <KPI icon={<ChartBarSquareIcon className="w-6 h-6" />} title="Total executions" value={globalStats.ALL?.toString() || '0'} />
-            <KPI icon={<ShieldCheckIcon className="w-6 h-6" />} title="Success rate" value={globalStats.SUCCESS?.toFixed(1) + '%' || '0%'} />
-            <KPI icon={<BugAntIcon className="w-6 h-6" />} title="Bugs detected" value={globalStats.BUGS?.toString() || '0'} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-10">
+            <KPI icon={<ChartBarSquareIcon className="w-5 h-5 md:w-6 md:h-6" />} title="Total executions" value={globalStats.ALL?.toString() || '0'} />
+            <KPI icon={<ShieldCheckIcon className="w-5 h-5 md:w-6 md:h-6" />} title="Success rate" value={globalStats.SUCCESS?.toFixed(1) + '%' || '0%'} />
+            <KPI icon={<BugAntIcon className="w-5 h-5 md:w-6 md:h-6" />} title="Bugs detected" value={globalStats.BUGS?.toString() || '0'} />
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8 md:mb-10">
             <Card title="Daily execution volume">
-              <div className="h-[300px] w-full mt-4">
+              <div className="h-[250px] md:h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
@@ -121,7 +119,7 @@ const ReportsPage: React.FC = () => {
               </div>
             </Card>
             <Card title="Service stability (%)">
-               <div className="h-[300px] w-full mt-4">
+               <div className="h-[250px] md:h-[300px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={reportData} margin={{top: 10, right: 10, left: 10, bottom: 10}}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #c7c4d8)" />
@@ -141,36 +139,47 @@ const ReportsPage: React.FC = () => {
 
           {/* History Table */}
           <Card className="p-0 overflow-hidden">
-            <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant/20">
+            <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant/20">
               <h3 className="text-lg font-headline font-bold">Execution history</h3>
             </div>
-            <table className="w-full text-left">
-              <thead className="bg-surface-container-low">
-                <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Service</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Passed Tests</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Duration</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Last execution date</th>
-                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Report</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10">
-                {executionStats.map(i => (
-                  <tr key={i.id} className="hover:bg-surface-container-low transition">
-                    <td className="px-6 py-4 font-semibold text-on-surface capitalize">{i.projectName}</td>
-                    <td className="px-6 py-4">{i.passedTests}</td>
-                    <td className="px-6 py-4 text-on-surface-variant">{i.duration}</td>
-                    <td className="px-6 py-4 text-on-surface-variant text-sm">{formatDate(i.date)}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-primary text-sm font-bold hover:underline" onClick={() => setSelectedReport(i.id)}>Open</button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px] text-left">
+                <thead className="bg-surface-container-low">
+                  <tr>
+                    <th className="px-4 py-3 md:px-6 md:py-4 text-xs font-bold text-on-surface-variant uppercase">Service</th>
+                    <th className="px-4 py-3 md:px-6 md:py-4 text-xs font-bold text-on-surface-variant uppercase">Passed</th>
+                    <th className="px-4 py-3 md:px-6 md:py-4 text-xs font-bold text-on-surface-variant uppercase">Duration</th>
+                    <th className="px-4 py-3 md:px-6 md:py-4 text-xs font-bold text-on-surface-variant uppercase">Last execution</th>
+                    <th className="px-4 py-3 md:px-6 md:py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Report</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/10">
+                  {executionStats.map(i => (
+                    <tr key={i.id} className="hover:bg-surface-container-low transition">
+                      <td className="px-4 py-3 md:px-6 md:py-4 font-semibold text-on-surface capitalize text-sm">{i.projectName}</td>
+                      <td className="px-4 py-3 md:px-6 md:py-4 text-sm">{i.passedTests}</td>
+                      <td className="px-4 py-3 md:px-6 md:py-4 text-on-surface-variant text-sm">{i.duration}</td>
+                      <td className="px-4 py-3 md:px-6 md:py-4 text-on-surface-variant text-xs md:text-sm whitespace-nowrap">{formatDate(i.date)}</td>
+                      <td className="px-4 py-3 md:px-6 md:py-4 text-right">
+                        <button className="text-primary text-sm font-bold hover:underline" onClick={() => setSelectedReport(i.id)}>Open</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </main>
       </div>
+
+      {/* ⭐ Overlay mobile pour la sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Report Preview Modal */}
       {selectedReport && (
         <ReportPreview
@@ -183,13 +192,12 @@ const ReportsPage: React.FC = () => {
   );
 };
 
-// Sub-components (theme adapted)
 const KPI: React.FC<{ icon: React.ReactNode, title: string, value: string }> = ({ icon, title, value }) => (
-  <Card className="flex flex-col gap-2 border-l-4 border-l-primary">
+  <Card className="flex flex-col gap-2 border-l-4 border-l-primary p-4 md:p-6">
     <div className="flex justify-between items-start">
       <div className="text-on-surface-variant">{icon}</div>
     </div>
-    <p className="text-2xl font-bold text-on-surface">{value}</p>
+    <p className="text-xl md:text-2xl font-bold text-on-surface">{value}</p>
     <p className="text-xs text-on-surface-variant font-bold uppercase tracking-tight">{title}</p>
   </Card>
 );

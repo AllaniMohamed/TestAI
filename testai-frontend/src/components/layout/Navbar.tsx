@@ -7,7 +7,6 @@ import {
   ArrowRightOnRectangleIcon,
   QuestionMarkCircleIcon,
   BoltIcon,
-  // icônes pour les types de notification (toutes en outline)
   UserGroupIcon,
   EnvelopeIcon,
   ShieldExclamationIcon,
@@ -24,7 +23,6 @@ interface NavbarProps {
   isLoggedIn?: boolean;
 }
 
-// ⭐ Composant qui associe un type de notification à une icône Heroicons
 const NotifIcon: React.FC<{ type: string }> = ({ type }) => {
   const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
     INVITATION_ACCEPTED: UserGroupIcon,
@@ -37,7 +35,7 @@ const NotifIcon: React.FC<{ type: string }> = ({ type }) => {
     GENERATION_DONE: SparklesIcon,
   };
 
-  const IconComponent = iconMap[type] || BellIcon; // fallback
+  const IconComponent = iconMap[type] || BellIcon;
   return <IconComponent className="w-5 h-5 text-gray-400 flex-shrink-0" />;
 };
 
@@ -49,7 +47,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showPanel, setShowPanel] = useState(false);
 
-  // Récupérer l'utilisateur depuis sessionStorage
   useEffect(() => {
     const updateUserFromStorage = () => {
       const userStr = sessionStorage.getItem('user');
@@ -71,7 +68,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
     return () => window.removeEventListener('storage', updateUserFromStorage);
   }, []);
 
-  // Avatar (inchangé)
   useEffect(() => {
     let abortController = new AbortController();
     const fetchAvatar = async () => {
@@ -116,7 +112,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   );
 
   return (
-    <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl shadow-sm shadow-indigo-500/5 px-6 py-3 flex justify-between items-center w-full border-b border-gray-200/50">
+    <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl shadow-sm shadow-indigo-500/5 px-4 md:px-6 py-3 flex justify-between items-center w-full border-b border-gray-200/50">
       {/* Left */}
       <div className="flex items-center gap-2">
         <button
@@ -127,12 +123,12 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
         </button>
         <Link to={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-2">
           {logoMark}
-          <span className="text-xl font-bold text-gray-900 tracking-tight hidden sm:inline">TestAI</span>
+          <span className="text-lg md:text-xl font-bold text-gray-900 tracking-tight hidden sm:inline">TestAI</span>
         </Link>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 md:gap-4">
         {isLoggedIn ? (
           <>
             {/* Notifications */}
@@ -150,7 +146,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
               </button>
 
               {showPanel && (
-                <div className="absolute right-0 top-12 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[200] overflow-hidden">
+                <div className="absolute right-0 top-12 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[200] overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                     <h3 className="font-bold text-slate-900">Notifications</h3>
                     {unreadCount > 0 && (
@@ -176,7 +172,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
                             !notif.isRead ? "bg-indigo-50/50" : ""
                           }`}
                         >
-                          {/* ⭐ Icône remplaçant l'emoji */}
                           <NotifIcon type={notif.type} />
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-semibold text-slate-800 ${!notif.isRead ? "text-indigo-900" : ""}`}>
@@ -200,10 +195,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
               )}
             </div>
 
-            <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100/50 transition-colors">
-              <QuestionMarkCircleIcon className="h-6 w-6" />
-            </button>
-            <div className="h-8 w-px bg-gray-200 mx-2"></div>
+            
+            <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 cursor-pointer p-1 rounded-full hover:bg-gray-100/50 transition-colors">
                 {avatarBlobUrl ? (

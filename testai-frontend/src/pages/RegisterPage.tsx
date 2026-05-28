@@ -96,36 +96,36 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col md:flex-row items-center justify-center p-4 gap-12">
-      {/* Benefits Section */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col md:flex-row items-center justify-center p-4 sm:p-6 lg:p-8 gap-8 lg:gap-12">
+      {/* Benefits Section – visible only on large screens */}
       <div className="hidden lg:block max-w-md">
-        <h2 className="text-4xl font-bold text-gray-900 mb-8 leading-tight">
+        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-8 leading-tight">
           Why join <span className="text-primary">TestAI</span>?
         </h2>
         <ul className="space-y-6">
           <li className="flex gap-4">
-            <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
+            <CheckCircleIcon className="w-7 h-7 lg:w-8 lg:h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Massive time savings</p>
-              <p className="text-gray-600 text-sm">
+              <p className="font-bold text-sm lg:text-base">Massive time savings</p>
+              <p className="text-gray-600 text-xs lg:text-sm">
                 Save hours of manual test writing.
               </p>
             </div>
           </li>
           <li className="flex gap-4">
-            <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
+            <CheckCircleIcon className="w-7 h-7 lg:w-8 lg:h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Zero oversight</p>
-              <p className="text-gray-600 text-sm">
+              <p className="font-bold text-sm lg:text-base">Zero oversight</p>
+              <p className="text-gray-600 text-xs lg:text-sm">
                 AI tests all scenarios, even the most unlikely ones.
               </p>
             </div>
           </li>
           <li className="flex gap-4">
-            <CheckCircleIcon className="w-8 h-8 text-primary shrink-0" />
+            <CheckCircleIcon className="w-7 h-7 lg:w-8 lg:h-8 text-primary shrink-0" />
             <div>
-              <p className="font-bold">Enterprise-ready</p>
-              <p className="text-gray-600 text-sm">
+              <p className="font-bold text-sm lg:text-base">Enterprise-ready</p>
+              <p className="text-gray-600 text-xs lg:text-sm">
                 Jenkins integration and ISO-compliant reports.
               </p>
             </div>
@@ -137,18 +137,17 @@ const RegisterPage: React.FC = () => {
       <div className="w-full max-w-lg">
         <Link
           to="/"
-          className="mb-8 flex items-center text-gray-500 hover:text-primary transition lg:hidden"
+          className="mb-6 flex items-center text-gray-500 hover:text-primary transition lg:hidden text-sm"
         >
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
           Back
         </Link>
 
-        <Card className="shadow-2xl">
+        <Card className="shadow-2xl p-6 sm:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Create an account
             </h1>
-            
           </div>
 
           {/* Server error */}
@@ -188,7 +187,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Phone (optional) */}
             <Input
-              label="Phone number "
+              label="Phone number"
               type="tel"
               placeholder="+33612345678"
               value={formData.phoneNumber}
@@ -202,7 +201,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Company (optional) */}
             <Input
-              label="Company "
+              label="Company"
               placeholder="My Company"
               value={formData.company}
               onChange={(e) =>
@@ -212,7 +211,7 @@ const RegisterPage: React.FC = () => {
             />
 
             {/* Passwords */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Password"
                 type="password"
@@ -239,7 +238,6 @@ const RegisterPage: React.FC = () => {
               />
             </div>
 
-            
             {/* Button */}
             <Button type="submit" className="w-full" loading={loading}>
               Create my account
@@ -247,7 +245,7 @@ const RegisterPage: React.FC = () => {
           </form>
 
           {/* Login link */}
-          <p className="mt-8 text-center text-gray-600">
+          <p className="mt-8 text-center text-gray-600 text-sm sm:text-base">
             Already registered?{" "}
             <Link
               to="/login"

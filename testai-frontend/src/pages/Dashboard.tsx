@@ -1,4 +1,3 @@
-// Dashboard.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
@@ -32,14 +31,17 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const [userRole, setUserRole] = useState<"MANAGER" | "DEVELOPER" | "">("");
-  const [userId, setUserId] = useState<string>(""); // ✅ Ajout manquant
-  const [stats, setStats] = useState<DashboardStats>({  // ✅ Ajout manquant
+  const [userId, setUserId] = useState<string>("");
+  const [stats, setStats] = useState<DashboardStats>({
     servicesCount: 0,
     totalTests: 0,
     averageSuccessRate: 0,
     todayExecutions: 0,
     loading: true,
   });
+
+  // ⭐ Nouveau state pour l'ouverture/fermeture de la sidebar sur mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Récupération de l'utilisateur depuis sessionStorage
   useEffect(() => {
@@ -62,7 +64,6 @@ const Dashboard: React.FC = () => {
     setStats(prev => ({ ...prev, loading: true }));
 
     try {
-      // 1. Nombre de services (projets accessibles)
       let servicesCount = 0;
       if (userRole === "MANAGER") {
         const res = await projectService.getAllProjects();
@@ -73,7 +74,6 @@ const Dashboard: React.FC = () => {
         servicesCount = (res.data as any[]).length;
       }
 
-      // 2. Nombre total de tests générés (par projet)
       let totalTests = 0;
       if (userRole === "MANAGER") {
         const res = await projectService.getAllProjects();
@@ -89,23 +89,21 @@ const Dashboard: React.FC = () => {
         totalTests = testResults.reduce((sum, r) => sum + (r.data as any[]).length, 0);
       }
 
-      // 3. Score moyen (taux de succès global)
       let averageSuccessRate = 0;
       try {
         const rateRes = await executionService.getUserProjectsGlobalTestsRate(userId);
         const rates = rateRes.data as Record<string, Record<string, number>>;
         const executionCount = Object.keys(rates).length;
         if (executionCount > 0) {
-          var sum = 0;
+          let sum = 0;
           for (const date in rates) {
             const projectRates = rates[date];
-            sum += projectRates.success
+            sum += projectRates.success;
           }
           averageSuccessRate = Math.round(sum / executionCount);
         }
-      } catch { /* laisser à 0 */ }
+      } catch {}
 
-      // 4. Exécutions d'aujourd'hui
       let todayExecutions = 0;
       try {
         const execsRes = await executionService.getProjectExecutionStats(userId);
@@ -114,7 +112,7 @@ const Dashboard: React.FC = () => {
         todayExecutions = execs.filter((e: any) =>
           e.date?.substring(0, 10) === todayStr
         ).length;
-      } catch { /* laisser à 0 */ }
+      } catch {}
 
       setStats({
         servicesCount,
@@ -137,10 +135,18 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      {/* Navbar avec le bouton hamburger qui déclenche l'ouverture */}
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 lg:p-12 max-w-7xl mx-auto w-full">
+        {/* Sidebar responsive */}
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* ⭐ Contenu principal : décalage conditionnel */}
+        <main className="flex-1 ml-0 md:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full">
           {/* Hero Section */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div className="space-y-2">
@@ -148,28 +154,28 @@ const Dashboard: React.FC = () => {
                 <SparklesIcon className="w-4 h-4" />
                 <span>Workspace</span>
               </div>
-              <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">
+              <h1 className="text-3xl md:text-4xl font-headline font-bold text-on-surface tracking-tight">
                 Dashboard
               </h1>
-              <p className={`text-on-surface-variant font-medium`}>
+              <p className="text-on-surface-variant font-medium text-sm md:text-base">
                 Welcome, {userRole === "MANAGER" ? "Manager" : (userRole === "DEVELOPER" ? "Developer" : "Administrator")}.
                 Overview of your API activity.
               </p>
             </div>
             <div className="flex gap-3 items-center">
-                <Link to="/projects">
-                  <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
-                    View all projects
+              <Link to="/projects">
+                <Button variant="outline" icon={<FolderIcon className="w-5 h-5" />}>
+                  View all projects
+                </Button>
+              </Link>
+              {userRole === "MANAGER" && (
+                <Link to="/add-service">
+                  <Button icon={<PlusIcon className="w-5 h-5" />}>
+                    New service
                   </Button>
                 </Link>
-                {userRole === "MANAGER" && (
-                  <Link to="/add-service">
-                    <Button icon={<PlusIcon className="w-5 h-5" />}>
-                      New service
-                    </Button>
-                  </Link>
-                )}
-              </div>
+              )}
+            </div>
           </div>
 
           {/* Stats Grid */}
@@ -201,7 +207,7 @@ const Dashboard: React.FC = () => {
           {/* Panneaux dynamiques */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
             {/* Santé globale */}
-            <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/10">
+            <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/10">
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/20 rounded-full blur-3xl"></div>
               <div className="relative z-10">
                 <div className="mb-8">
@@ -254,6 +260,14 @@ const Dashboard: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* ⭐ Overlay pour mobile (ferme la sidebar en cliquant à l'extérieur) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 };

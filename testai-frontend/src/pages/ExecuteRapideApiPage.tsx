@@ -23,7 +23,7 @@ import {
   type SavedApiRequestDTO,
 } from "../services/api";
 
-// Types locaux
+// Types locaux (inchangés)
 interface KeyValuePair {
   id: string;
   key: string;
@@ -34,8 +34,10 @@ interface KeyValuePair {
 type AuthType = "NONE" | "BEARER" | "BASIC" | "API_KEY";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Composant CodeEditor avec numéros de ligne
+// Sous-composants (CodeEditor, JsonViewer, KeyValueEditor, PlayIcon)
+// (inchangés – inclus pour l'intégrité du fichier)
 // ─────────────────────────────────────────────────────────────────────────────
+
 const CodeEditor: React.FC<{
   value: string;
   onChange: (value: string) => void;
@@ -98,9 +100,6 @@ const CodeEditor: React.FC<{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Composant JsonViewer amélioré (taille fixe, scroll horizontal/vertical)
-// ─────────────────────────────────────────────────────────────────────────────
 const JsonViewer: React.FC<{ data: any }> = ({ data }) => {
   const normalizeData = (input: any): any => {
     if (typeof input === "string") {
@@ -223,7 +222,6 @@ const JsonViewer: React.FC<{ data: any }> = ({ data }) => {
   return (
     <div className="w-full h-96 bg-[#0d1117] rounded-xl border border-outline-variant/20 overflow-auto font-mono text-sm">
       <div className="flex">
-        {/* Numéros de ligne */}
         <div className="py-4 pl-4 pr-2 text-right select-none bg-[#0d1117] text-gray-500 border-r border-gray-700">
           {lines.map((_, i) => (
             <div key={i + 1} className="leading-6">
@@ -231,7 +229,6 @@ const JsonViewer: React.FC<{ data: any }> = ({ data }) => {
             </div>
           ))}
         </div>
-        {/* Contenu coloré */}
         <div className="p-4 pl-3 text-gray-300 leading-6">
           {lines.map((line, i) => (
             <div key={i} className="whitespace-pre">
@@ -244,9 +241,6 @@ const JsonViewer: React.FC<{ data: any }> = ({ data }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// KeyValueEditor
-// ─────────────────────────────────────────────────────────────────────────────
 const KeyValueEditor: React.FC<{
   title: string;
   pairs: { id: string; key: string; value: string; enabled: boolean }[];
@@ -268,33 +262,37 @@ const KeyValueEditor: React.FC<{
     </div>
     <div className="space-y-2">
       {pairs.map((pair) => (
-        <div key={pair.id} className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={pair.enabled}
-            onChange={(e) => onUpdate(pair.id, "enabled", e.target.checked)}
-            className="rounded"
-          />
-          <input
-            type="text"
-            placeholder="Key"
-            value={pair.key}
-            onChange={(e) => onUpdate(pair.id, "key", e.target.value)}
-            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
-          />
-          <input
-            type="text"
-            placeholder="Value"
-            value={pair.value}
-            onChange={(e) => onUpdate(pair.id, "value", e.target.value)}
-            className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
-          />
-          <button
-            onClick={() => onRemove(pair.id)}
-            className="text-on-surface-variant hover:text-red-500"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </button>
+        <div key={pair.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input
+              type="checkbox"
+              checked={pair.enabled}
+              onChange={(e) => onUpdate(pair.id, "enabled", e.target.checked)}
+              className="rounded"
+            />
+            <input
+              type="text"
+              placeholder="Key"
+              value={pair.key}
+              onChange={(e) => onUpdate(pair.id, "key", e.target.value)}
+              className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Value"
+              value={pair.value}
+              onChange={(e) => onUpdate(pair.id, "value", e.target.value)}
+              className="flex-1 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-sm"
+            />
+            <button
+              onClick={() => onRemove(pair.id)}
+              className="text-on-surface-variant hover:text-red-500"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       ))}
     </div>
@@ -321,7 +319,11 @@ const PlayIcon = ({ className }: { className?: string }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 // Composant principal
 // ─────────────────────────────────────────────────────────────────────────────
+
 const ExecuteRapideApiPage: React.FC = () => {
+  // ⭐ État pour la sidebar mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [method, setMethod] = useState<string>("GET");
   const [url, setUrl] = useState<string>("");
   const [requestBody, setRequestBody] = useState<string>("{}");
@@ -356,7 +358,6 @@ const ExecuteRapideApiPage: React.FC = () => {
   const [saveName, setSaveName] = useState<string>("");
   const [saveDescription, setSaveDescription] = useState<string>("");
 
-  // États pour les boutons de copie
   const [bodyCopied, setBodyCopied] = useState<boolean>(false);
   const [fullCopied, setFullCopied] = useState<boolean>(false);
 
@@ -408,9 +409,7 @@ const ExecuteRapideApiPage: React.FC = () => {
           urlObj.searchParams.append(k, v),
         );
         finalUrl = urlObj.toString();
-      } catch {
-        // keep original
-      }
+      } catch {}
     }
 
     return {
@@ -588,7 +587,6 @@ const ExecuteRapideApiPage: React.FC = () => {
   const removeQueryParam = (id: string) =>
     setQueryParams(queryParams.filter((p) => p.id !== id));
 
-  // Fonctions de copie avec feedback temporaire
   const copyResponseBody = () => {
     if (!response) return;
     let textToCopy: string;
@@ -628,20 +626,18 @@ ${
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
-          {/* HEADER – adapté au style Dashboard */}
-          <header className="px-8 pt-8 pb-4">
-            <div className="flex items-center justify-between">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        {/* Main content */}
+        <main className="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
+          {/* HEADER */}
+          <header className="px-4 md:px-8 pt-6 md:pt-8 pb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface">
+                <h1 className="text-3xl md:text-4xl font-headline font-bold tracking-tight text-on-surface">
                   API Runner
                 </h1>
-                <Badge variant="info" className="text-[10px] font-bold tracking-wider">
-                  v2.4.0-STABLE
-                </Badge>
               </div>
               <button
                 onClick={() => setShowSaveModal(true)}
@@ -654,38 +650,42 @@ ${
             </div>
           </header>
 
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 p-8 pt-0 overflow-y-auto space-y-8">
-              {/* Request bar */}
-              <div className="bg-surface-container-lowest p-1 rounded-xl shadow-sm ring-1 ring-outline-variant/15 flex items-center gap-2">
-                <div className="relative">
-                  <select
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value)}
-                    className="appearance-none bg-secondary-container text-on-secondary-container font-bold text-sm px-4 py-2.5 pr-8 rounded-xl border-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                  >
-                    <option>GET</option>
-                    <option>POST</option>
-                    <option>PUT</option>
-                    <option>DELETE</option>
-                    <option>PATCH</option>
-                  </select>
-                  <ChevronDownIcon className="absolute right-2 top-2.5 w-4 h-4 text-on-secondary-container/50 pointer-events-none" />
-                </div>
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://api.example.com/v1/endpoint"
-                    className="w-full bg-surface-container-low border-none rounded-xl px-4 py-2.5 text-sm font-mono text-on-surface placeholder-on-surface-variant/40 focus:ring-1 focus:ring-primary/30 focus:bg-surface-container-lowest transition-all"
-                  />
+          {/* Content area (flex row on large screens, column on mobile) */}
+          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+            {/* Left panel: request + response */}
+            <div className="flex-1 p-4 md:p-8 pt-0 overflow-y-auto space-y-8">
+              {/* ⚠️ CORRECTION : wrapper avec flex-1 pour que l'input reprenne toute la largeur disponible */}
+              <div className="bg-surface-container-lowest p-1 rounded-xl shadow-sm ring-1 ring-outline-variant/15 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="relative">
+                    <select
+                      value={method}
+                      onChange={(e) => setMethod(e.target.value)}
+                      className="appearance-none bg-secondary-container text-on-secondary-container font-bold text-sm px-4 py-2.5 pr-8 rounded-xl border-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                    >
+                      <option>GET</option>
+                      <option>POST</option>
+                      <option>PUT</option>
+                      <option>DELETE</option>
+                      <option>PATCH</option>
+                    </select>
+                    <ChevronDownIcon className="absolute right-2 top-2.5 w-4 h-4 text-on-secondary-container/50 pointer-events-none" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://api.example.com/v1/endpoint"
+                      className="w-full bg-surface-container-low border-none rounded-xl px-4 py-2.5 text-sm font-mono text-on-surface placeholder-on-surface-variant/40 focus:ring-1 focus:ring-primary/30 focus:bg-surface-container-lowest transition-all"
+                    />
+                  </div>
                 </div>
                 <Button
                   onClick={() => handleExecute()}
                   loading={isExecuting}
                   disabled={!url.trim()}
-                  className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
+                  className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 sm:w-auto w-full justify-center"
                   icon={
                     !isExecuting ? <BoltIcon className="w-4 h-4" /> : undefined
                   }
@@ -696,18 +696,12 @@ ${
 
               {/* Tabs */}
               <div className="space-y-4">
-                <div className="flex border-b border-outline-variant/10 gap-8">
-                  {[
-                    "params",
-                    "authorization",
-                    "headers",
-                    "body",
-                    // "settings",
-                  ].map((tab) => (
+                <div className="flex border-b border-outline-variant/10 gap-4 md:gap-8 overflow-x-auto">
+                  {["params", "authorization", "headers", "body"].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
-                      className={`px-1 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                      className={`px-1 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === tab
                           ? "border-primary text-primary"
                           : "border-transparent text-on-surface-variant hover:text-on-surface"
@@ -718,7 +712,6 @@ ${
                   ))}
                 </div>
 
-                {/* Params */}
                 {activeTab === "params" && (
                   <KeyValueEditor
                     title="Query Parameters"
@@ -729,7 +722,6 @@ ${
                   />
                 )}
 
-                {/* Authorization */}
                 {activeTab === "authorization" && (
                   <div className="bg-surface-container-lowest rounded-xl p-6 ring-1 ring-outline-variant/15 space-y-6">
                     <div>
@@ -794,7 +786,7 @@ ${
 
                     {authType === "API_KEY" && (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium mb-1">
                               Key
@@ -839,7 +831,6 @@ ${
                   </div>
                 )}
 
-                {/* Headers */}
                 {activeTab === "headers" && (
                   <KeyValueEditor
                     title="Request Headers"
@@ -850,7 +841,6 @@ ${
                   />
                 )}
 
-                {/* Body */}
                 {activeTab === "body" && (
                   <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/15 overflow-hidden">
                     <div className="bg-surface-container-low px-4 py-2 flex justify-between items-center border-b border-outline-variant/10">
@@ -901,16 +891,6 @@ ${
                     />
                   </div>
                 )}
-
-                {/* Settings */}
-                {activeTab === "settings" && (
-                  <div className="bg-surface-container-lowest rounded-xl p-6 ring-1 ring-outline-variant/15">
-                    <p className="text-sm text-on-surface-variant">
-                      Additional settings (timeout, follow redirects, etc.) -
-                      coming soon
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Response */}
@@ -919,7 +899,7 @@ ${
                   <h3 className="text-sm font-bold tracking-tight text-on-surface-variant uppercase">
                     Response
                   </h3>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {response && (
                       <>
                         <button
@@ -990,8 +970,8 @@ ${
               </div>
             </div>
 
-            {/* History sidebar */}
-            <aside className="w-80 bg-surface-container-low border-l border-outline-variant/10 p-6 flex flex-col gap-6 overflow-y-auto">
+            {/* History sidebar – full width on mobile, fixed width on desktop */}
+            <aside className="w-full lg:w-80 bg-surface-container-low border-t lg:border-l lg:border-t-0 border-outline-variant/10 p-4 md:p-6 flex flex-col gap-6 overflow-y-auto max-h-64 lg:max-h-none">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-black tracking-widest uppercase text-on-surface">
                   Request History
@@ -1079,17 +1059,23 @@ ${
                   ))
                 )}
               </div>
-
-              
             </aside>
           </div>
         </main>
       </div>
 
-      {/* Save Modal */}
+      {/* Mobile overlay for navigation sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Save Modal (inchangée) */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
             <h3 className="text-lg font-bold mb-4">Save Request</h3>
             <div className="space-y-4">
               <div>

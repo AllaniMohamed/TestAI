@@ -24,6 +24,9 @@ const ProfilePage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ⭐ Responsive sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   useEffect(() => {
     loadUserProfile();
     return () => {
@@ -133,7 +136,6 @@ const ProfilePage: React.FC = () => {
     setLoading(true);
     setMessage("");
     try {
-      // Seul le nom et l'entreprise sont modifiables
       await userService.updateProfile({ name, company });
       setMessage("✅ Profil mis à jour");
       loadUserProfile();
@@ -158,7 +160,6 @@ const ProfilePage: React.FC = () => {
     setMessage("");
     try {
       // Appel backend à implémenter plus tard
-      // await userService.changePassword(user.id, currentPassword, newPassword);
       setMessage("✅ Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
@@ -172,13 +173,16 @@ const ProfilePage: React.FC = () => {
 
   if (!user) return (
     <div className="min-h-screen bg-surface">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 ml-0 md:ml-64 p-8 flex items-center justify-center">
           <p>Loading...</p>
         </main>
       </div>
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
     </div>
   );
 
@@ -186,15 +190,15 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 lg:p-12 max-w-7xl mx-auto w-full">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <section className="flex flex-col md:flex-row gap-12 items-start">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 ml-0 md:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full">
+          <div className="max-w-5xl mx-auto space-y-10 md:space-y-12">
+            <section className="flex flex-col md:flex-row gap-8 md:gap-12 items-start">
               {/* Left column */}
               <div className="w-full md:w-1/3">
-                <h2 className="font-headline text-3xl font-bold tracking-tight mb-2">Profile Settings</h2>
+                <h2 className="font-headline text-2xl md:text-3xl font-bold tracking-tight mb-2">Profile Settings</h2>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
                   Manage your laboratory identity and security protocols. Changes here will reflect across the enterprise workspace.
                 </p>
@@ -203,8 +207,8 @@ const ProfilePage: React.FC = () => {
               {/* Right column */}
               <div className="w-full md:w-2/3 space-y-8">
                 {/* Avatar Section */}
-                <div className="bg-surface-container-lowest p-8 rounded-xl flex items-center gap-8 transition-all duration-300">
-                  <div className="relative">
+                <div className="bg-surface-container-lowest p-6 md:p-8 rounded-xl flex flex-col sm:flex-row items-center gap-6 transition-all duration-300">
+                  <div className="relative shrink-0">
                     <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-200 flex items-center justify-center ring-4 ring-surface-container-low transition-all">
                       {avatarSrc ? (
                         <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
@@ -226,9 +230,9 @@ const ProfilePage: React.FC = () => {
                       className="hidden"
                     />
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 text-center sm:text-left">
                     <h3 className="font-headline font-semibold text-lg">Your Avatar</h3>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                       <button
                         onClick={() => fileInputRef.current?.click()}
                         className="px-4 py-2 bg-surface-container-high text-on-primary-fixed-variant rounded-lg text-sm font-medium hover:bg-surface-variant transition-colors"
@@ -258,12 +262,12 @@ const ProfilePage: React.FC = () => {
                 </div>
 
                 {/* Role Badge */}
-                <div className="bg-primary/5 p-6 rounded-xl flex items-start gap-4">
-                  <div className="bg-primary-container/10 p-2 rounded-lg text-primary">
+                <div className="bg-primary/5 p-5 md:p-6 rounded-xl flex items-start gap-4">
+                  <div className="bg-primary-container/10 p-2 rounded-lg text-primary shrink-0">
                     <ShieldCheckIcon className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-[10px] font-bold tracking-widest uppercase bg-primary-container text-white px-2 py-0.5 rounded">
                         {role}
                       </span>
@@ -285,7 +289,7 @@ const ProfilePage: React.FC = () => {
                     <span className="material-symbols-outlined text-primary text-xl">badge</span>
                     <h3 className="font-headline font-bold uppercase tracking-widest text-[11px]">Personal Information</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Full Name</label>
                       <input
@@ -328,7 +332,7 @@ const ProfilePage: React.FC = () => {
                     <button
                       onClick={handleUpdateProfile}
                       disabled={loading}
-                      className="px-10 py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                      className="px-8 md:px-10 py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                     >
                       Save Profile
                     </button>
@@ -352,7 +356,7 @@ const ProfilePage: React.FC = () => {
                         placeholder="••••••••••••"
                       />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">New Password</label>
                         <input
@@ -372,12 +376,8 @@ const ProfilePage: React.FC = () => {
                         />
                       </div>
                     </div>
-                    {/* Forgot Password link */}
                     <div className="flex justify-end">
-                      <Link
-                        to="/forgot-password"
-                        className="text-xs text-primary hover:underline"
-                      >
+                      <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                         Forgot your password?
                       </Link>
                     </div>
@@ -391,7 +391,7 @@ const ProfilePage: React.FC = () => {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="px-10 py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                        className="px-8 md:px-10 py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                       >
                         Change Password
                       </button>
@@ -409,6 +409,10 @@ const ProfilePage: React.FC = () => {
           </div>
         </main>
       </div>
+      {/* ⭐ Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
     </div>
   );
 };

@@ -12,6 +12,9 @@ const JenkinsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const loadedRef = useRef(false);
 
+  // ⭐ Gestion responsive de la sidebar mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   useEffect(() => {
     if (!loadedRef.current) {
       loadedRef.current = true;
@@ -51,21 +54,25 @@ const JenkinsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      {/* ⭐ Navbar avec toggle menu */}
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 lg:p-12 max-w-7xl mx-auto w-full">
+        {/* ⭐ Sidebar responsive */}
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        
+        <main className="flex-1 ml-0 md:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full">
           {/* Header – aligné avec le style Dashboard */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
                 <BoltIcon className="w-4 h-4" />
                 <span>Jenkins Integration</span>
               </div>
-              <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface">
+              <h1 className="text-3xl md:text-4xl font-headline font-bold tracking-tight text-on-surface">
                 CI/CD Automation
               </h1>
-              <p className="text-on-surface-variant max-w-xl font-medium">
+              <p className="text-on-surface-variant max-w-xl font-medium text-sm md:text-base">
                 Manage the automatic execution of your projects.
               </p>
             </div>
@@ -73,24 +80,24 @@ const JenkinsPage: React.FC = () => {
               href="http://localhost:9090"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm w-fit"
             >
               <BoltIcon className="w-4 h-4" />
               Open Jenkins
             </a>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-            <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
-              <p className="text-3xl font-bold text-primary">{enabledProjects.length}</p>
-              <p className="text-sm font-medium text-on-surface-variant mt-1">Automated Projects</p>
+          {/* Stats – responsive grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+            <div className="bg-surface-container-lowest p-5 md:p-6 rounded-xl border border-outline-variant/10 text-center">
+              <p className="text-2xl md:text-3xl font-bold text-primary">{enabledProjects.length}</p>
+              <p className="text-xs md:text-sm font-medium text-on-surface-variant mt-1">Automated Projects</p>
             </div>
-            <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
-              <p className="text-3xl font-bold text-on-surface-variant">{disabledProjects.length}</p>
-              <p className="text-sm font-medium text-on-surface-variant mt-1">Projects Without Automation</p>
+            <div className="bg-surface-container-lowest p-5 md:p-6 rounded-xl border border-outline-variant/10 text-center">
+              <p className="text-2xl md:text-3xl font-bold text-on-surface-variant">{disabledProjects.length}</p>
+              <p className="text-xs md:text-sm font-medium text-on-surface-variant mt-1">Without Automation</p>
             </div>
-            <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 text-center">
+            <div className="bg-surface-container-lowest p-5 md:p-6 rounded-xl border border-outline-variant/10 text-center">
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                 <p className="text-sm font-bold text-emerald-600">Scheduler active</p>
@@ -110,7 +117,7 @@ const JenkinsPage: React.FC = () => {
                 {enabledProjects.map(p => {
                   const cfg = automations[p.id] || {};
                   return (
-                    <div key={p.id} className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
+                    <div key={p.id} className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-primary/20 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                           <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none">
@@ -130,7 +137,7 @@ const JenkinsPage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => setSelectedProject(p)}
-                        className="px-3 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
+                        className="px-3 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors self-end sm:self-auto"
                       >
                         Edit
                       </button>
@@ -150,11 +157,11 @@ const JenkinsPage: React.FC = () => {
               </h2>
               <div className="space-y-2">
                 {disabledProjects.map(p => (
-                  <div key={p.id} className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-4 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity">
+                  <div key={p.id} className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-70 hover:opacity-100 transition-opacity">
                     <p className="font-semibold text-on-surface text-sm">{p.name}</p>
                     <button
                       onClick={() => setSelectedProject(p)}
-                      className="px-3 py-1.5 text-xs font-bold text-on-surface-variant border border-outline-variant/30 rounded-lg hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 text-xs font-bold text-on-surface-variant border border-outline-variant/30 rounded-lg hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-1 self-end sm:self-auto"
                     >
                       <PlayIcon className="w-3 h-3" />
                       Activate
@@ -170,6 +177,14 @@ const JenkinsPage: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* ⭐ Overlay mobile pour la sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {selectedProject && (
         <AutomationModal

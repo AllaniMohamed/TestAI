@@ -1,5 +1,3 @@
-// src/pages/LoginPage.tsx
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Input from "../components/common/Input";
@@ -71,31 +69,33 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 sm:p-6">
       <Link
         to="/"
-        className="mb-8 flex items-center text-gray-500 hover:text-primary transition"
+        className="mb-6 sm:mb-8 flex items-center text-gray-500 hover:text-primary transition text-sm"
       >
         <ArrowLeftIcon className="w-4 h-4 mr-2" />
         Back to home
       </Link>
 
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl">
+        <Card className="shadow-2xl p-6 sm:p-8">
           {/* Logo */}
-          <div className="text-center mb-10">
+          <div className="text-center mb-8 sm:mb-10">
             <div className="inline-flex w-12 h-12 bg-primary rounded-xl items-center justify-center mb-4">
               <span className="text-white font-bold text-2xl">T</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome back!</h1>
-            <p className="text-gray-500 mt-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Welcome back!
+            </h1>
+            <p className="text-gray-500 mt-2 text-sm sm:text-base">
               Sign in to access your tests.
             </p>
           </div>
 
           {/* Message de succès */}
           {successMessage && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <div className="mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
               <CheckCircleIcon className="w-5 h-5 text-green-600 shrink-0" />
               <p className="text-green-700 text-sm">{successMessage}</p>
             </div>
@@ -103,13 +103,13 @@ const LoginPage: React.FC = () => {
 
           {/* Message d'erreur */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
           {/* Formulaire */}
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} className="space-y-4">
             <Input
               label="Professional email"
               type="email"
@@ -130,7 +130,6 @@ const LoginPage: React.FC = () => {
             />
 
             <div className="flex items-center justify-between mb-6">
-
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-primary hover:underline"
@@ -144,9 +143,8 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          
           {/* Lien inscription */}
-          <p className="mt-10 text-center text-gray-600">
+          <p className="mt-8 sm:mt-10 text-center text-gray-600 text-sm sm:text-base">
             New to TestAI?{" "}
             <Link
               to="/register"

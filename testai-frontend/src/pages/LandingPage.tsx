@@ -143,6 +143,114 @@ const styles = `
 
   /* ── Footer ── */
   .footer-link:hover { color: #6366f1; }
+
+  /* ══════════════════════════════════════
+     RESPONSIVE RULES
+  ══════════════════════════════════════ */
+  @media (max-width: 1024px) {
+    /* hero: stack text and video */
+    .hero-container {
+      flex-direction: column !important;
+      gap: 3rem !important;
+    }
+    .hero-left {
+      flex: 0 0 auto !important;
+      width: 100% !important;
+    }
+    .hero-right {
+      width: 100% !important;
+    }
+
+    /* stats grid: 2 columns */
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    /* features bento: collapse to single column */
+    .features-grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto !important;
+    }
+    .features-grid > * {
+      grid-column: span 1 !important;
+    }
+    /* how it works: 2 columns */
+    .how-it-works-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .step-line {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero-badge {
+      font-size: 11px;
+      padding: 4px 12px;
+    }
+    .hero-left h1 {
+      font-size: 2.2rem !important;
+    }
+    .hero-left p {
+      font-size: 0.95rem !important;
+    }
+    .hero-left button {
+      padding: 12px 22px !important;
+      font-size: 14px !important;
+    }
+    .stats-bar {
+      padding: 4rem 0;
+    }
+    .stat-value {
+      font-size: 2.8rem;
+    }
+    .bento-card {
+      padding: 1.75rem !important;
+    }
+    .cta-card {
+      padding: 3rem 2rem !important;
+    }
+    .features-grid {
+      gap: 12px;
+    }
+    .how-it-works-grid {
+      grid-template-columns: 1fr !important;
+    }
+    /* footer links wrap */
+    .footer-links {
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .landing-root section {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+    .stats-grid {
+      grid-template-columns: 1fr !important;
+      gap: 2rem !important;
+    }
+    .stat-value {
+      font-size: 2.2rem;
+    }
+    .hero-left h1 {
+      font-size: 1.8rem !important;
+    }
+    .hero-left p {
+      font-size: 0.9rem !important;
+    }
+    .cta-card h2 {
+      font-size: 1.8rem !important;
+    }
+    .cta-card p {
+      font-size: 0.95rem !important;
+    }
+    /* bento adjustments */
+    .features-grid .bento-card {
+      padding: 1.5rem !important;
+    }
+  }
 `;
 
 /* ─── sub-components ─── */
@@ -253,6 +361,7 @@ const LandingPage: React.FC = () => {
           />
 
           <div
+            className="hero-container"
             style={{
               maxWidth: '1280px',
               margin: '0 auto',
@@ -265,7 +374,7 @@ const LandingPage: React.FC = () => {
             }}
           >
             {/* ── Left text ── */}
-            <div style={{ flex: '0 0 44%' }}>
+            <div className="hero-left" style={{ flex: '0 0 44%' }}>
               <div className="hero-badge">
                 <SparklesIcon style={{ width: 14, height: 14 }} />
                 <span>New: AI ‑ powered predictive analysis</span>
@@ -361,7 +470,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             {/* ── Right video ── */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="hero-right" style={{ flex: 1, minWidth: 0 }}>
               <div className="video-frame">
                 {/* terminal bar */}
                 <div
@@ -469,6 +578,7 @@ const LandingPage: React.FC = () => {
         ══════════════════════════════════════ */}
         <section className="stats-bar">
           <div
+            className="stats-grid"
             style={{
               maxWidth: '1280px',
               margin: '0 auto',
@@ -518,6 +628,7 @@ const LandingPage: React.FC = () => {
 
             {/* bento grid */}
             <div
+              className="features-grid"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(12, 1fr)',
@@ -693,7 +804,7 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3rem', position: 'relative' }}>
+            <div className="how-it-works-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3rem', position: 'relative' }}>
               {[
                 {
                   num: '01',
@@ -834,7 +945,7 @@ const LandingPage: React.FC = () => {
               <p style={{ fontSize: '14px', color: 'var(--on-surface-variant)', maxWidth: 340, margin: '0 auto 2rem' }}>
                 Making APIs safer, one test at a time.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem' }}>
+              <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem' }}>
                 {['Twitter', 'Github', 'Docs', 'Changelog', 'Status', 'Privacy'].map((link) => (
                   <a
                     key={link}

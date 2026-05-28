@@ -22,22 +22,6 @@ interface ExtendedService extends Service {
   isActive?: boolean;
 }
 
-// ─── Color helpers ────────────────────────────────────────────────────────────
-
-function getBarColor(rate: number): string {
-  if (rate < 40) return "#ef4444";
-  if (rate < 65) return "#f97316";
-  if (rate < 85) return "#eab308";
-  return "#10b981";
-}
-
-function getRateLabel(rate: number): { label: string; bg: string; text: string } {
-  if (rate < 40) return { label: "Critical",  bg: "bg-red-50",     text: "text-red-600"     };
-  if (rate < 65) return { label: "Low",       bg: "bg-orange-50",  text: "text-orange-600"  };
-  if (rate < 85) return { label: "Good",      bg: "bg-yellow-50",  text: "text-yellow-600"  };
-  return              { label: "Excellent", bg: "bg-emerald-50", text: "text-emerald-600" };
-}
-
 // ─── Jenkins automation badge (read-only indicator) ───────────────────────────
 
 const JenkinsBadge: React.FC = () => (
@@ -60,6 +44,9 @@ const ProjectsPage: React.FC = () => {
   const [search, setSearch]     = useState("");
   const [userRole, setUserRole] = useState<string>("");
   const [userId, setUserId]     = useState<string>("");
+
+  // ⭐ Gestion responsive de la sidebar mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const userStr = sessionStorage.getItem("user");
@@ -132,10 +119,13 @@ const ProjectsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface selection:bg-primary/20">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex pt-0">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 lg:p-12 max-w-7xl mx-auto w-full">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <main className="flex-1 ml-0 md:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full">
 
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -172,7 +162,7 @@ const ProjectsPage: React.FC = () => {
 
           {/* Content */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1,2,3,4,5,6].map((i) => (
                 <div key={i} className="h-64 bg-slate-100 animate-pulse rounded-xl" />
               ))}
@@ -204,7 +194,7 @@ const ProjectsPage: React.FC = () => {
                     Active projects
                     <Badge variant="success" className="ml-2">{active.length}</Badge>
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {active.map((s) => (
                       <ProjectCard key={s.id} service={s} userRole={userRole} onToggleActivation={handleToggleActivation} />
                     ))}
@@ -219,7 +209,7 @@ const ProjectsPage: React.FC = () => {
                     Disabled projects
                     <Badge variant="default" className="ml-2">{inactive.length}</Badge>
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {inactive.map((s) => (
                       <ProjectCard key={s.id} service={s} userRole={userRole} onToggleActivation={handleToggleActivation} />
                     ))}
@@ -230,11 +220,19 @@ const ProjectsPage: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* ⭐ Overlay mobile pour fermer la sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 };
 
-// ─── ProjectCard ──────────────────────────────────────────────────────────────
+// ─── ProjectCard (modifiée) ──────────────────────────────────────────────────
 
 const ProjectCard: React.FC<{
   service: ExtendedService;
@@ -256,7 +254,7 @@ const ProjectCard: React.FC<{
       .catch(() => setAutomationEnabled(false));
   }, [service.id, userRole]);
 
-  // ── Success Rate: simple average of successRate across all COMPLETED executions ──
+  // ── Success Rate: simple average ──
   const [successRate, setSuccessRate] = useState<number | null>(null);
   const rateRef = useRef(false);
   useEffect(() => {
@@ -271,13 +269,11 @@ const ProjectCard: React.FC<{
           setSuccessRate(null);
           return;
         }
-        // Keep only COMPLETED executions that have a numeric successRate
         const completed = executions.filter(
           (e) => e.status === "COMPLETED" && typeof e.successRate === "number"
         );
         if (completed.length === 0) { setSuccessRate(null); return; }
 
-        // Simple average — backend already stores 0-100
         const avg =
           completed.reduce((sum, e) => sum + (e.successRate ?? 0), 0) /
           completed.length;
@@ -289,8 +285,6 @@ const ProjectCard: React.FC<{
 
   const hasRate  = successRate !== null;
   const rate     = successRate ?? 0;
-  const barColor = getBarColor(rate);
-  const info     = getRateLabel(rate);
 
   const linkState = {
     managerEmail: service.managerEmail,
@@ -314,10 +308,8 @@ const ProjectCard: React.FC<{
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {/* Jenkins badge — only when automation is enabled */}
             {userRole === "MANAGER" && automationEnabled && <JenkinsBadge />}
 
-            {/* Activation toggle */}
             {userRole === "MANAGER" && (
               <button
                 onClick={(e) => { e.preventDefault(); onToggleActivation(service.id); }}
@@ -339,32 +331,24 @@ const ProjectCard: React.FC<{
         <h5 className="text-lg font-bold text-on-surface mb-1 leading-tight">{service.name}</h5>
         <p className="text-xs text-on-surface-variant mb-4 line-clamp-1">{service.description}</p>
 
-        {/* ── Success Rate progress bar ─────────────────────────── */}
+        {/* ── Success Rate progress bar (always blue) ── */}
         <div className="space-y-2 flex-1">
           <div className="flex justify-between items-center text-xs">
             <span className="font-medium text-on-surface-variant">Success Rate</span>
             {hasRate ? (
-              <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${info.bg} ${info.text}`}>
-                {rate}% · {info.label}
-              </span>
+              <span className="font-bold text-primary text-xs">{rate}%</span>
             ) : (
               <span className="text-on-surface-variant/60 italic text-[10px]">No executions yet</span>
             )}
           </div>
 
-          {/* Progress track */}
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
             {hasRate ? (
               <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{
-                  width: `${Math.min(rate, 100)}%`,
-                  backgroundColor: barColor,
-                  boxShadow: `0 0 6px ${barColor}55`,
-                }}
+                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                style={{ width: `${Math.min(rate, 100)}%` }}
               />
             ) : (
-              /* Shimmer when loading / no data */
               <div className="h-full w-full bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 animate-pulse rounded-full" />
             )}
           </div>
