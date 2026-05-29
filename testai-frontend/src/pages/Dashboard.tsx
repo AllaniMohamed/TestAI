@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
               {userRole === "MANAGER" && (
                 <Link to="/add-service">
                   <Button icon={<PlusIcon className="w-5 h-5" />}>
-                    New service
+                    New project
                   </Button>
                 </Link>
               )}
