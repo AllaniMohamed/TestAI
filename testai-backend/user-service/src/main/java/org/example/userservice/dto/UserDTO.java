@@ -26,4 +26,5 @@ public class UserDTO {
     private Boolean isActive;
     private Instant createdAt;
     private Instant lastLogin;
+    private String keycloakId;
 }

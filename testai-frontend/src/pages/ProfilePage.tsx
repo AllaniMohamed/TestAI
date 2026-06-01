@@ -1,82 +1,41 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 import { userService } from "../services/api";
-import { CameraIcon, UserCircleIcon, ShieldCheckIcon, KeyIcon } from "@heroicons/react/24/outline";
-import type { UserProfile } from "../services/api";
+import {
+  CameraIcon,
+  UserCircleIcon,
+  ShieldCheckIcon,
+  KeyIcon,
+} from "@heroicons/react/24/outline";
+import { useUser } from "../context/UserContext"; // ⭐ Contexte utilisateur
 
 const ProfilePage: React.FC = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [role, setRole] = useState("");
+  // On récupère les données utilisateur et la fonction de rafraîchissement depuis le contexte
+  const { user, avatarBlobUrl, refreshUser } = useUser();
+
+  // États locaux pour les champs du formulaire
+  const [name, setName] = useState(user?.name || "");
+  const [email] = useState(user?.email || "");
+  const [company, setCompany] = useState(user?.company || "");
+  const [phoneNumber] = useState(user?.phoneNumber || "");
+  const [role] = useState(user?.role || "MANAGER");
+
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarBlobUrl, setAvatarBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  // Changement de mot de passe
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ⭐ Responsive sidebar state
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    loadUserProfile();
-    return () => {
-      if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
-    };
-  }, []);
-
-  const loadUserProfile = async () => {
-    try {
-      const userStr = sessionStorage.getItem("user");
-      if (!userStr) throw new Error("Utilisateur non connecté");
-      const userData = JSON.parse(userStr);
-      const userId = userData.id;
-
-      const response = await userService.getUserById(userId);
-      setUser(response.data);
-      setName(response.data.name);
-      setEmail(response.data.email);
-      setCompany(response.data.company || "");
-      setPhoneNumber(response.data.phoneNumber || "");
-      setRole(response.data.role || "MANAGER");
-
-      if (response.data.avatar) {
-        await fetchAvatarWithToken(response.data.avatar);
-      } else {
-        setAvatarBlobUrl(null);
-      }
-    } catch (error) {
-      console.error("Erreur chargement profil:", error);
-      setMessage("Erreur de chargement du profil");
-    }
-  };
-
-  const fetchAvatarWithToken = async (avatarUrl: string) => {
-    try {
-      const token = sessionStorage.getItem("accessToken");
-      const response = await fetch(avatarUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Failed to load avatar");
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
-      setAvatarBlobUrl(blobUrl);
-    } catch (error) {
-      console.error("Error fetching avatar:", error);
-      setAvatarBlobUrl(null);
-    }
-  };
-
+  // Gestion du changement de fichier avatar
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -95,6 +54,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Upload de l'avatar
   const handleUploadAvatar = async () => {
     if (!avatarFile || !user) return;
     setLoading(true);
@@ -104,7 +64,8 @@ const ProfilePage: React.FC = () => {
       setMessage("✅ Avatar mis à jour avec succès");
       setAvatarFile(null);
       setAvatarPreview(null);
-      await loadUserProfile();
+      // ⭐ Rafraîchir le contexte utilisateur → la Navbar sera mise à jour automatiquement
+      await refreshUser();
     } catch (error: any) {
       setMessage("❌ Error: " + (error.response?.data?.error || "Unknown error"));
     } finally {
@@ -112,6 +73,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Suppression de l'avatar
   const handleDeleteAvatar = async () => {
     if (!user) return;
     if (!window.confirm("Are you sure you want to delete your avatar?")) return;
@@ -121,9 +83,8 @@ const ProfilePage: React.FC = () => {
       setMessage("✅ Avatar supprimé");
       setAvatarPreview(null);
       setAvatarFile(null);
-      if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
-      setAvatarBlobUrl(null);
-      await loadUserProfile();
+      // ⭐ Rafraîchir le contexte
+      await refreshUser();
     } catch (error) {
       setMessage("❌ Error deleting avatar");
     } finally {
@@ -131,6 +92,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Mise à jour du profil
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -138,7 +100,7 @@ const ProfilePage: React.FC = () => {
     try {
       await userService.updateProfile({ name, company });
       setMessage("✅ Profil mis à jour");
-      loadUserProfile();
+      await refreshUser(); // ⭐ Met à jour le nom dans la Navbar également
     } catch (error) {
       setMessage("❌ Error updating profile");
     } finally {
@@ -146,45 +108,53 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Changement de mot de passe
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setMessage("❌ The passwords do not match");
+      setMessage("❌ Les mots de passe ne correspondent pas");
       return;
     }
     if (newPassword.length < 8) {
-      setMessage("❌ The password must be at least 8 characters long");
+      setMessage("❌ Le mot de passe doit contenir au moins 8 caractères");
       return;
     }
     setLoading(true);
     setMessage("");
     try {
-      // Appel backend à implémenter plus tard
-      setMessage("✅ Password updated successfully");
+      await userService.changePassword(currentPassword, newPassword);
+      setMessage("✅ Mot de passe mis à jour avec succès");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      setMessage("❌ Error occurred while changing password");
+      const errMsg = error.response?.data?.error || "Erreur lors du changement de mot de passe";
+      setMessage("❌ " + errMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user) return (
-    <div className="min-h-screen bg-surface">
-      <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 ml-0 md:ml-64 p-8 flex items-center justify-center">
-          <p>Loading...</p>
-        </main>
+  // Si pas encore chargé
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-surface">
+        <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <div className="flex">
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <main className="flex-1 ml-0 md:ml-64 p-8 flex items-center justify-center">
+            <p>Loading...</p>
+          </main>
+        </div>
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
       </div>
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-    </div>
-  );
+    );
+  }
 
   const avatarSrc = avatarPreview || avatarBlobUrl;
 
@@ -198,9 +168,12 @@ const ProfilePage: React.FC = () => {
             <section className="flex flex-col md:flex-row gap-8 md:gap-12 items-start">
               {/* Left column */}
               <div className="w-full md:w-1/3">
-                <h2 className="font-headline text-2xl md:text-3xl font-bold tracking-tight mb-2">Profile Settings</h2>
+                <h2 className="font-headline text-2xl md:text-3xl font-bold tracking-tight mb-2">
+                  Profile Settings
+                </h2>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
-                  Manage your laboratory identity and security protocols. Changes here will reflect across the enterprise workspace.
+                  Manage your laboratory identity and security protocols.
+                  Changes here will reflect across the enterprise workspace.
                 </p>
               </div>
 
@@ -211,7 +184,11 @@ const ProfilePage: React.FC = () => {
                   <div className="relative shrink-0">
                     <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-200 flex items-center justify-center ring-4 ring-surface-container-low transition-all">
                       {avatarSrc ? (
-                        <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                        <img
+                          src={avatarSrc}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <UserCircleIcon className="w-16 h-16 text-gray-400" />
                       )}
@@ -231,7 +208,9 @@ const ProfilePage: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-3 text-center sm:text-left">
-                    <h3 className="font-headline font-semibold text-lg">Your Avatar</h3>
+                    <h3 className="font-headline font-semibold text-lg">
+                      Your Avatar
+                    </h3>
                     <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                       <button
                         onClick={() => fileInputRef.current?.click()}
@@ -257,7 +236,9 @@ const ProfilePage: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <p className="text-[11px] text-on-surface-variant">JPG, GIF or PNG. Max size of 5MB</p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      JPG, GIF or PNG. Max size of 5MB
+                    </p>
                   </div>
                 </div>
 
@@ -271,7 +252,9 @@ const ProfilePage: React.FC = () => {
                       <span className="text-[10px] font-bold tracking-widest uppercase bg-primary-container text-white px-2 py-0.5 rounded">
                         {role}
                       </span>
-                      <span className="text-xs text-on-surface-variant">System Role</span>
+                      <span className="text-xs text-on-surface-variant">
+                        System Role
+                      </span>
                     </div>
                     <p className="text-xs text-on-surface-variant">
                       {role === "MANAGER"
@@ -286,12 +269,18 @@ const ProfilePage: React.FC = () => {
                 {/* Personal Information */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 pb-2 border-b border-outline-variant/10">
-                    <span className="material-symbols-outlined text-primary text-xl">badge</span>
-                    <h3 className="font-headline font-bold uppercase tracking-widest text-[11px]">Personal Information</h3>
+                    <span className="material-symbols-outlined text-primary text-xl">
+                      badge
+                    </span>
+                    <h3 className="font-headline font-bold uppercase tracking-widest text-[11px]">
+                      Personal Information
+                    </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Full Name</label>
+                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                        Full Name
+                      </label>
                       <input
                         type="text"
                         value={name}
@@ -300,7 +289,9 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="space-y-2 opacity-60">
-                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Email Address</label>
+                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                        Email Address
+                      </label>
                       <input
                         type="email"
                         value={email}
@@ -309,7 +300,9 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Company</label>
+                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                        Company
+                      </label>
                       <input
                         type="text"
                         value={company}
@@ -318,7 +311,9 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div className="space-y-2 opacity-60">
-                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                        Phone Number
+                      </label>
                       <input
                         type="tel"
                         value={phoneNumber}
@@ -327,7 +322,6 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                   </div>
-                  {/* Single Save Profile button */}
                   <div className="flex justify-end">
                     <button
                       onClick={handleUpdateProfile}
@@ -343,11 +337,15 @@ const ProfilePage: React.FC = () => {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 pb-2 border-b border-outline-variant/10">
                     <KeyIcon className="w-5 h-5 text-primary" />
-                    <h3 className="font-headline font-bold uppercase tracking-widest text-[11px]">Security & Authentication</h3>
+                    <h3 className="font-headline font-bold uppercase tracking-widest text-[11px]">
+                      Security & Authentication
+                    </h3>
                   </div>
                   <form onSubmit={handleChangePassword} className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Current Password</label>
+                      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                        Current Password
+                      </label>
                       <input
                         type="password"
                         value={currentPassword}
@@ -358,7 +356,9 @@ const ProfilePage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">New Password</label>
+                        <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                          New Password
+                        </label>
                         <input
                           type="password"
                           value={newPassword}
@@ -367,7 +367,9 @@ const ProfilePage: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Confirm New Password</label>
+                        <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                          Confirm New Password
+                        </label>
                         <input
                           type="password"
                           value={confirmPassword}
@@ -377,14 +379,20 @@ const ProfilePage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs text-primary hover:underline"
+                      >
                         Forgot your password?
                       </Link>
                     </div>
                     <div className="p-4 bg-surface-container rounded-xl">
                       <p className="text-[11px] text-on-surface-variant flex items-center gap-2">
-                        <span className="material-symbols-outlined text-xs">info</span>
-                        Password must be at least 8 characters and include a mix of symbols and numbers.
+                        <span className="material-symbols-outlined text-xs">
+                          info
+                        </span>
+                        Password must be at least 8 characters and include a mix
+                        of symbols and numbers.
                       </p>
                     </div>
                     <div className="flex justify-end">
@@ -400,7 +408,9 @@ const ProfilePage: React.FC = () => {
                 </div>
 
                 {message && (
-                  <div className={`p-4 rounded-xl ${message.includes("✅") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
+                  <div
+                    className={`p-4 rounded-xl ${message.includes("✅") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}
+                  >
                     {message}
                   </div>
                 )}
@@ -409,9 +419,11 @@ const ProfilePage: React.FC = () => {
           </div>
         </main>
       </div>
-      {/* ⭐ Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );

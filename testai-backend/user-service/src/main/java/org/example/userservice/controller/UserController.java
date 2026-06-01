@@ -4,6 +4,7 @@ package org.example.userservice.controller;
 import org.example.userservice.dto.UserDTO;
 import org.example.userservice.entity.User;
 import org.example.userservice.service.FileStorageService;
+import org.example.userservice.service.KeycloakService;
 import org.example.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +31,7 @@ public class UserController {
 
     private final UserService userService;
     private final FileStorageService fileStorageService;
+    private final KeycloakService keycloakService;  // ajoute ce champ
 
 
     /**
@@ -242,5 +246,43 @@ public class UserController {
                     "message", "Déconnexion effectuée"
             ));
         }
+    }
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDTO> updateCurrentUser(@RequestBody UserDTO userDTO,
+                                                     @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        UserDTO currentUser = userService.getUserByEmail(email);
+        UserDTO updatedUser = userService.updateUser(currentUser.getId(), userDTO);
+        return ResponseEntity.ok(updatedUser);
+    }
+    @PostMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> passwords,
+                                            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        String currentPassword = passwords.get("currentPassword");
+        String newPassword = passwords.get("newPassword");
+
+        if (newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Le nouveau mot de passe doit contenir au moins 8 caractères"
+            ));
+        }
+
+        // Vérifier l’ancien mot de passe via Keycloak
+        try {
+            keycloakService.authenticateUser(email, currentPassword);
+        } catch (Exception e) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "Mot de passe actuel incorrect"
+            ));
+        }
+
+        // Récupérer le keycloakId (à ajouter dans le DTO)
+        UserDTO user = userService.getUserByEmail(email);
+        keycloakService.updateUserPassword(user.getKeycloakId(), newPassword);
+
+        return ResponseEntity.ok(Map.of("message", "Mot de passe mis à jour avec succès"));
     }
 }

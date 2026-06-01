@@ -733,7 +733,7 @@ public class UserService {
             user.setCompany(userDTO.getCompany());
         }
 
-        if(userDTO.getIsActive() != user.getIsActive()){
+        if (userDTO.getIsActive() != null && !userDTO.getIsActive().equals(user.getIsActive())) {
             user.setIsActive(userDTO.getIsActive());
         }
 
@@ -780,7 +780,8 @@ public class UserService {
                 user.getPhoneNumber(),
                 user.getIsActive(),
                 user.getCreatedAt(),
-                user.getLastLogin()
+                user.getLastLogin(),
+                user.getKeycloakId()
         );
     }
     /**
