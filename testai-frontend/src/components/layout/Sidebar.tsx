@@ -30,11 +30,11 @@ const MANAGER_NAV: NavItem[] = [
 ];
 
 const DEVELOPER_NAV: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Mes Projets", href: "/projects", icon: ServerStackIcon },
+  { name: "Overview", href: "/dashboard", icon: HomeIcon },
+  { name: "Projects", href: "/projects", icon: ServerStackIcon },
   { name: "Api Runner", href: "/execute-rapide", icon: BoltIcon },
-  { name: "Rapports", href: "/reports", icon: PresentationChartLineIcon },
-  { name: "Paramètres", href: "/profile", icon: Cog6ToothIcon },
+  { name: "Reports", href: "/reports", icon: PresentationChartLineIcon },
+  { name: "Settings", href: "/profile", icon: Cog6ToothIcon },
 ];
 
 // ⭐ Props pour le responsive
