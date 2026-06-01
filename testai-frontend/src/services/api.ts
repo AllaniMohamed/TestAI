@@ -349,6 +349,9 @@ export const userService = {
 
   getAvatarUrl: (fileName: string): string =>
     `${API_BASE_URL}/user-service/api/users/avatars/${fileName}`,
+
+   changePassword: (currentPassword: string, newPassword: string): Promise<AxiosResponse<any>> =>
+    api.post("/user-service/api/users/me/password", { currentPassword, newPassword }),
 };
 
 // Project Service

@@ -35,6 +35,7 @@ import authService from "./services/authService";
 import JenkinsPage from "./pages/JenkinsPage";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ToastProvider } from "./context/ToastContext";
+import { UserProvider } from "./context/UserContext";
 
 // Garde de route
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -46,6 +47,7 @@ const App: React.FC = () => {
   return (
   <NotificationProvider>
     <ToastProvider>
+    <UserProvider> {/* ← Nouveau */}
     <Router>
       <Routes>
         {/* ─── Routes publiques ─── */}
@@ -181,6 +183,7 @@ const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </UserProvider> 
     </ToastProvider>
   </NotificationProvider>
   );

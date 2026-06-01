@@ -1,108 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BellIcon,
   UserCircleIcon,
   Bars3Icon,
   ArrowRightOnRectangleIcon,
-  QuestionMarkCircleIcon,
   BoltIcon,
-  UserGroupIcon,
-  EnvelopeIcon,
-  ShieldExclamationIcon,
-  BeakerIcon,
-  PlayIcon,
-  CogIcon,
-  PlayCircleIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 import { useNotifications } from "../../context/NotificationContext";
+import { useUser } from "../../context/UserContext"; // ← Nouveau contexte
 
 interface NavbarProps {
   onMenuToggle?: () => void;
   isLoggedIn?: boolean;
 }
 
-const NotifIcon: React.FC<{ type: string }> = ({ type }) => {
-  const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
-    INVITATION_ACCEPTED: UserGroupIcon,
-    INVITATION_SENT: EnvelopeIcon,
-    ACCESS_REVOKED: ShieldExclamationIcon,
-    TEST_GENERATED: BeakerIcon,
-    TEST_EXECUTED: PlayIcon,
-    JENKINS_EXECUTION_DONE: CogIcon,
-    MANUAL_EXECUTION_DONE: PlayCircleIcon,
-    GENERATION_DONE: SparklesIcon,
-  };
-
-  const IconComponent = iconMap[type] || BellIcon;
-  return <IconComponent className="w-5 h-5 text-gray-400 flex-shrink-0" />;
-};
-
 const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [avatarBlobUrl, setAvatarBlobUrl] = useState<string | null>(null);
-
+  const { user, avatarBlobUrl, refreshUser } = useUser(); // ⭐ Contexte utilisateur
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showPanel, setShowPanel] = useState(false);
 
-  useEffect(() => {
-    const updateUserFromStorage = () => {
-      const userStr = sessionStorage.getItem('user');
-      if (userStr) {
-        try {
-          const userData = JSON.parse(userStr);
-          setUser(userData);
-        } catch (e) {
-          console.error('Erreur de parsing user', e);
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    };
-
-    updateUserFromStorage();
-    window.addEventListener('storage', updateUserFromStorage);
-    return () => window.removeEventListener('storage', updateUserFromStorage);
-  }, []);
-
-  useEffect(() => {
-    let abortController = new AbortController();
-    const fetchAvatar = async () => {
-      if (!user?.avatar) {
-        if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
-        setAvatarBlobUrl(null);
-        return;
-      }
-      try {
-        const token = sessionStorage.getItem('accessToken');
-        const response = await fetch(user.avatar, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: abortController.signal,
-        });
-        if (!response.ok) throw new Error('Failed to load avatar');
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        setAvatarBlobUrl(blobUrl);
-      } catch (error) {
-        console.error('Error fetching avatar:', error);
-        setAvatarBlobUrl(null);
-      }
-    };
-    fetchAvatar();
-    return () => {
-      abortController.abort();
-      if (avatarBlobUrl) URL.revokeObjectURL(avatarBlobUrl);
-    };
-  }, [user?.avatar]);
-
   const handleLogout = () => {
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('user');
-    navigate('/');
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("user");
+    refreshUser(); // Remet à zéro l'état utilisateur
+    navigate("/");
   };
 
   const logoMark = (
@@ -121,9 +45,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <Link to={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-2">
+        <Link to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
           {logoMark}
-          <span className="text-lg md:text-xl font-bold text-gray-900 tracking-tight hidden sm:inline">TestAI</span>
+          <span className="text-lg md:text-xl font-bold text-gray-900 tracking-tight hidden sm:inline">
+            TestAI
+          </span>
         </Link>
       </div>
 
@@ -131,7 +57,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
       <div className="flex items-center gap-3 md:gap-4">
         {isLoggedIn ? (
           <>
-            {/* Notifications */}
+            {/* Notifications (inchangé) */}
             <div className="relative">
               <button
                 onClick={() => setShowPanel(!showPanel)}
@@ -164,7 +90,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
                         No notifications
                       </div>
                     ) : (
-                      notifications.slice(0, 20).map(notif => (
+                      notifications.slice(0, 20).map((notif) => (
                         <div
                           key={notif.id}
                           onClick={() => markAsRead(notif.id)}
@@ -174,7 +100,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
                         >
                           <NotifIcon type={notif.type} />
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-semibold text-slate-800 ${!notif.isRead ? "text-indigo-900" : ""}`}>
+                            <p
+                              className={`text-sm font-semibold text-slate-800 ${
+                                !notif.isRead ? "text-indigo-900" : ""
+                              }`}
+                            >
                               {notif.title}
                             </p>
                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
@@ -195,20 +125,24 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isLoggedIn = true }) => {
               )}
             </div>
 
-            
             <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
+
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 cursor-pointer p-1 rounded-full hover:bg-gray-100/50 transition-colors">
                 {avatarBlobUrl ? (
-                  <img src={avatarBlobUrl} alt={user?.name} className="h-8 w-8 rounded-full object-cover" />
+                  <img
+                    src={avatarBlobUrl}
+                    alt={user?.name}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
                 ) : (
                   <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 )}
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-gray-700">
-                    {user ? user.name : 'Loading...'}
+                    {user ? user.name : "Loading..."}
                   </p>
-                  <p className="text-xs text-gray-500">{user ? user.role : ''}</p>
+                  <p className="text-xs text-gray-500">{user ? user.role : ""}</p>
                 </div>
               </div>
               <button
