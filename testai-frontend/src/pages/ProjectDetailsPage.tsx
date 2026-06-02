@@ -216,10 +216,218 @@ function groupByTag(endpoints: Endpoint[]): Record<string, Endpoint[]> {
     return g;
   }, {} as Record<string, Endpoint[]>);
 }
+// =================================================================
+// ADD ENDPOINT MODAL (enhanced version with parameters and schemas)
+// =================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD ENDPOINT MODAL (manual mode)
-// ─────────────────────────────────────────────────────────────────────────────
+// Types pour les paramètres et champs (copiés depuis AddServicePage)
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type ParamLocation = "path" | "query" | "header";
+type FieldType = "string" | "integer" | "boolean" | "number" | "array";
+
+interface ParamRow {
+  id: string;
+  name: string;
+  location: ParamLocation;
+  type: FieldType;
+  required: boolean;
+}
+
+interface BodyField {
+  id: string;
+  name: string;
+  type: FieldType;
+  required: boolean;
+  description: string;
+}
+
+const newId = () => Math.random().toString(36).slice(2, 8);
+
+// Helpers pour générer les JSON
+function buildJsonSchema(fields: BodyField[]): string {
+  if (!fields.length) return "";
+  const properties: Record<string, any> = {};
+  const required: string[] = [];
+  fields.forEach((f) => {
+    properties[f.name] = {
+      type: f.type,
+      ...(f.description ? { description: f.description } : {}),
+    };
+    if (f.required) required.push(f.name);
+  });
+  return JSON.stringify({
+    type: "object",
+    ...(required.length ? { required } : {}),
+    properties,
+  });
+}
+
+function buildParameters(params: ParamRow[]): string {
+  if (!params.length) return "";
+  return JSON.stringify(
+    params.map((p) => ({
+      name: p.name,
+      in: p.location,
+      required: p.required,
+      schema: { type: p.type },
+    }))
+  );
+}
+
+// Sous-composants ParamBuilder et BodyBuilder (adaptés de AddServicePage)
+const ParamBuilder: React.FC<{
+  params: ParamRow[];
+  onChange: (params: ParamRow[]) => void;
+}> = ({ params, onChange }) => {
+  const add = () =>
+    onChange([...params, { id: newId(), name: "", location: "query", type: "string", required: false }]);
+  const update = (id: string, field: keyof ParamRow, value: any) =>
+    onChange(params.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  const remove = (id: string) => onChange(params.filter((p) => p.id !== id));
+
+  const locations: ParamLocation[] = ["path", "query", "header"];
+  const fieldTypes: FieldType[] = ["string", "integer", "boolean", "number", "array"];
+
+  return (
+    <div className="space-y-2">
+      {params.map((p) => (
+        <div key={p.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+          <div className="flex-1 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="nom du paramètre"
+              value={p.name}
+              onChange={(e) => update(p.id, "name", e.target.value)}
+              className="w-full text-sm font-mono bg-transparent outline-none placeholder:text-slate-300"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {locations.map((loc) => (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => update(p.id, "location", loc)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                  p.location === loc
+                    ? loc === "path" ? "bg-violet-100 text-violet-700"
+                      : loc === "query" ? "bg-sky-100 text-sky-700"
+                      : "bg-orange-100 text-orange-700"
+                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {loc}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={p.type}
+              onChange={(e) => update(p.id, "type", e.target.value as FieldType)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 outline-none text-slate-600"
+            >
+              {fieldTypes.map((t) => <option key={t}>{t}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={() => update(p.id, "required", !p.required)}
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                p.required ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+              }`}
+            >
+              {p.required ? "requis" : "optionnel"}
+            </button>
+            <button type="button" onClick={() => remove(p.id)} className="text-slate-300 hover:text-red-400">
+              <TrashIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary transition-colors px-1"
+      >
+        <PlusIcon className="w-3.5 h-3.5" />
+        Ajouter un paramètre
+      </button>
+    </div>
+  );
+};
+
+const BodyBuilder: React.FC<{
+  fields: BodyField[];
+  onChange: (fields: BodyField[]) => void;
+  placeholder?: string;
+}> = ({ fields, onChange, placeholder }) => {
+  const add = () =>
+    onChange([...fields, { id: newId(), name: "", type: "string", required: false, description: "" }]);
+  const update = (id: string, field: keyof BodyField, value: any) =>
+    onChange(fields.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
+  const remove = (id: string) => onChange(fields.filter((f) => f.id !== id));
+
+  const fieldTypes: FieldType[] = ["string", "integer", "boolean", "number", "array"];
+
+  return (
+    <div className="space-y-2">
+      {fields.length === 0 && placeholder && (
+        <p className="text-xs text-slate-400 italic px-1">{placeholder}</p>
+      )}
+      {fields.map((f, i) => (
+        <div key={f.id} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center bg-white border border-slate-200 rounded-lg px-3 py-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <input
+              type="text"
+              placeholder={`champ_${i + 1}`}
+              value={f.name}
+              onChange={(e) => update(f.id, "name", e.target.value)}
+              className="text-sm font-mono bg-transparent outline-none placeholder:text-slate-300 flex-1"
+            />
+            <input
+              type="text"
+              placeholder="description (optionnel)"
+              value={f.description}
+              onChange={(e) => update(f.id, "description", e.target.value)}
+              className="text-xs bg-transparent outline-none placeholder:text-slate-300 text-slate-500 flex-1"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={f.type}
+              onChange={(e) => update(f.id, "type", e.target.value as FieldType)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 outline-none text-slate-600"
+            >
+              {fieldTypes.map((t) => <option key={t}>{t}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={() => update(f.id, "required", !f.required)}
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                f.required ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+              }`}
+            >
+              {f.required ? "requis" : "optionnel"}
+            </button>
+            <button type="button" onClick={() => remove(f.id)} className="text-slate-300 hover:text-red-400">
+              <TrashIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary transition-colors px-1"
+      >
+        <PlusIcon className="w-3.5 h-3.5" />
+        Ajouter un champ
+      </button>
+    </div>
+  );
+};
+
+// =================================================================
+// AddEndpointModal (version améliorée)
+// =================================================================
 
 interface AddEndpointModalProps {
   projectId: string;
@@ -231,40 +439,40 @@ interface AddEndpointModalProps {
 const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
   projectId, onClose, onSuccess, addToast,
 }) => {
-  const [form, setForm] = useState({
-    method: "GET",
-    path: "",
-    description: "",
-    tags: "",
-    requiresAuth: false,
-    statusCodes: "200,400",
-    requestBody: "",
-    responseBody: "",
-  });
-  const [saving, setSaving]   = useState(false);
+  const [method, setMethod] = useState<HttpMethod>("GET");
+  const [path, setPath] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
+  const [requiresAuth, setRequiresAuth] = useState(false);
+  const [statusCodes, setStatusCodes] = useState("200");
+  const [params, setParams] = useState<ParamRow[]>([]);
+  const [requestFields, setRequestFields] = useState<BodyField[]>([]);
+  const [responseFields, setResponseFields] = useState<BodyField[]>([]);
+  const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState<string | null>(null);
 
-  const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const needsBody = ["POST", "PUT", "PATCH"].includes(method);
 
   const handleSubmit = async () => {
-    if (!form.path.trim())          { setFormErr("Path is required."); return; }
-    if (!form.path.startsWith("/")) { setFormErr("Path must start with /."); return; }
+    if (!path.trim()) { setFormErr("Path is required."); return; }
+    if (!path.startsWith("/")) { setFormErr("Path must start with /."); return; }
     setSaving(true);
     setFormErr(null);
     try {
       await endpointService.createEndpoint({
         projectId,
-        method:        form.method,
-        path:          form.path.trim(),
-        description:   form.description,
-        tags:          form.tags || undefined,
-        requiresAuth:  form.requiresAuth,
+        method,
+        path: path.trim(),
+        description: description || undefined,
+        tags: tags || undefined,
+        requiresAuth,
         discoveryType: "MANUAL",
-        statusCodes:   form.statusCodes || "200",
-        requestBody:   form.requestBody || undefined,
-        responseBody:  form.responseBody || undefined,
+        statusCodes: statusCodes || "200",
+        parameters: buildParameters(params) || undefined,
+        requestBody: needsBody ? (buildJsonSchema(requestFields) || undefined) : undefined,
+        responseBody: buildJsonSchema(responseFields) || undefined,
       });
-      addToast("success", `Endpoint "${form.method} ${form.path}" added successfully.`);
+      addToast("success", `Endpoint "${method} ${path}" added successfully.`);
       onSuccess();
     } catch (err: any) {
       setFormErr(err.response?.data?.message || "Error creating endpoint.");
@@ -273,21 +481,19 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
     }
   };
 
-  const needsBody = ["POST", "PUT", "PATCH"].includes(form.method);
-
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl z-10 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-primary/5 to-indigo-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-primary/5 to-indigo-50 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <PlusIcon className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900">Add Endpoint</h3>
-              <p className="text-[11px] text-slate-500">Manual discovery mode</p>
+              <p className="text-[11px] text-slate-500">Define all details manually</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/70 rounded-xl transition-colors">
@@ -296,7 +502,7 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-4">
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
           {formErr && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
               <XCircleIcon className="w-4 h-4 shrink-0" />{formErr}
@@ -308,11 +514,11 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant mb-1">Method</label>
               <select
-                value={form.method}
-                onChange={(e) => set("method", e.target.value)}
+                value={method}
+                onChange={(e) => setMethod(e.target.value as HttpMethod)}
                 className="px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-white font-bold focus:ring-2 focus:ring-primary/20 outline-none"
               >
-                {HTTP_METHODS.map((m) => <option key={m}>{m}</option>)}
+                {(["GET","POST","PUT","DELETE","PATCH"] as HttpMethod[]).map((m) => <option key={m}>{m}</option>)}
               </select>
             </div>
             <div className="flex-1">
@@ -322,8 +528,8 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
               <input
                 type="text"
                 placeholder="/api/resource/{id}"
-                value={form.path}
-                onChange={(e) => set("path", e.target.value)}
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
                 className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 outline-none"
               />
             </div>
@@ -334,66 +540,88 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
             <label className="block text-xs font-semibold text-on-surface-variant mb-1">Description</label>
             <input
               type="text"
-              placeholder="Brief description of this endpoint"
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
+              placeholder="Brief description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none"
             />
           </div>
 
           {/* Tags + Status codes row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                Tags <span className="text-[10px] font-normal">(comma-separated)</span>
-              </label>
+              <label className="block text-xs font-semibold text-on-surface-variant mb-1">Tags <span className="text-[10px] font-normal">(comma-separated)</span></label>
               <input
                 type="text"
                 placeholder="users, auth"
-                value={form.tags}
-                onChange={(e) => set("tags", e.target.value)}
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
                 className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                Status Codes <span className="text-[10px] font-normal">(comma-separated)</span>
-              </label>
+              <label className="block text-xs font-semibold text-on-surface-variant mb-1">Status Codes <span className="text-[10px] font-normal">(comma-separated)</span></label>
               <input
                 type="text"
                 placeholder="200,201,400,404"
-                value={form.statusCodes}
-                onChange={(e) => set("statusCodes", e.target.value)}
+                value={statusCodes}
+                onChange={(e) => setStatusCodes(e.target.value)}
                 className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 outline-none"
               />
             </div>
           </div>
 
-          {/* Request Body — only for POST/PUT/PATCH */}
+          {/* Parameters section */}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Parameters</span>
+                <span className="text-[10px] text-slate-400">(path, query, header)</span>
+              </div>
+            </div>
+            <ParamBuilder params={params} onChange={setParams} />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Ex : <code className="bg-slate-100 px-1 rounded">/users/{"{id}"}</code> → paramètre <strong>path</strong> · <code>?page=1</code> → paramètre <strong>query</strong>
+            </p>
+          </div>
+
+          {/* Request Body (only for methods that support body) */}
           {needsBody && (
-            <div>
-              <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                Request Body Schema <span className="text-[10px] font-normal">(JSON Schema)</span>
-              </label>
-              <textarea
-                rows={4}
-                placeholder={'{\n  "type": "object",\n  "properties": { ... }\n}'}
-                value={form.requestBody}
-                onChange={(e) => set("requestBody", e.target.value)}
-                className="w-full px-3 py-2 border border-outline-variant/30 rounded-lg text-xs font-mono focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Request Body Schema</span>
+                <span className="text-[10px] text-slate-400">(fields sent in JSON body)</span>
+              </div>
+              <BodyBuilder
+                fields={requestFields}
+                onChange={setRequestFields}
+                placeholder="Aucun champ — cliquez 'Ajouter un champ' pour définir le corps de la requête."
               />
             </div>
           )}
 
+          {/* Response Body (optional) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Expected Response Schema</span>
+              <span className="text-[10px] text-slate-400">(optional, improves test generation)</span>
+            </div>
+            <BodyBuilder
+              fields={responseFields}
+              onChange={setResponseFields}
+              placeholder="Optionnel — définissez les champs de la réponse JSON."
+            />
+          </div>
+
           {/* Auth required toggle */}
-          <label className="flex items-center gap-3 cursor-pointer group">
+          <label className="flex items-center gap-3 cursor-pointer group pt-2">
             <div
-              className={`relative w-10 h-5 rounded-full transition-colors ${form.requiresAuth ? "bg-primary" : "bg-slate-200"}`}
-              onClick={() => set("requiresAuth", !form.requiresAuth)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${requiresAuth ? "bg-primary" : "bg-slate-200"}`}
+              onClick={() => setRequiresAuth(!requiresAuth)}
             >
               <span
                 className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                  form.requiresAuth ? "translate-x-5" : "translate-x-0.5"
+                  requiresAuth ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </div>
@@ -405,7 +633,7 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-white transition-colors"
@@ -424,7 +652,6 @@ const AddEndpointModal: React.FC<AddEndpointModalProps> = ({
     </div>
   );
 };
-
 // ─────────────────────────────────────────────────────────────────────────────
 // MAGIC FLOATING BUTTON
 // ─────────────────────────────────────────────────────────────────────────────
