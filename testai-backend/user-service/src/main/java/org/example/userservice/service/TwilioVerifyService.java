@@ -45,10 +45,14 @@ public class TwilioVerifyService {
     public void sendVerificationCode(String phoneNumber) {
         try {
             Verification verification = Verification.creator(
-                    verifyServiceSid,
-                    phoneNumber,
-                    "sms"  // Canal : SMS
+                    verifyServiceSid, phoneNumber, "sms"
             ).create();
+
+// Ajoute ces logs détaillés
+            log.info("Status: {}", verification.getStatus());
+            log.info("SID: {}", verification.getSid());
+            log.info("To: {}", verification.getTo());
+            log.info("Channel: {}", verification.getChannel());
 
             log.info("✅ Code de vérification envoyé à {} (Status: {})",
                     phoneNumber, verification.getStatus());
@@ -60,13 +64,7 @@ public class TwilioVerifyService {
         }
     }
 
-    /**
-     * Vérifier le code entré par l'utilisateur
-     *
-     * @param phoneNumber Numéro de téléphone au format international
-     * @param code Code à 6 chiffres entré par l'utilisateur
-     * @return true si le code est correct, false sinon
-     */
+
     public boolean verifyCode(String phoneNumber, String code) {
         try {
             VerificationCheck verificationCheck = VerificationCheck.creator(verifyServiceSid).setTo(phoneNumber).setCode(code).create();
@@ -108,7 +106,7 @@ public class TwilioVerifyService {
     /**
      * Formater un numéro de téléphone français
      * Convertit 0612345678 en +33612345678
-     *
+     *a
      * @param phoneNumber Numéro à formater
      * @return Numéro au format international
      */
