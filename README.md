@@ -1,47 +1,47 @@
- TESTAI - README COMPLET
+TESTAI - COMPLETE README
 
-Plateforme intelligente d'automatisation des tests d'APIs REST
-
-
-📋 TABLE DES MATIÈRES
-
-Vue d'ensemble
-Architecture microservices
-Services détaillés
-Technologies utilisées
-Structure du projet
-Communication inter-services
-Bases de données
-Endpoints API
-Docker & Déploiement
-Guide de développement
-Fonctionnalités principales
-Authentification & Sécurité
-Génération de rapports
+Intelligent platform for automating REST API tests
 
 
-🎯 VUE D'ENSEMBLE
-Qu'est-ce que TestAI ?
-TestAI est une plateforme SaaS innovante qui automatise et optimise les tests d'APIs REST en combinant :
+📋 TABLE OF CONTENTS
 
-✅ Scan automatique de documentation Swagger/OpenAPI
-🤖 Intelligence artificielle interne via adaptateur entraîné sur le modèle Qwen2.5-1.5B-Instruct pour générer des données de test réalistes
-🚀 Exécution automatisée des tests avec validation
-📊 Rapports détaillés avec métriques de qualité
-👥 Collaboration multi-rôles (Manager/Guest/Admin)
-🔄 Historique complet de toutes les exécutions
-
-Positionnement
-TestAI se positionne au niveau des tests d'intégration dans la pyramide des tests, en ciblant spécifiquement les APIs REST pour combler le manque d'automatisation intelligente sur cette couche critique.
-Gains mesurés
-
-95% de réduction du temps de génération de tests
-600% d'augmentation de la couverture (6 tests/endpoint vs 1)
-70% de gain de temps global sur les tests d'APIs
+Overview
+Microservices architecture
+Detailed services
+Technologies used
+Project structure
+Inter-service communication
+Databases
+API endpoints
+Docker & Deployment
+Development guide
+Main features
+Authentication & Security
+Report generation
 
 
-🏗️ ARCHITECTURE MICROSERVICES
-Architecture globale
+🎯 OVERVIEW
+What is TestAI?
+TestAI is an innovative SaaS platform that automates and optimizes REST API testing by combining:
+
+✅ Automatic Swagger/OpenAPI documentation scanning
+🤖 Internal artificial intelligence via an adapter trained on the Qwen2.5-1.5B-Instruct model to generate realistic test data
+🚀 Automated test execution with validation
+📊 Detailed reports with quality metrics
+👥 Multi-role collaboration (Manager/Guest/Admin)
+🔄 Full execution history
+
+Positioning
+TestAI sits at the integration testing layer of the testing pyramid, specifically targeting REST APIs to fill the gap in intelligent automation at this critical layer.
+Measured gains
+
+95% reduction in test generation time
+600% increase in coverage (6 tests/endpoint vs 1)
+70% overall time savings on API testing
+
+
+🏗️ MICROSERVICES ARCHITECTURE
+Overall architecture
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FRONTEND (React)                         │
 │                    http://localhost:3000                         │
@@ -50,9 +50,9 @@ Architecture globale
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    API GATEWAY (Port 8888)                       │
-│              - Routage centralisé                                │
-│              - CORS                                              │
-│              - Rate limiting                                     │
+│              - Centralized routing                               │
+│              - CORS                                               │
+│              - Rate limiting                                      │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
@@ -88,56 +88,56 @@ Architecture globale
                       │ SERVICE      │     │generate-test-│
                       │  (8086)      │     │ service (8084)│
                       └──────────────┘     └──────────────┘
-Principe de l'architecture
-Architecture microservices modulaire où :
+Architecture principle
+Modular microservices architecture where:
 
-Chaque service a une responsabilité unique (Single Responsibility Principle)
-Les services communiquent via REST API et OpenFeign
-API Gateway : point d'entrée unique pour le frontend
-Eureka : découverte automatique des services (pas d'URL hardcodées)
-Docker Compose : orchestration de tous les services
+Each service has a single responsibility (Single Responsibility Principle)
+Services communicate via REST API and OpenFeign
+API Gateway: single entry point for the frontend
+Eureka: automatic service discovery (no hardcoded URLs)
+Docker Compose: orchestration of all services
 
 
-🔧 SERVICES DÉTAILLÉS
+🔧 DETAILED SERVICES
 1. EUREKA-SERVER (Port 8761)
-Rôle : Service Registry (Registre de services)
-Responsabilités :
+Role: Service Registry
+Responsibilities:
 
-Enregistrer tous les microservices au démarrage
-Maintenir une liste dynamique des instances disponibles
-Fournir la découverte de services (Service Discovery)
-Permettre le load balancing côté client
+Register all microservices at startup
+Maintain a dynamic list of available instances
+Provide service discovery
+Enable client-side load balancing
 
-Technologies :
+Technologies:
 
 Spring Cloud Netflix Eureka Server
 Spring Boot 3.x
 
-Configuration clé :
+Key configuration:
 yamleureka:
   client:
     register-with-eureka: false  # Eureka ne s'enregistre pas lui-même
     fetch-registry: false
   server:
     enable-self-preservation: false
-URL d'accès : http://localhost:8761
-Dashboard : Interface web montrant tous les services enregistrés
+Access URL: http://localhost:8761
+Dashboard: Web interface showing all registered services
 
 2. API-GATEWAY (Port 8888)
-Rôle : Point d'entrée unique pour toutes les requêtes
-Responsabilités :
+Role: Single entry point for all requests
+Responsibilities:
 
-Router les requêtes vers les bons microservices
-Gérer CORS pour permettre les appels depuis le frontend
-Appliquer rate limiting pour éviter les abus
-Centraliser la configuration de sécurité
+Route requests to the correct microservices
+Handle CORS to allow calls from the frontend
+Apply rate limiting to prevent abuse
+Centralize security configuration
 
-Technologies :
+Technologies:
 
 Spring Cloud Gateway
 Spring Boot 3.x
 
-Routes configurées :
+Configured routes:
 yamlspring:
   cloud:
     gateway:
@@ -181,31 +181,31 @@ yamlspring:
           uri: lb://notification-service
           predicates:
             - Path=/notification-service/**
-Exemple d'appel :
-bash# Frontend appelle
+Example request:
+bash# Frontend calls
 GET http://localhost:8888/project-service/api/projects
 
-# Gateway route vers
+# Gateway routes to
 GET http://project-service:8082/api/projects
 
 3. USER-SERVICE (Port 8081)
-Rôle : Gestion des utilisateurs et authentification
-Responsabilités :
+Role: User management and authentication
+Responsibilities:
 
-Inscription et connexion des utilisateurs
-Vérification email/téléphone (SMS via Twilio)
-Gestion des profils utilisateurs
-Upload d'avatars
-Gestion des rôles (MANAGER, GUEST, ADMIN)
+User registration and login
+Email/phone verification (SMS via Twilio)
+User profile management
+Avatar upload
+Role management (MANAGER, GUEST, ADMIN)
 
-Base de données : PostgreSQL (testai_users)
-Entités principales :
+Database: PostgreSQL (testai_users)
+Main entities:
 javaUser {
     UUID id
     String name
     String email (unique)
     String phoneNumber (unique)
-    String password (hashé BCrypt)
+    String password (BCrypt hashed)
     Role role (MANAGER, GUEST, ADMIN)
     Boolean isActive
     Boolean emailVerified
@@ -213,38 +213,38 @@ javaUser {
     String avatarUrl
     Instant createdAt
 }
-Endpoints clés :
-POST   /api/users/register           - Inscription
-POST   /api/users/login              - Connexion (retourne JWT)
-POST   /api/users/verify-email       - Vérifier email
-POST   /api/users/verify-phone       - Vérifier téléphone
+Key endpoints:
+POST   /api/users/register           - Registration
+POST   /api/users/login              - Login (returns JWT)
+POST   /api/users/verify-email       - Verify email
+POST   /api/users/verify-phone       - Verify phone
 POST   /api/users/{id}/avatar        - Upload avatar
-GET    /api/users/{id}               - Récupérer utilisateur
-GET    /api/users/email/{email}      - Trouver par email
-PUT    /api/users/{id}               - Modifier profil
-Intégration Keycloak : Utilise Keycloak pour la gestion des tokens JWT
-Communication sortante : Aucune (service de base)
+GET    /api/users/{id}               - Get user
+GET    /api/users/email/{email}      - Find by email
+PUT    /api/users/{id}               - Update profile
+Keycloak integration: Uses Keycloak to manage JWT tokens
+Outgoing communication: None (core service)
 
 4. PROJECT-SERVICE (Port 8082)
-Rôle : Gestion des projets (APIs à tester)
-Responsabilités :
+Role: Project management (APIs to test)
+Responsibilities:
 
-CRUD des projets
-Stockage des credentials d'authentification API (Basic, API Key, Bearer)
-Scan automatique de documentation Swagger
-Gestion des partages de projets (SharedAccess)
-Suppression en cascade (projet → endpoints → tests → exécutions)
+Project CRUD
+Storage of API authentication credentials (Basic, API Key, Bearer)
+Automatic Swagger documentation scanning
+Project sharing management (SharedAccess)
+Cascade deletion (project → endpoints → tests → executions)
 
-Base de données : PostgreSQL (testai_projects)
-Entités principales :
+Database: PostgreSQL (testai_projects)
+Main entities:
 javaProject {
     UUID id
-    UUID userId (propriétaire)
+    UUID userId (owner)
     String name
     String description
-    String projectUrl (URL de l'API à tester)
+    String projectUrl (API URL to test)
     DocsMode docMode (SWAGGER, MANUAL)
-    String docUrl (URL Swagger ou fichier)
+    String docUrl (Swagger URL or file)
     AuthType authType (NONE, BASIC, APIKEY, BEARER)
     ApiCredentials credentials (OneToOne)
     Instant createdAt
@@ -252,7 +252,7 @@ javaProject {
 
 ApiCredentials {
     UUID id
-    UUID projectId (OneToOne avec Project)
+    UUID projectId (OneToOne with Project)
     // BASIC
     String basicUsername
     String basicPassword
@@ -268,34 +268,34 @@ ApiCredentials {
 SharedAccess {
     UUID id
     UUID projectId
-    String managerEmail (qui partage)
-    String developerEmail (invité)
-    UUID developerUserId (null si pas encore inscrit)
+    String managerEmail (who shares)
+    String developerEmail (invited)
+    UUID developerUserId (null if not registered yet)
     AccessLevel accessLevel (READ_ONLY, READ_WRITE)
     AccessStatus status (PENDING, ACTIVE, REVOKED)
     Instant sharedAt
     Instant acceptedAt
 }
-Endpoints clés :
-POST   /api/projects/add                    - Créer projet
-GET    /api/projects/{id}                   - Récupérer projet
-PUT    /api/projects/{id}                   - Modifier projet
-DELETE /api/projects/{id}                   - Supprimer en cascade
-GET    /api/projects/user/{userId}          - Projets d'un user
-POST   /api/projects/{id}/scan-endpoints    - Scanner Swagger
-GET    /api/projects/{id}/endpoints         - Lister endpoints
-POST   /api/projects/{id}/share             - Partager projet
-GET    /api/projects/{id}/shares            - Lister partages
-DELETE /api/projects/shares/{id}            - Révoquer partage
-GET    /api/projects/shared-with-me         - Projets partagés avec moi
-Communication sortante :
+Key endpoints:
+POST   /api/projects/add                    - Create project
+GET    /api/projects/{id}                   - Get project
+PUT    /api/projects/{id}                   - Update project
+DELETE /api/projects/{id}                   - Delete project with cascade
+GET    /api/projects/user/{userId}          - User projects
+POST   /api/projects/{id}/scan-endpoints    - Scan Swagger
+GET    /api/projects/{id}/endpoints         - List endpoints
+POST   /api/projects/{id}/share             - Share project
+GET    /api/projects/{id}/shares            - List shares
+DELETE /api/projects/shares/{id}            - Revoke share
+GET    /api/projects/shared-with-me         - Projects shared with me
+Outgoing communication:
 
-user-service : Vérifier existence utilisateur
-endpoint-service : Scanner endpoints, récupérer/supprimer endpoints
-test-service : Supprimer tests lors de suppression projet
-execution-service : Supprimer exécutions lors de suppression projet
+user-service: Verify user existence
+endpoint-service: Scan endpoints, retrieve/delete endpoints
+test-service: Delete tests when project is deleted
+execution-service: Delete executions when project is deleted
 
-Feign Clients :
+Feign Clients:
 java@FeignClient(name = "user-service")
 UserServiceClient
 
@@ -309,199 +309,153 @@ TestServiceClient
 ExecutionServiceClient
 
 5. ENDPOINT-SERVICE (Port 8083)
-Rôle : Gestion des endpoints d'une API
-Responsabilités :
+Role: API endpoint management
+Responsibilities:
 
-Scanner documentation Swagger/OpenAPI
-Stocker les endpoints détectés
-Créer endpoints manuellement
+Scan Swagger/OpenAPI documentation
+Store discovered endpoints
+Create endpoints manually
 CRUD endpoints
-Fournir schémas de requête/réponse pour génération de tests
+Provide request/response schemas for test generation
 
-Base de données : PostgreSQL (testai_endpoints)
-Entités principales :
+Database: PostgreSQL (testai_endpoints)
+Main entities:
 javaEndpoint {
     UUID id
     UUID projectId
     HttpMethod method (GET, POST, PUT, DELETE, PATCH)
-    String path (ex: "/api/users/{id}")
+    String path (e.g. "/api/users/{id}")
     String description
     DiscoveryType discoveryType (SWAGGER, MANUAL)
-    String tags (catégories, séparées par virgules)
-    String parameters (JSON array des params)
+    String tags (categories, comma-separated)
+    String parameters (JSON array of params)
     String requestBody (JSON Schema)
     String responseBody (JSON Schema)
-    String statusCodes (ex: "200,201,400")
+    String statusCodes (e.g. "200,201,400")
     Boolean requiresAuth
     Instant createdAt
     Instant updatedAt
 }
-Endpoints clés :
-POST   /api/endpoints/scan                  - Scanner Swagger
-GET    /api/endpoints/project/{projectId}   - Lister endpoints projet
-GET    /api/endpoints/{id}                  - Récupérer endpoint
-POST   /api/endpoints                       - Créer endpoint manuel
-PUT    /api/endpoints/{id}                  - Modifier endpoint
-DELETE /api/endpoints/{id}                  - Supprimer endpoint
-DELETE /api/endpoints/project/{projectId}   - Supprimer tous endpoints projet
-GET    /api/endpoints/project/{projectId}/count - Compter endpoints
-Scanner Swagger :
-Utilise Swagger Parser pour :
+Key endpoints:
+POST   /api/endpoints/scan                  - Scan Swagger
+GET    /api/endpoints/project/{projectId}   - List project endpoints
+GET    /api/endpoints/{id}                  - Get endpoint
+POST   /api/endpoints                       - Create manual endpoint
+PUT    /api/endpoints/{id}                  - Update endpoint
+DELETE /api/endpoints/{id}                  - Delete endpoint
+DELETE /api/endpoints/project/{projectId}   - Delete all project endpoints
+GET    /api/endpoints/project/{projectId}/count - Count endpoints
+Swagger scanning:
+Uses Swagger Parser to:
 
-Télécharger fichier Swagger/OpenAPI (JSON ou YAML)
-Parser la spécification
-Extraire tous les endpoints (paths)
-Pour chaque endpoint :
+Download the Swagger/OpenAPI file (JSON or YAML)
+Parse the specification
+Extract all endpoints (paths)
+For each endpoint:
 
-Méthode HTTP
-Path avec paramètres
+HTTP method
+Path with parameters
 Description
-Paramètres (query, path, header, body)
-Schéma de requête (requestBody)
-Schéma de réponse (responses)
-Codes de statut attendus
-Sécurité requise
+Parameters (query, path, header, body)
+Request schema (requestBody)
+Response schema (responses)
+Expected status codes
+Required security
 
+Store in the database (avoid duplicates)
 
-Stocker en base (éviter doublons)
+Outgoing communication:
 
-Communication sortante :
+test-service: Delete tests when endpoint is deleted
 
-test-service : Supprimer tests lors de suppression endpoint
-
-Feign Clients :
+Feign Clients:
 java@FeignClient(name = "test-service")
 TestServiceClient
 
 6. AI-SERVICE / generate-test-service (Port 8084) - Flask
-Rôle : Génération intelligente de tests via IA interne
-Responsabilités :
+Role: Intelligent test generation via internal AI
+Responsibilities:
 
-Générer 6 types de tests pour chaque endpoint
-Créer des payloads réalistes et contextuels (pas aléatoires)
-Utiliser l'IA pour comprendre le domaine métier
+Generate 6 types of tests for each endpoint
+Create realistic and contextual payloads (not random)
+Use AI to understand the business domain
 
-Technologies :
+Technologies:
 
 Flask (Python)
-Adaptateur entraîné sur le modèle Qwen2.5-1.5B-Instruct
-Pas de base de données (stateless)
+Adapter trained on the Qwen2.5-1.5B-Instruct model
+No database (stateless)
 
-Types de tests générés :
+Generated test types:
 
 POSITIVE (Happy Path)
 
-Données valides et complètes
-Attend code 200/201
+Valid and complete data
+Expect code 200/201
 
 
-WRONG_TYPE (Mauvais types)
+WRONG_TYPE (Wrong types)
 
-Types incorrects (string au lieu d'integer)
-Attend code 400
+Incorrect types (string instead of integer)
+Expect code 400
 
 
-MISSING_FIELDS (Champs manquants)
+MISSING_FIELDS (Missing fields)
 
-Omet champs requis
-Attend code 400
+Omitted required fields
+Expect code 400
 
 
 VALIDATION (Validation)
 
-Valeurs hors limites, formats incorrects
-Attend code 400
+Out-of-range values, incorrect formats
+Expect code 400
 
 
-BOUNDARY (Cas limites)
+BOUNDARY (Boundary cases)
 
-Valeurs min/max
-Attend code 200 ou 400 selon contraintes
-
-
-AUTH (Sécurité)
-
-Tests sans authentification
-Attend code 401
+Min/max values
+Expect code 200 or 400 depending on constraints
 
 
+AUTH (Security)
 
-Endpoint principal :
+Tests without authentication
+Expect code 401
+
+
+
+Main endpoint:
 POST /generate-tests
 Body: [
-  {
-    "projectId": "uuid",
-    "endpointId": "uuid",
-    "method": "POST",
-    "path": "/api/users",
-    "requestBodySchema": "{...}",
-    "responseBodySchema": "{...}",
-    "requiresAuth": true
-  }
+  {/* Lines omitted intentionally */}
 ]
 
 Response: [
-  {
-    "projectId": "uuid",
-    "endpointId": "uuid",
-    "endpoint": "POST /api/users",
-    "tests": [
-      {
-        "category": "POSITIVE",
-        "response": {
-          "name": "Create user - Valid data",
-          "headers": {},
-          "payload": {
-            "firstName": "Sophie",
-            "lastName": "Martin",
-            "email": "sophie.martin@example.com",
-            "age": 32
-          },
-          "pathParams": {},
-          "queryParams": {},
-          "requiresAuth": false,
-          "expectedStatus": 201
-        }
-      },
-      {
-        "category": "WRONG_TYPE",
-        "response": {
-          "name": "Create user - Wrong type for age",
-          "payload": {
-            "firstName": "Jean",
-            "lastName": "Dupont",
-            "email": "jean@example.com",
-            "age": "invalid"
-          },
-          "expectedStatus": 400
-        }
-      },
-      // ... 4 autres tests
-    ]
-  }
+  {/* Lines omitted intentionally */}
 ]
 
-Communication sortante : Aucune (appelé par test-service)
+Outgoing communication: None (called by test-service)
 
 7. TEST-SERVICE (Port 8084)
-Rôle : Intermédiaire entre endpoint-service et ai-service
-Responsabilités :
+Role: Intermediate service between endpoint-service and ai-service
+Responsibilities:
 
-Récupérer endpoints depuis endpoint-service
-Appeler ai-service pour générer tests
-Stocker les 6 tests générés en base
-CRUD des tests
-Régénération de tests
+Fetch endpoints from endpoint-service
+Call ai-service to generate tests
+Store the 6 generated tests in the database
+CRUD for tests
+Regenerate tests
 
-Base de données : PostgreSQL (testai_tests)
-Entités principales :
+Database: PostgreSQL (testai_tests)
+Main entities:
 javaTest {
     UUID id
     UUID projectId
     UUID endpointId
     String endpointPath
     
-    // 6 tests stockés en JSONB
+    // 6 tests stored as JSONB
     Map<String, Object> positive
     Map<String, Object> wrongType
     Map<String, Object> missingFields
@@ -509,7 +463,7 @@ javaTest {
     Map<String, Object> boundary
     Map<String, Object> auth
 }
-Structure d'un test :
+Structure of a test:
 json{
   "category": "POSITIVE",
   "response": {
@@ -522,41 +476,102 @@ json{
     "expectedStatus": 201
   }
 }
-Endpoints clés :
-POST   /api/tests/generate            - Générer tests (appelle AI)
-GET    /api/tests                     - Lister tous tests
-GET    /api/tests/{projectId}         - Tests d'un projet
-GET    /api/tests/{projectId}/{endpointId} - Tests d'un endpoint
-PUT    /api/tests/update              - Modifier tests
-DELETE /api/tests/{projectId}         - Supprimer tests projet
-DELETE /api/tests/{projectId}/{endpointId} - Supprimer tests endpoint
-Flux de génération :
-1. Frontend → POST /api/tests/generate avec liste d'endpoints
-2. test-service → Appelle ai-service (Flask) avec schémas
-3. ai-service → Model Local génère 6 tests par endpoint
-4. ai-service → Retourne JSON avec tests
-5. test-service → Parse et stocke en DB
-6. test-service → Retourne résumé au frontend
-Communication sortante :
+Key endpoints:
+POST   /api/tests/generate            - Generate tests (calls AI)
+GET    /api/tests                     - List all tests
+GET    /api/tests/{projectId}         - Tests for a project
+GET    /api/tests/{projectId}/{endpointId} - Tests for an endpoint
+PUT    /api/tests/update              - Update tests
+DELETE /api/tests/{projectId}         - Delete project tests
+DELETE /api/tests/{projectId}/{endpointId} - Delete endpoint tests
+Generation flow:
+1. Frontend → POST /api/tests/generate with endpoint list
+2. test-service → Calls ai-service (Flask) with schemas
+3. ai-service → Local model generates 6 tests per endpoint
+4. ai-service → Returns JSON with tests
+5. test-service → Parses and stores in DB
+6. test-service → Returns summary to frontend
+Outgoing communication:
 
-ai-service (Flask) : Générer tests via IA
+oi-service (Flask): Generate tests via AI
 
-Feign Clients :
+Feign Clients:
+java@FeignClient(name = "ai-service", url = "http://localhost:8084")
+GenerateTestClient
+7. TEST-SERVICE (Port 8084)
+Role: Intermediate service between endpoint-service and ai-service
+Responsibilities:
+
+Fetch endpoints from endpoint-service
+Call ai-service to generate tests
+Store the 6 generated tests in the database
+CRUD for tests
+Regenerate tests
+
+Database: PostgreSQL (testai_tests)
+Main entities:
+javaTest {
+    UUID id
+    UUID projectId
+    UUID endpointId
+    String endpointPath
+    
+    // 6 tests stored as JSONB
+    Map<String, Object> positive
+    Map<String, Object> wrongType
+    Map<String, Object> missingFields
+    Map<String, Object> validation
+    Map<String, Object> boundary
+    Map<String, Object> auth
+}
+Structure of a test:
+json{
+  "category": "POSITIVE",
+  "response": {
+    "name": "Create user - Valid data",
+    "headers": {"Authorization": "Bearer token"},
+    "payload": {"firstName": "Sophie", "lastName": "Martin"},
+    "pathParams": {},
+    "queryParams": {},
+    "requiresAuth": false,
+    "expectedStatus": 201
+  }
+}
+Key endpoints:
+POST   /api/tests/generate            - Generate tests (calls AI)
+GET    /api/tests                     - List all tests
+GET    /api/tests/{projectId}         - Tests for a project
+GET    /api/tests/{projectId}/{endpointId} - Tests for an endpoint
+PUT    /api/tests/update              - Update tests
+DELETE /api/tests/{projectId}         - Delete project tests
+DELETE /api/tests/{projectId}/{endpointId} - Delete endpoint tests
+Generation flow:
+1. Frontend → POST /api/tests/generate with endpoint list
+2. test-service → Calls ai-service (Flask) with schemas
+3. ai-service → Local model generates 6 tests per endpoint
+4. ai-service → Returns JSON with tests
+5. test-service → Parses and stores in DB
+6. test-service → Returns summary to frontend
+Outgoing communication:
+
+oi-service (Flask): Generate tests via AI
+
+Feign Clients:
 java@FeignClient(name = "ai-service", url = "http://localhost:8084")
 GenerateTestClient
 
 8. EXECUTION-SERVICE (Port 8085)
-Rôle : Exécution des tests et gestion de l'historique
-Responsabilités :
+Role: Test execution and history management
+Responsibilities:
 
-Exécuter un seul test (TestExecutionService)
-Exécuter tous les tests d'un projet en batch (ProjectExecutionService)
-Stocker résultats d'exécution
-Gérer historique des exécutions
-Générer rapports PDF
+Execute a single test (TestExecutionService)
+Execute all project tests in batch (ProjectExecutionService)
+Store execution results
+Manage execution history
+Generate PDF reports
 
-Base de données : PostgreSQL (testai_executions)
-Entités principales :
+Database: PostgreSQL (testai_executions)
+Main entities:
 javaTestExecution {
     UUID id
     UUID projectId
@@ -565,12 +580,12 @@ javaTestExecution {
     String httpMethod
     TestType testType (POSITIVE, WRONG_TYPE, ...)
     
-    // Requête envoyée
+    // Sent request
     String requestUrl
     Map<String, String> requestHeaders
     Map<String, Object> requestBody
     
-    // Réponse reçue
+    // Received response
     Integer responseStatusCode
     Map<String, String> responseHeaders
     Map<String, Object> responseBody
@@ -584,11 +599,11 @@ javaTestExecution {
     String errorMessage
     Map<String, Object> validationErrors
     
-    // Métadonnées
+    // Metadata
     UUID executedBy
     Instant executedAt
     String executionContext (manual, scheduled, ci_cd)
-    UUID executionId (lié à ProjectExecution)
+    UUID executionId (linked to ProjectExecution)
 }
 
 ProjectExecution {
@@ -608,7 +623,7 @@ ProjectExecution {
     Instant completedAt
     String executionContext
     
-    // Stats par type
+    // Stats by type
     Integer positiveTests, positivePassedTests
     Integer wrongTypeTests, wrongTypePassedTests
     Integer missingFieldsTests, missingFieldsPassedTests
@@ -616,28 +631,28 @@ ProjectExecution {
     Integer validationTests, validationPassedTests
     Integer authTests, authPassedTests
 }
-Endpoints clés :
-POST   /api/executions/execute                    - Exécuter 1 test
-POST   /api/executions/execute-project            - Exécuter projet complet
-GET    /api/executions/project/{projectId}        - Historique projet
-GET    /api/executions/{executionId}              - Détails exécution
-GET    /api/executions/{executionId}/test-executions - Tests d'une exécution
-GET    /api/executions/{executionId}/logs         - Logs temps réel
-DELETE /api/executions/project/{projectId}        - Supprimer historique
-Flux d'exécution d'un test :
-java1. Récupérer Project (URL + credentials)
-2. Récupérer Endpoint (method, path)
-3. Récupérer Test généré (payload, expectedStatus)
-4. Construire URL complète (base + path + pathParams + queryParams)
-5. Construire headers (auth + headers du test)
-6. Préparer entity HTTP (avec ou sans body selon méthode)
-7. EXÉCUTER appel HTTP vers API réelle via RestTemplate
-8. Capturer réponse (200, 400, 401, 500...)
-9. Valider : expectedStatus == actualStatus ?
-10. Sauvegarder TestExecution en DB
-11. Retourner résultat
-Gestion authentification :
-javaswitch (authType) {
+Key endpoints:
+POST   /api/executions/execute                    - Execute one test
+POST   /api/executions/execute-project            - Execute full project
+GET    /api/executions/project/{projectId}        - Project history
+GET    /api/executions/{executionId}              - Execution details
+GET    /api/executions/{executionId}/test-executions - Tests for an execution
+GET    /api/executions/{executionId}/logs         - Real-time logs
+DELETE /api/executions/project/{projectId}        - Delete history
+Test execution flow:
+1. Fetch Project (URL + credentials)
+2. Fetch Endpoint (method, path)
+3. Fetch generated Test (payload, expectedStatus)
+4. Build full URL (base + path + pathParams + queryParams)
+5. Build headers (auth + test headers)
+6. Prepare HTTP entity (with or without body depending on method)
+7. EXECUTE HTTP call to real API using RestTemplate
+8. Capture response (200, 400, 401, 500...)
+9. Validate: expectedStatus == actualStatus?
+10. Save TestExecution in DB
+11. Return result
+Authentication handling:
+switch (authType) {
   case "BASIC":
     headers.set("Authorization", "Basic " + base64(user:pass))
   case "APIKEY":
@@ -646,23 +661,23 @@ javaswitch (authType) {
   case "BEARER":
     headers.set("Authorization", "Bearer " + token)
 }
-Exécution asynchrone :
-Pour les projets complets (ProjectExecutionService) :
+Asynchronous execution:
+For full projects (ProjectExecutionService):
 
-Utilise @Async et CompletableFuture
-Crée ProjectExecution en DB (status = RUNNING)
-Lance exécution en arrière-plan
-Met à jour ProjectExecution à la fin (status = COMPLETED)
-Stocke tous les TestExecution
+Uses @Async and CompletableFuture
+Creates ProjectExecution in DB (status = RUNNING)
+Launches background execution
+Updates ProjectExecution at completion (status = COMPLETED)
+Stores all TestExecution
 
-Communication sortante :
+Outgoing communication:
 
-project-service : Récupérer projet + credentials
-endpoint-service : Récupérer endpoints
-test-service : Récupérer tests générés
-API externe : Exécuter tests réels
+project-service: Fetch project + credentials
+endpoint-service: Fetch endpoints
+test-service: Fetch generated tests
+External API: Execute real tests
 
-Feign Clients :
+Feign Clients:
 java@FeignClient(name = "project-service")
 ProjectServiceClient
 
@@ -671,31 +686,30 @@ EndpointServiceClient
 
 @FeignClient(name = "test-service")
 TestServiceClient
-Génération de rapports PDF :
-Service SingleReportService :
+PDF report generation:
+SingleReportService:
 
-Génère rapport PDF pour un endpoint
-Utilise OpenPDF (iText fork)
-Tableaux colorés, badges de statut
-Sections : Project Info, Endpoint Details, Test Executions
-Export via endpoint : GET /api/reports/endpoint/{endpointId}
-
+Generates PDF report for an endpoint
+Uses OpenPDF (iText fork)
+Colored tables, status badges
+Sections: Project Info, Endpoint Details, Test Executions
+Export via endpoint: GET /api/reports/endpoint/{endpointId}
 9. ADMIN-SERVICE (Port 8087)
-Rôle : Supervision et administration centrale
-Responsabilités :
+Role: Centralized supervision and administration
+Responsibilities:
 
-Gérer les utilisateurs (liste, détails, activation, suppression)
-Accéder aux métriques d'exécution et rapports PDF
-Gérer les projets et partages
-Fournir des endpoints d'administration sécurisés
+Manage users (list, details, activation, deletion)
+Access execution metrics and PDF reports
+Manage projects and shares
+Provide secure admin endpoints
 
-Technologies :
+Technologies:
 
 Spring Boot 3.2
 PostgreSQL
-OpenFeign pour communiquer avec user-service, project-service et execution-service
+OpenFeign to communicate with user-service, project-service, and execution-service
 
-Endpoints clés :
+Key endpoints:
 GET    /api/admin/users
 GET    /api/admin/users/{id}/full
 POST   /api/admin/users/{userId}/toggle
@@ -709,29 +723,29 @@ GET    /api/admin/projects/{id}
 DELETE /api/admin/projects/{id}
 
 10. NOTIFICATION-SERVICE (Port 8089)
-Rôle : Gestion des notifications et alertes utilisateur
-Responsabilités :
+Role: User notifications and alerts management
+Responsibilities:
 
-Envoyer des notifications aux utilisateurs
-Lister et compter les notifications non lues
-Marquer les notifications comme lues
-Maintenir une base d'historique de notifications
+Send notifications to users
+List and count unread notifications
+Mark notifications as read
+Maintain notification history
 
-Technologies :
+Technologies:
 
 Spring Boot 3.2
 PostgreSQL
 
-Endpoints clés :
+Key endpoints:
 POST   /api/notifications/send
 GET    /api/notifications/user/{userId}
 GET    /api/notifications/user/{userId}/unread-count
 PUT    /api/notifications/{id}/read
 PUT    /api/notifications/user/{userId}/read-all
 
-💻 TECHNOLOGIES UTILISÉES
+💻 TECHNOLOGIES USED
 Backend
-Service | Framework | Langage | Base de données
+Service | Framework | Language | Database
 eureka-server | Spring Cloud | Java 17 | -
 api-gateway | Spring Cloud Gateway | Java 17 | -
 user-service | Spring Boot 3.2 | Java 17 | PostgreSQL
@@ -743,7 +757,7 @@ admin-service | Spring Boot 3.2 | Java 17 | PostgreSQL
 notification-service | Spring Boot 3.2 | Java 17 | PostgreSQL
 generate-test-service | Flask | Python 3.12 | -
 
-Librairies Spring
+Libraries Spring
 xml<!-- Spring Cloud -->
 <dependency>
     <groupId>org.springframework.cloud</groupId>
@@ -801,102 +815,22 @@ xml<!-- Spring Cloud -->
     <groupId>io.swagger.parser.v3</groupId>
     <artifactId>swagger-parser</artifactId>
 </dependency>
+
 Frontend
 
-React 18 avec TypeScript
+React 18 with TypeScript
 Vite (build tool)
 Tailwind CSS (styling)
 React Router (routing)
 Axios (HTTP client)
-Recharts (graphiques)
+Recharts (graphs)
 
 Infrastructure
 
 Docker & Docker Compose
-PostgreSQL (bases de données)
-Keycloak (authentification)
-Nginx (reverse proxy pour le frontend)
-
-
-📁 STRUCTURE DU PROJET
-testai/
-├── docker-compose.yml                # Orchestration de tous les services
-├── README.md
-│
-├── eureka-server/                    # Service Discovery
-│   ├── src/main/java/
-│   ├── src/main/resources/
-│   │   └── application.yml
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── api-gateway/                      # API Gateway
-│   ├── src/main/java/
-│   ├── src/main/resources/
-│   │   └── application.yml
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── user-service/                     # Gestion utilisateurs
-│   ├── src/main/java/com/testai/userservice/
-│   │   ├── controller/
-│   │   │   └── UserController.java
-│   │   ├── service/
-│   │   │   └── UserService.java
-│   │   ├── entity/
-│   │   │   └── User.java
-│   │   ├── repository/
-│   │   │   └── UserRepository.java
-│   │   ├── dto/
-│   │   └── config/
-│   ├── src/main/resources/
-│   │   └── application.yml
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── project-service/                  # Gestion projets
-│   ├── src/main/java/com/testai/projectservice/
-│   │   ├── controller/
-│   │   │   └── ProjectController.java
-│   │   ├── service/
-│   │   │   ├── ProjectService.java
-│   │   │   └── SharedAccessService.java
-│   │   ├── entity/
-│   │   │   ├── Project.java
-│   │   │   ├── ApiCredentials.java
-│   │   │   └── SharedAccess.java
-│   │   ├── repository/
-│   │   ├── feignclient/
-│   │   │   ├── UserServiceClient.java
-│   │   │   ├── EndpointServiceClient.java
-│   │   │   ├── TestServiceClient.java
-│   │   │   └── ExecutionServiceClient.java
-│   │   └── dto/
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── endpoint-service/                 # Gestion endpoints
-│   ├── src/main/java/com/testai/endpointservice/
-│   │   ├── controller/
-│   │   │   └── EndpointController.java
-│   │   ├── service/
-│   │   │   ├── EndpointService.java
-│   │   │   └── SwaggerScannerService.java
-│   │   ├── entity/
-│   │   │   └── Endpoint.java
-│   │   ├── repository/
-│   │   ├── feignclient/
-│   │   │   └── TestServiceClient.java
-│   │   └── dto/
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── test-service/                     # Gestion tests
-│   ├── src/main/java/com/testai/testservice/
-│   │   ├── controller/
-│   │   │   └── TestController.java
-│   │   ├── service/
-│   │   │   └── TestService.java
+PostgreSQL (databases)
+Keycloak (authentication)
+Nginx (reverse proxy for the frontend)
 │   │   ├── entity/
 │   │   │   └── Test.java
 │   │   ├── repository/
@@ -906,7 +840,7 @@ testai/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── execution-service/                # Exécution tests
+├── execution-service/                # Test execution
 │   ├── src/main/java/org/example/executionservice/
 │   │   ├── controller/
 │   │   │   └── ExecutionController.java
@@ -926,20 +860,20 @@ testai/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── admin-service/                    # Service d'administration
+├── admin-service/                    # Administration service
 │   ├── src/main/java/
 │   ├── src/main/resources/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── notification-service/             # Service de notifications
+├── notification-service/             # Notification service
 │   ├── src/main/java/
 │   ├── src/main/resources/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── generate-test-service/            # Service IA / génération de tests
-│   ├── app.py                        # Point d'entrée
+├── generate-test-service/            # AI / test generation service
+│   ├── app.py                        # Entry point
 │   ├── config.py
 │   ├── Dockerfile
 │   ├── requirements.txt
@@ -951,7 +885,7 @@ testai/
 │   ├── put-post-adapter/
 │   └── utils/
 │
-├── testai-frontend/                  # Interface utilisateur principale
+├── testai-frontend/                  # Main user interface
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
@@ -964,7 +898,7 @@ testai/
 │   ├── tsconfig.json
 │   └── vite.config.ts
 │
-└── testai-frontend-admin/            # Interface d'administration
+└── testai-frontend-admin/            # Admin interface
     ├── src/
     │   ├── components/
     │   ├── context/
@@ -977,17 +911,17 @@ testai/
     ├── tsconfig.json
     └── vite.config.ts
 
-🔗 COMMUNICATION INTER-SERVICES
-OpenFeign : Communication synchrone
-Principe :
+🔗 INTER-SERVICE COMMUNICATION
+OpenFeign: Synchronous communication
+Principle:
 
-Feign Client = Interface Java annotée
-Génère automatiquement le code HTTP
-Utilise Eureka pour résoudre les URLs
-Load balancing automatique
+Feign Client = Java interface annotated
+Automatically generates HTTP code
+Uses Eureka to resolve URLs
+Automatic load balancing
 
-Exemple :
-java// Dans project-service
+Example:
+java// In project-service
 @FeignClient(name = "endpoint-service", path = "/api/endpoints")
 public interface EndpointServiceClient {
     
@@ -998,60 +932,62 @@ public interface EndpointServiceClient {
     Map<String, Object> deleteEndpointsByProjectId(@PathVariable UUID projectId);
 }
 
-// Utilisation
+// Usage
 @Autowired
 private EndpointServiceClient endpointServiceClient;
 
 public void scanEndpoints(UUID projectId) {
     List<EndpointDTO> endpoints = endpointServiceClient.getEndpointsByProjectId(projectId);
 }
-Ce qui se passe :
-1. project-service appelle endpointServiceClient.getEndpointsByProjectId(projectId)
-2. Feign demande à Eureka : "Où est endpoint-service ?"
-3. Eureka répond : "http://endpoint-service:8083"
-4. Feign fait : GET http://endpoint-service:8083/api/endpoints/project/{projectId}
-5. endpoint-service répond avec JSON
-6. Feign désérialise en List<EndpointDTO>
-7. project-service reçoit la liste
-Graphe de dépendances
+What happens:
+1. project-service calls endpointServiceClient.getEndpointsByProjectId(projectId)
+2. Feign asks Eureka: "Where is endpoint-service?"
+3. Eureka replies: "http://endpoint-service:8083"
+4. Feign does: GET http://endpoint-service:8083/api/endpoints/project/{projectId}
+5. endpoint-service responds with JSON
+6. Feign deserializes into List<EndpointDTO>
+7. project-service receives the list
+
+Dependency graph
 user-service
-    └── (aucune dépendance)
+    └── (no dependency)
 
 project-service
-    ├── user-service (vérifier users)
-    ├── endpoint-service (scanner/récupérer endpoints)
-    ├── test-service (supprimer tests)
-    ├── execution-service (supprimer exécutions)
-    └── notification-service (envoyer alertes)
+    ├── user-service (verify users)
+    ├── endpoint-service (scan/fetch endpoints)
+    ├── test-service (delete tests)
+    ├── execution-service (delete executions)
+    └── notification-service (send alerts)
 
 endpoint-service
-    └── test-service (supprimer tests)
+    └── test-service (delete tests)
 
 test-service
-    └── ai-service / generate-test-service (générer tests via Qwen2.5-1.5B-Instruct)
+    └── ai-service / generate-test-service (generate tests via Qwen2.5-1.5B-Instruct)
 
 execution-service
-    ├── project-service (récupérer projet + credentials)
-    ├── endpoint-service (récupérer endpoints)
-    └── test-service (récupérer tests)
+    ├── project-service (fetch project + credentials)
+    ├── endpoint-service (fetch endpoints)
+    └── test-service (fetch tests)
 
 ai-service / generate-test-service (Flask)
-    └── (aucune dépendance - appelé par test-service)
-Circuit Breaker & Résilience
-Utilise Resilience4j pour gérer les pannes :
+    └── (no dependency - called by test-service)
+
+Circuit Breaker & Resilience
+Uses Resilience4j to manage failures:
 java@CircuitBreaker(name = "endpoint-service", fallbackMethod = "getEndpointsFallback")
 public List<EndpointDTO> getEndpoints(UUID projectId) {
     return endpointServiceClient.getEndpointsByProjectId(projectId);
 }
 
 public List<EndpointDTO> getEndpointsFallback(UUID projectId, Exception e) {
-    log.error("endpoint-service indisponible : {}", e.getMessage());
+    log.error("endpoint-service unavailable: {}", e.getMessage());
     return Collections.emptyList();
 }
 
-💾 BASES DE DONNÉES
-Schéma global
-Chaque service a sa propre base de données (Database per Service pattern).
+💾 DATABASES
+Global schema
+Each service has its own database (Database per Service pattern).
 PostgreSQL Instance
 ├── testai_users          (user-service)
 │   └── users
@@ -1070,7 +1006,8 @@ PostgreSQL Instance
 └── testai_executions     (execution-service)
     ├── test_executions
     └── project_executions
-Détail des tables
+
+Table details
 users (user-service)
 sqlCREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -1200,10 +1137,10 @@ sqlCREATE TABLE project_executions (
     execution_context VARCHAR(50)
 );
 
-🌐 ENDPOINTS API
-Documentation complète
-Tous les endpoints sont documentés dans Swagger UI de chaque service.
-Accès Swagger :
+🌐 API ENDPOINTS
+Full documentation
+All endpoints are documented in each service's Swagger UI.
+Swagger access:
 http://localhost:8081/swagger-ui.html  (user-service)
 http://localhost:8082/swagger-ui.html  (project-service)
 http://localhost:8083/swagger-ui.html  (endpoint-service)
@@ -1237,8 +1174,7 @@ POST   /execution-service/api/executions/execute
 POST   /execution-service/api/executions/execute-project
 GET    /execution-service/api/executions/project/{projectId}
 GET    /execution-service/api/executions/{executionId}/test-executions
-
-🐳 DOCKER & DÉPLOIEMENT
+🐳 DOCKER & DEPLOYMENT
 docker-compose.yml
 yamlversion: '3.8'
 
@@ -1378,51 +1314,53 @@ volumes:
 networks:
   testai-network:
     driver: bridge
-Commandes Docker
-bash# Lancer tous les services
+
+Commands Docker
+bash# Start all services
 docker-compose up -d
 
-# Arrêter tous les services
+# Stop all services
 docker-compose down
 
-# Voir les logs
+# View logs
 docker-compose logs -f [service-name]
 
-# Rebuild un service
+# Rebuild a service
 docker-compose up -d --build [service-name]
 
-# Voir l'état des services
+# View service status
 docker-compose ps
-Ordre de démarrage
+
+Startup order
 1. postgres
-2. eureka-server (attend health check)
-3. api-gateway (attend eureka)
+2. eureka-server (waits for health check)
+3. api-gateway (waits for eureka)
 4. user-service, project-service, endpoint-service, test-service, execution-service, admin-service, notification-service
 5. ai-service / generate-test-service
 6. frontend
 
-🛠️ GUIDE DE DÉVELOPPEMENT
-Prérequis
+🛠️ DEVELOPMENT GUIDE
+Prerequisites
 
 Java 17+
 Maven 3.8+
 Node.js 18+
 Docker & Docker Compose
-Python 3.12+ (pour generate-test-service)
+Python 3.12+ (for generate-test-service)
 PostgreSQL 15+
 
-Setup local
-1. Cloner le projet
+Local setup
+1. Clone the project
 bashgit clone https://github.com/your-org/testai.git
 cd testai
-2. Créer bases de données
+2. Create databases
 sqlCREATE DATABASE testai_users;
 CREATE DATABASE testai_projects;
 CREATE DATABASE testai_endpoints;
 CREATE DATABASE testai_tests;
 CREATE DATABASE testai_executions;
-3. Configurer variables d'environnement
-Créer .env à la racine :
+3. Configure environment variables
+Create .env at the root:
 env# Database
 DB_HOST=localhost
 DB_PORT=5432
@@ -1436,10 +1374,10 @@ OPENAI_API_KEY=sk-...
 KEYCLOAK_AUTH_SERVER_URL=http://localhost:8080/auth
 KEYCLOAK_REALM=testai
 KEYCLOAK_CLIENT_ID=testai-app
-4. Lancer services localement
-Option A : Avec Docker Compose (recommandé)
+4. Start services locally
+Option A: With Docker Compose (recommended)
 bashdocker-compose up -d
-Option B : Manuellement
+Option B: Manually
 bash# Eureka Server
 cd eureka-server
 mvn spring-boot:run
@@ -1452,218 +1390,209 @@ mvn spring-boot:run
 cd user-service
 mvn spring-boot:run
 
-# ... autres services
-5. Lancer AI Service (Flask)
+# ... other services
+5. Start AI Service (Flask)
 cd generate-test-service
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python app.py
-6. Lancer Frontend
+6. Start Frontend
 bashcd frontend
 npm install
 npm run dev
-Workflow de développement
+Workflow
 
-Créer une branche :
+Create a branch:
 
-bashgit checkout -b feature/nom-feature
+bashgit checkout -b feature/branch-name
 
-Développer :
+Develop:
 
+Modify the code
+Test locally
+Commit frequently
 
-Modifier le code
-Tester localement
-Commit régulièrement
+Tests:
 
-
-Tests :
-
-bash# Tests unitaires
+bash# Unit tests
 mvn test
 
-# Tests d'intégration
+# Integration tests
 mvn verify
 
-Push & Pull Request :
+Push & Pull Request:
 
-bashgit push origin feature/nom-feature
+bashgit push origin feature/branch-name
 
-Code Review puis Merge
+Code Review then Merge
 
+🎯 MAIN FEATURES
+1. Automatic API discovery
+Workflow:
+1. Manager creates a project with Swagger URL
+2. project-service triggers automatic scan
+3. endpoint-service downloads and parses Swagger
+4. Extract all endpoints
+5. Store in DB with complete schemas
+Benefit: 90% reduction in setup time (6h → 30min for 100 endpoints)
 
-🎯 FONCTIONNALITÉS PRINCIPALES
-1. Découverte automatique d'APIs
-Workflow :
-1. Manager crée un projet avec URL Swagger
-2. project-service déclenche scan automatique
-3. endpoint-service télécharge et parse Swagger
-4. Extraction de tous les endpoints
-5. Stockage en DB avec schémas complets
-Gain : 90% de réduction du temps de configuration (6h → 30min pour 100 endpoints)
-
-2. Génération intelligente de tests
-Workflow :
-1. Manager clique "Générer tests" pour un endpoint
-2. Frontend → test-service avec endpointId
-3. test-service récupère schémas depuis endpoint-service
-4. test-service → ai-service (Flask) avec schémas
-5. ai-service → Qwen2.5-1.5B-Instruct génère 6 tests réalistes
-6. test-service stocke tests en DB
-7. Frontend affiche les 6 tests générés
-Exemple de différence :
-Schemathesis (aléatoire) :
+2. Intelligent test generation
+Workflow:
+1. Manager clicks "Generate tests" for an endpoint
+2. Frontend → test-service with endpointId
+3. test-service retrieves schemas from endpoint-service
+4. test-service → ai-service (Flask) with schemas
+5. ai-service → Qwen2.5-1.5B-Instruct generates 6 realistic tests
+6. test-service stores tests in DB
+7. Frontend displays the 6 generated tests
+Difference example:
+Schemathesis (random):
 json{
   "firstName": "xKj8P2qL",
   "email": "test@test.com",
   "age": 999999
 }
-TestAI (IA - réaliste) :
+TestAI (AI - realistic):
 json{
   "firstName": "Sophie",
   "lastName": "Martin",
   "email": "sophie.martin@example.com",
   "age": 32,
   "phoneNumber": "+33612345678",
-  "address": "15 rue de la République, 75001 Paris"
+  "address": "15 Republic Street, 75001 Paris"
 }
-Gain : 95% de réduction du temps + meilleure qualité
+Benefit: 95% time reduction + better quality
 
-3. Exécution simplifiée
-Workflow - Test unique :
-1. Manager clique "Exécuter" sur un test POSITIVE
-2. Frontend → execution-service avec testType
-3. execution-service récupère :
+3. Simplified execution
+Workflow - Single test:
+1. Manager clicks "Execute" on a POSITIVE test
+2. Frontend → execution-service with testType
+3. execution-service retrieves:
    - Project (URL + credentials)
    - Endpoint (method + path)
    - Test (payload + expectedStatus)
-4. Construit requête HTTP complète
-5. EXÉCUTE appel vers API réelle (RestTemplate)
-6. Valide réponse (expectedStatus == actualStatus ?)
-7. Sauvegarde TestExecution en DB
-8. Retourne résultat au frontend
-Workflow - Projet complet :
-1. Manager clique "Exécuter tout le projet"
+4. Builds full HTTP request
+5. EXECUTES call to real API (RestTemplate)
+6. Validates response (expectedStatus == actualStatus?)
+7. Saves TestExecution in DB
+8. Returns result to frontend
+Workflow - Full project:
+1. Manager clicks "Execute whole project"
 2. Frontend → execution-service
-3. Crée ProjectExecution (status=RUNNING)
-4. Lance exécution asynchrone (@Async)
-5. Pour chaque endpoint :
-   - Exécute les 6 tests
-   - Sauvegarde chaque TestExecution
-6. Met à jour ProjectExecution (status=COMPLETED)
-7. Frontend affiche résultats + statistiques
+3. Creates ProjectExecution (status=RUNNING)
+4. Launches asynchronous execution (@Async)
+5. For each endpoint:
+   - Executes 6 tests
+   - Saves each TestExecution
+6. Updates ProjectExecution (status=COMPLETED)
+7. Frontend displays results + statistics
 
-4. Collaboration multi-rôles
-Workflow de partage :
-1. Manager clique "Partager projet"
-2. Entre email du développeur + access level (READ_ONLY/READ_WRITE)
-3. project-service crée SharedAccess (status=PENDING)
-4. Email envoyé au développeur avec lien d'invitation
-5. Développeur clique lien → acceptation
-6. Si pas encore inscrit : création compte automatique
-7. SharedAccess mis à jour (status=ACTIVE, developerUserId rempli)
-8. Développeur voit projet dans "Projets partagés avec moi"
-Niveaux d'accès :
+4. Multi-role collaboration
+Sharing workflow:
+1. Manager clicks "Share project"
+2. Enters developer email + access level (READ_ONLY/READ_WRITE)
+3. project-service creates SharedAccess (status=PENDING)
+4. Email sent to developer with invitation link
+5. Developer clicks link → acceptance
+6. If not registered yet: automatic account creation
+7. SharedAccess updated (status=ACTIVE, developerUserId set)
+8. Developer sees the project in "Projects shared with me"
+Access levels:
 
-READ_ONLY : Consulter endpoints/tests/historique
-READ_WRITE : + Générer tests + Exécuter tests
+READ_ONLY : View endpoints/tests/history
+READ_WRITE : + Generate tests + Execute tests
 
-
-5. Historique & Traçabilité
-Structure :
-ProjectExecution (batch complet)
+5. History & traceability
+Structure:
+ProjectExecution (full batch)
 ├── Test 1 → TestExecution
 ├── Test 2 → TestExecution
 ├── Test 3 → TestExecution
 └── ... → 50 TestExecution
-Frontend affiche :
+Frontend displays:
 
-Liste des ProjectExecution (date, taux de succès)
-Clic sur une exécution → Détails :
+List of ProjectExecution (date, success rate)
+Click on execution → Details:
 
-Graphique (Réussis / Échoués / Erreurs)
-Tableau des TestExecution
-Pour chaque test : requête envoyée + réponse reçue
+Chart (Passed / Failed / Errors)
+Table of TestExecution
+For each test: request sent + response received
 
+Benefit: Reproducibility guaranteed + easier debugging
 
-
-Gain : Reproductibilité garantie + debugging facilité
-
-6. Rapports PDF
-Service : SingleReportService dans execution-service
-Génération :
+6. PDF reports
+Service: SingleReportService in execution-service
+Generation:
 GET /api/reports/endpoint/{endpointId}
 
-→ Génère PDF avec :
-  - Project Info (tableau)
-  - Endpoint Details (tableau)
-  - Test Executions (tableaux colorés)
-    * Métadonnées
+→ Generates PDF with:
+  - Project Info (table)
+  - Endpoint Details (table)
+  - Test Executions (colored tables)
+    * Metadata
     * Expected vs Actual
     * Request Sent
     * Response Received
     * Errors
-Format :
+Format:
 
-Tableaux avec alternance de couleurs
-Badges de statut (vert/rouge/orange)
-Code blocks pour JSON
-Multi-pages
+Tables with alternating colors
+Status badges (green/red/orange)
+Code blocks for JSON
+Multi-page
 
-
-🔐 AUTHENTIFICATION & SÉCURITÉ
+🔐 AUTHENTICATION & SECURITY
 Keycloak
-Rôle : Serveur d'authentification centralisé
-Configuration :
+Role: Centralized authentication server
+Configuration:
 Realm: testai
 Client: testai-app
 Roles: MANAGER, GUEST, ADMIN
-Workflow d'inscription :
-1. User remplit formulaire (name, email, password, phone)
-2. user-service hash password (BCrypt)
-3. user-service crée User en DB (role=MANAGER par défaut)
-4. Envoie code vérification email (6 chiffres)
-5. Envoie code vérification SMS via Twilio
-6. User entre codes → emailVerified = true, phoneVerified = true
-7. user-service → Keycloak pour créer utilisateur
-8. Retourne JWT
-JWT Token :
+Signup workflow:
+1. User fills the form (name, email, password, phone)
+2. user-service hashes password (BCrypt)
+3. user-service creates User in DB (role=MANAGER by default)
+4. Sends email verification code (6 digits)
+5. Sends SMS verification code via Twilio
+6. User enters codes → emailVerified = true, phoneVerified = true
+7. user-service → Keycloak to create user
+8. Returns JWT
+JWT Token:
 json{
   "sub": "user-uuid",
   "email": "user@example.com",
   "role": "MANAGER",
   "exp": 1735689600
 }
-Sécurité des credentials API
-Stockage :
+API credentials security
+Storage:
 
-Credentials stockés dans table api_credentials
-Possibilité de chiffrement (colonne encrypted)
-OneToOne avec Project (suppression cascade)
+Credentials stored in api_credentials table
+Encryption option available (encrypted column)
+OneToOne with Project (cascade delete)
 
-Utilisation :
+Usage:
 
-Récupérés uniquement lors de l'exécution de tests
-Jamais exposés dans les réponses API
+Retrieved only during test execution
+Never exposed in API responses
 
-
-📈 MÉTRIQUES & MONITORING
+📈 METRICS & MONITORING
 Actuator Endpoints
-Tous les services exposent :
-GET /actuator/health       - Santé du service
-GET /actuator/metrics      - Métriques (CPU, mémoire, etc.)
-GET /actuator/info         - Infos version
-Métriques métier
-Dans execution-service :
+All services expose:
+GET /actuator/health       - Service health
+GET /actuator/metrics      - Metrics (CPU, memory, etc.)
+GET /actuator/info         - Version info
+Business metrics
+In execution-service:
 
-Taux de succès global par projet
-Temps de réponse moyen
-Nombre de tests exécutés par jour
-Endpoints les plus testés
+Overall success rate by project
+Average response time
+Number of tests executed per day
+Most tested endpoints
 
-
-🚀 DÉPLOIEMENT PRODUCTION
-Architecture de déploiement
+🚀 PRODUCTION DEPLOYMENT
+Deployment architecture
 ┌─────────────────────────────────────┐
 │         Load Balancer               │
 │       (Nginx / AWS ALB)             │
@@ -1680,7 +1609,7 @@ Architecture de déploiement
         ┌────────────────┼────────────────┐
         │                │                │
         ▼                ▼                ▼
-    [Services Spring Boot en cluster]
+    [Spring Boot services in cluster]
         │                │                │
         └────────────────┼────────────────┘
                          │
@@ -1688,21 +1617,20 @@ Architecture de déploiement
                     │PostgreSQL│
                     │ Cluster │
                     └─────────┘
-Checklist production
+Checklist for production
 
- Variables d'environnement (secrets)
- HTTPS (Let's Encrypt)
- Base de données : backup automatique
- Logs centralisés (ELK Stack)
- Monitoring (Prometheus + Grafana)
- Rate limiting sur Gateway
- Circuit breakers configurés
- Health checks sur tous services
- Scaling horizontal (Kubernetes)
+Variables of environment (secrets)
+HTTPS (Let's Encrypt)
+Database: automatic backups
+Centralized logs (ELK Stack)
+Monitoring (Prometheus + Grafana)
+Rate limiting on Gateway
+Circuit breakers configured
+Health checks on all services
+Horizontal scaling (Kubernetes)
 
-
-📚 RESSOURCES
-Documentation
+📚 RESOURCES
+Resources
 
 Spring Cloud : https://spring.io/projects/spring-cloud
 OpenFeign : https://spring.io/projects/spring-cloud-openfeign
@@ -1710,22 +1638,19 @@ Eureka : https://spring.io/guides/gs/service-registration-and-discovery/
 Flask : https://flask.palletsprojects.com/
 OpenAPI Spec : https://swagger.io/specification/
 
-Outils de test
+Testing tools
 
 Postman : https://www.postman.com/
 Swagger UI : http://localhost:8081/swagger-ui.html
 Eureka Dashboard : http://localhost:8761
 
+👨‍💻 TECHNOLOGIES USED
 
-👨‍💻 TECHNOLOGIES UTILISES
-
-Backend : Architecture microservices Spring Boot
+Backend : Spring Boot microservices architecture
 Frontend : React + TypeScript
-AI Service : Flask + adaptateur Qwen2.5-1.5B-Instruct
+AI Service : Flask + Qwen2.5-1.5B-Instruct adapter
 DevOps : Docker + Docker Compose
 
-
-👥 CONTRIBUTEURS
+👥 CONTRIBUTORS
 
 Ghada Fatnassi
-Allani Mohamed
